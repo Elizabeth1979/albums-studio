@@ -13,11 +13,12 @@ subscription, Supabase, RLS, share links, Family Travels.
 ## ▶ Resume point
 
 - ✅ **Supabase project ready.** Project name `albums-studio`, ref `vsxbedlsnfmsbnlfayae`,
-  region `eu-central-1`, repurposed from an abandoned project. Migration
-  `album_studio_initial_schema` is applied: `profiles`, `albums`, `photos`, `people`,
-  `face_embeddings`, `album_shares`, `library_shares`, `ai_usage` — all with RLS.
-- ✅ **Storage bucket `photos`** exists: public read, 5 MB limit, image MIME types only,
-  owner-namespaced write policies (`photos/<owner_uuid>/…`).
+  region `eu-central-1`, repurposed from an abandoned project. The complete migration
+  history is committed. The minimal schema is `profiles`, `albums`, `photos`, and
+  `ai_usage`, with RLS, explicit privileges, and enforced album/photo ownership.
+- ✅ **Storage bucket `photos`** exists: private, 5 MB limit, image MIME types only, and
+  owner-namespaced object keys (`<owner_uuid>/…` inside the `photos` bucket). Trusted server
+  code will issue short-lived signed URLs.
 - ⏳ **No application code yet.** Nothing has been built.
 - ✅ **Product direction clarified.** Albums Studio is not just a travel map and not just a
   gallery. It is AI-led: the product should suggest what to do next, what story to create,
@@ -33,9 +34,9 @@ signed-in user sees an empty library and can create an album shell. The first AI
 comes after upload/text foundation: capture typed or spoken context and generate a
 reviewable AI Story Studio draft with proactive suggestions.
 
-**Known schema gaps:** the applied Supabase migration is the initial v0 schema. Add
-migrations before shipping later phases for `albums.layout`, `photos.caption_visibility`,
-`photo_stories`, `ai_drafts`, `studio_interactions`, and `ai_suggestions`.
+**Known schema gaps:** add forward-only migrations when their phases begin for
+`albums.layout`, `photos.caption_visibility`, `photo_stories`, `ai_drafts`,
+`studio_interactions`, `ai_suggestions`, and any face/embedding structures.
 
 ## Context
 
@@ -170,7 +171,8 @@ empty album page in that layout.
 
 ### Phase 3 — Upload (the spine)
 Drag photos in. In the browser, per file: resize to ~2000px, generate a thumbnail, compute
-pHash, compute sharpness. Upload to Storage at `photos/<owner>/<album>/<uuid>`, then insert
+pHash, compute sharpness. Upload to the `photos` bucket with object key
+`<owner>/<album>/<uuid>`, then insert
 the `photos` row with those precomputed fields.
 
 Do this properly the first time — throttle to ~4 concurrent, show progress, retry failures.
@@ -191,7 +193,8 @@ Add photo editing UI for:
 The initial schema has `caption` but does not yet have caption visibility or story notes.
 Add a migration before this phase ships. Recommended shape:
 
-- `caption_visibility text not null default 'hidden' check (caption_visibility in ('hidden', 'visible'))`
+- `caption_visibility text not null default 'hidden' check (caption_visibility in
+  ('hidden', 'visible'))`
 - `photo_stories` table with `id`, `photo_id`, `owner_id`, `body`, `visibility`, optional
   `region`, optional `audio_path`, optional `transcript`, and timestamps.
 
@@ -256,8 +259,10 @@ it, and sees the accepted story in an album layout while the raw draft remains t
 
 ### Phase 6 — Sharing
 Visibility switch (`private` / `link` / `public`), share-link generation, token rotation as
-a visible "revoke links" action. A viewer page reads through `get_shared_album(token)` and
-requires no account.
+a visible "revoke links" action. Tokens remain in `private.album_share_tokens`, never on
+Data API-visible album rows. Trusted server code retrieves or rotates the token and
+independently authorizes signed-image requests. A viewer page reads through
+`get_shared_album(token)` and requires no account.
 
 **Checkpoint:** owner can share an album link in a private browser session; link rotation
 revokes the old album page.
@@ -334,8 +339,8 @@ Increment `ai_usage` on every call, BYOK included, so users can see their own co
 text appears in shared views.
 
 ### Phase 12 — Faces
-Local face detection produces embeddings into `face_embeddings`. Cluster them, ask the
-owner to name a cluster, which creates a `people` row.
+Add the biometric schema only when this phase begins. Local face detection produces
+embeddings, clusters them, and asks the owner to name a cluster.
 
 **Consent gates processing, not just display.** Only `consent = 'granted'` people may be
 processed. Withdrawal deletes embeddings and leaves photos intact. Ship the deletion path
@@ -345,9 +350,8 @@ in the same release as the feature — not later.
 
 1. **Frontend stack.** React is recommended because album layouts, upload queues, selection,
    comparison views, and editors have real interaction state.
-2. **Public storage vs signed image access.** The current bucket is public. If rotating a
-   share link must revoke copied image URLs too, use a private bucket plus signed URLs or
-   an image proxy before launch.
+2. **Signed URL delivery.** Storage is private. Choose whether trusted server routes or Edge
+   Functions create short-lived image URLs before upload and sharing are implemented.
 3. **Layout schema.** Add an album layout field before Phase 2 ships. Initial values:
    `masonry`, `grid`; later `story`, `slideshow`, `map`, `blog`.
 4. **Caption/story visibility schema.** Add `caption_visibility` before Phase 4 so captions
