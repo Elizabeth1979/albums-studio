@@ -1,10 +1,15 @@
 # Repo memory — index of plans, specs & sessions
 
-The single entry point to everything written *about* family-albums, as opposed to the code
+The single entry point to everything written *about* Albums Studio, as opposed to the code
 itself. Start here when picking up work or asking "did we already decide X?".
 
-**Keywords:** memory, index, plans, sessions, alt text, accessibility, dedupe, phash,
-best shot, collage, face recognition, consent, BYOK, subscription, Supabase, RLS, sharing.
+**Keywords:** memory, index, plans, sessions, AI-led, AI Story Studio, proactive AI,
+freemium, paywall, trial quota, free AI, open-source AI, Hugging Face, local AI, Python,
+voice, text input, speech, transcript, commands, multimodal AI, LLM stories, albums,
+layouts, gallery, captions, hidden captions, story notes, audio notes, image regions, manual
+alt text, accessibility, semantic search, LLM search, curation, dedupe, phash, best shot,
+collage, slideshow, music, movie export, video export, face recognition, consent, BYOK,
+subscription, Supabase, RLS, sharing, Family Travels.
 
 ---
 
@@ -13,26 +18,40 @@ best shot, collage, face recognition, consent, BYOK, subscription, Supabase, RLS
 **Nothing is built yet.** The schema is applied and the plan is written; there is no
 application code.
 
-- **Supabase is live.** Project ref `vsxbedlsnfmsbnlfayae`, region `eu-central-1`. Eight
-  tables with RLS (`profiles`, `albums`, `photos`, `people`, `face_embeddings`,
-  `album_shares`, `library_shares`, `ai_usage`), a `photos` storage bucket, and pgvector
-  enabled. Schema is version-controlled in [`supabase/migrations/`](../supabase/migrations/).
-- **Next up:** Phase 1 of the plan — scaffold, Supabase auth, a `profiles` row on signup.
-  Then Phase 2 (upload) and Phase 3 (alt text, the wedge).
-- **Undecided:** frontend stack (React recommended), platform-key economics, free-tier
-  storage quota. See the plan's open questions.
+- **Supabase is live.** Project name `albums-studio`, ref `vsxbedlsnfmsbnlfayae`, region
+  `eu-central-1`. Eight tables with RLS (`profiles`, `albums`, `photos`, `people`,
+  `face_embeddings`, `album_shares`, `library_shares`, `ai_usage`), a `photos` storage
+  bucket, and pgvector enabled. Schema is version-controlled in
+  [`supabase/migrations/`](../supabase/migrations/). This is the initial v0 schema; later
+  roadmap phases need additional migrations listed in the active roadmap's known schema gaps.
+- **Product direction:** Albums Studio is productized albums and AI-led Story Studio, not a
+  travel-map clone or blog clone. MVP is albums, upload, selectable layouts, captions/story
+  notes/manual alt text, AI Story Studio drafts/suggestions, and sharing. Voice and text are
+  input methods. Captions/stories can be visible or hidden/search-only. Photo curation avoids
+  paid AI where deterministic, local, open-source, or Hugging Face options are enough.
+- **Next up:** Phase 1 of the plan — scaffold, Supabase auth, a `profiles` row on signup,
+  and an empty library where a signed-in user can create an album shell.
+- **Undecided:** frontend stack (React recommended), public bucket vs signed image access,
+  layout schema, blog layout depth, caption/story visibility schema, story region model,
+  Studio interaction behavior, AI draft/suggestion schema, freemium trial design,
+  platform-key economics, free-tier storage quota, and
+  eventual Family Travels import. See the plan's open questions.
 
 ---
 
 ## 📋 Plans
 
-- [plans/2026-08-15-family-albums-plan.md](plans/2026-08-15-family-albums-plan.md) —
-  **active.** The build plan: seven phases from scaffold to faces, the cost model that
-  shapes pricing, and why alt text leads.
+- [plans/2026-08-15-albums-studio-roadmap.md](plans/2026-08-15-albums-studio-roadmap.md) —
+  **active.** The build plan: gated phases from scaffold to layouts, upload, text
+  foundation, AI Story Studio, sharing, local photo curation, collages, slideshow/movie
+  export, AI-assisted search, AI alt drafts, and faces.
 
 ## 📓 Session logs
 
-_None yet — the first working session will add one (see the convention in `CLAUDE.md`)._
+- [sessions/2026-08-15-roadmap-reorder.md](sessions/2026-08-15-roadmap-reorder.md) —
+  recorded the decision trail: Albums Studio is product-first, blog/map optional, now
+  AI-led for story creation/search/actions, with voice/text as input methods and
+  captions/story notes/manual alt text as the owner-control layer.
 
 ---
 

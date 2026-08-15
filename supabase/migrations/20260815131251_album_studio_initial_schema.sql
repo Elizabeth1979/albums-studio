@@ -1,4 +1,4 @@
--- family-albums: initial schema.
+-- albums-studio: initial schema.
 --
 -- Already applied to project vsxbedlsnfmsbnlfayae on 2026-08-15 and recorded in that
 -- project's migration history as 20260815131251. Committed here so the repo is the source
@@ -70,7 +70,7 @@ create table public.photos (
   width         integer,
   height        integer,
   caption       text,   -- visible text
-  alt           text,   -- accessibility text: the product's wedge
+  alt           text,   -- accessibility text, owner-approved before shared display
   alt_source    text check (alt_source in ('ai', 'human')),
   -- Perceptual hash for duplicate detection: computed in the browser, no API
   -- call and no cost. Near-duplicates are found by Hamming distance.
@@ -146,8 +146,9 @@ create table public.library_shares (
 create index library_shares_viewer_idx on public.library_shares (viewer_id);
 
 -- AI usage metering -------------------------------------------------------------
--- Only vision calls (alt text) cost money; dedupe, collage, best-shot and face
--- grouping run locally. Metering one narrow operation keeps exposure countable.
+-- Meter all platform-paid AI operations, including BYOK calls for user visibility.
+-- Dedupe, collage, best-shot, and similar deterministic/local/open features should
+-- avoid paid model calls whenever quality is good enough.
 create table public.ai_usage (
   owner_id  uuid not null references auth.users (id) on delete cascade,
   period    date not null,
