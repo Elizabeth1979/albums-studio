@@ -72,6 +72,92 @@ flowchart LR
     classDef external fill:#f3f4f6,stroke:#6b7280,color:#1f2937
 ```
 
+## Current data model
+
+This diagram reflects the live schema. `PK` means primary key, `FK` means foreign key, and
+`UK` means unique. Required fields are labeled `NOT NULL`.
+
+```mermaid
+erDiagram
+    AUTH_USERS ||--|| PROFILES : creates
+    AUTH_USERS ||--o{ ALBUMS : owns
+    AUTH_USERS ||--o{ PHOTOS : owns
+    AUTH_USERS ||--o{ AI_USAGE : consumes
+    ALBUMS ||--o{ PHOTOS : contains
+    ALBUMS ||--|| ALBUM_SHARE_TOKENS : has
+    ALBUMS o|--o| PHOTOS : "uses as cover"
+
+    AUTH_USERS {
+        uuid id PK "managed by Supabase Auth"
+    }
+
+    PROFILES {
+        uuid id PK, FK
+        text display_name
+        timestamptz created_at "NOT NULL"
+    }
+
+    ALBUMS {
+        uuid id PK
+        uuid owner_id FK "NOT NULL"
+        text title "NOT NULL"
+        text slug "NOT NULL; unique with owner_id"
+        date date
+        text description
+        float8 lat
+        float8 lng
+        album_visibility visibility "NOT NULL; private, link, or public"
+        uuid cover_photo_id FK
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    PHOTOS {
+        uuid id PK
+        uuid album_id FK "NOT NULL"
+        uuid owner_id FK "NOT NULL"
+        text storage_path UK "NOT NULL"
+        text thumbnail_path
+        text mime
+        int4 width
+        int4 height
+        text caption
+        text alt
+        text alt_source "ai or human"
+        bit phash "64-bit perceptual hash"
+        float4 sharpness
+        float4 quality_score "zero to one"
+        int4 sort_order "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    AI_USAGE {
+        uuid owner_id PK, FK
+        date period PK
+        text operation PK
+        int4 count "NOT NULL"
+        boolean byok PK
+    }
+
+    ALBUM_SHARE_TOKENS {
+        uuid album_id PK, FK
+        uuid token UK "NOT NULL"
+        timestamptz created_at "NOT NULL"
+    }
+```
+
+The human-facing text fields have separate purposes:
+
+- `albums.description` describes the album as a whole.
+- `photos.caption` provides visible context for one photo. Caption visibility is planned but
+  is not yet stored separately.
+- `photos.alt` is owner-approved accessibility text for screen readers.
+- `photos.alt_source` records whether the current alt text originated from AI or a human.
+
+`album_share_tokens` belongs to the private schema and is never exposed as ordinary album
+data. Supabase manages `auth.users`; the application owns the other tables shown here.
+
 ## Album lifecycle
 
 This state machine describes the intended product workflow. It is not a database status
