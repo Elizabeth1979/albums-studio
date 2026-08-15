@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 .vite/
+*.tsbuildinfo
 
 # Environment — never commit real keys. The service-role key and any user's
 # provider key belong in your shell or a local .env only.

@@ -1,8 +1,8 @@
 # Roadmap: Albums Studio — AI-led stories, albums, layouts, curation, and accessible text
 
-**Status:** schema applied, no app code written yet. Roadmap revised on 2026-08-15:
-AI Story Studio is core; voice and text are input methods; manual captions/story notes/alt
-text are the review and control layer.
+**Status:** Phase 1 implemented; human auth checkpoint pending. Roadmap revised on
+2026-08-15: AI Story Studio is core; voice and text are input methods; manual
+captions/story notes/alt text are the review and control layer.
 **Keywords:** AI-led, AI Story Studio, proactive AI, freemium, paywall, trial quota, voice,
 text input, speech, transcript, commands, multimodal AI, LLM stories, albums, layouts,
 gallery, captions, hidden captions, story notes, audio notes, image regions, manual alt
@@ -19,20 +19,20 @@ subscription, Supabase, RLS, share links, Family Travels.
 - ✅ **Storage bucket `photos`** exists: private, 5 MB limit, image MIME types only, and
   owner-namespaced object keys (`<owner_uuid>/…` inside the `photos` bucket). Trusted server
   code will issue short-lived signed URLs.
-- ⏳ **No application code yet.** Nothing has been built.
+- ✅ **Application foundation implemented.** React, TypeScript, Vite, Supabase Auth, and a
+  protected empty library are in place. Type checks, component tests, production build,
+  dependency audit, and a local runtime smoke test pass.
 - ✅ **Product direction clarified.** Albums Studio is not just a travel map and not just a
   gallery. It is AI-led: the product should suggest what to do next, what story to create,
   which photos need context, who might know missing details, and which captions/search clues
   to add. Images plus spoken/written context become stories, captions, blog sections,
   searchable context, slideshow scripts, and accessible descriptions. Manual captions/story
   notes/alt text remain the owner-control and review layer.
-- ⏳ **Frontend stack not chosen** — React is still recommended for selection-heavy photo
-  workflows.
+- ✅ **Frontend stack chosen:** React and TypeScript on Vite.
 
-**Next action:** scaffold the app, wire Supabase auth, and build the first checkpoint:
-signed-in user sees an empty library and can create an album shell. The first AI checkpoint
-comes after upload/text foundation: capture typed or spoken context and generate a
-reviewable AI Story Studio draft with proactive suggestions.
+**Next action:** complete one real email-confirmed signup/sign-in/sign-out pass, verify its
+`profiles` row, then begin Phase 2: create, rename, and delete album shells with masonry and
+grid layouts. The first AI checkpoint comes after the upload/text foundation.
 
 **Known schema gaps:** add forward-only migrations when their phases begin for
 `albums.layout`, `photos.caption_visibility`, `photo_stories`, `ai_drafts`,

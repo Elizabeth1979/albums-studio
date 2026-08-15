@@ -37,25 +37,29 @@ server code must create short-lived signed URLs for owners and shared viewers.
 
 ## Current state
 
-The hosted Supabase project is configured and versioned in `supabase/migrations/`. The
-minimal schema contains `profiles`, `albums`, `photos`, and `ai_usage`; later-phase
-story, AI-draft, search, sharing, and biometric structures will be added only when implemented.
+The React and TypeScript application now provides email/password authentication and a
+protected empty library. The hosted Supabase project is configured and versioned in
+`supabase/migrations/`; its minimal schema contains `profiles`, `albums`, `photos`, and
+`ai_usage`. Later-phase structures will be added only when implemented.
 
-Application code has not been scaffolded yet. The next checkpoint is authentication plus an
-empty library where a signed-in user can create an album shell.
+Phase 1 is implemented and automatically verified. Its remaining human checkpoint is one
+real signup/sign-in/sign-out pass with email confirmation. Phase 2 adds album shells and the
+first masonry/grid layout choice.
+
+Production: [albums-studio.vercel.app](https://albums-studio.vercel.app)
 
 ## Local setup
 
-Once the application is scaffolded:
-
 ```bash
 npm install
-cp .env.example .env
+cp .env.example .env.local
 npm run dev
 ```
 
-Use a Supabase publishable key in the browser. Secret Supabase keys and AI provider keys
-belong only in trusted server environments.
+Fill `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local` with a Supabase publishable key. Secret
+Supabase keys and AI provider keys belong only in trusted server environments.
+
+Run the project checks with `npm run typecheck`, `npm test`, and `npm run build`.
 
 The database history can be replayed with `npx supabase start` and
 `npx supabase db reset`; local Supabase requires Docker.

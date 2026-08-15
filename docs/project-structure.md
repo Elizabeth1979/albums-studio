@@ -1,8 +1,8 @@
 # Albums Studio project structure
 
 This is the living visual map of the project. Green nodes exist now; blue nodes are planned
-by the roadmap. The application frontend and trusted server functions have not been
-scaffolded yet.
+by the roadmap. The authentication frontend exists; album editing and trusted server
+functions remain planned.
 
 ## Frontend and backend architecture
 
@@ -13,8 +13,8 @@ flowchart LR
     Model[AI provider]:::external
 
     subgraph Frontend["Frontend - browser"]
-        App["React and TypeScript app"]:::planned
-        AuthUI["Authentication and library"]:::planned
+        App["React and TypeScript app"]:::current
+        AuthUI["Email auth and protected library"]:::current
         AlbumUI["Album layouts and editors"]:::planned
         Studio["AI Story Studio"]:::planned
         Local["Local image processing<br/>resize, thumbnail, pHash, sharpness"]:::planned
@@ -197,7 +197,7 @@ stateDiagram-v2
 
 ```text
 albums-studio/
-|-- src/                         planned frontend application
+|-- src/                         current React and TypeScript application
 |-- supabase/
 |   |-- config.toml              current local Supabase configuration
 |   |-- migrations/              current schema history and source of truth
