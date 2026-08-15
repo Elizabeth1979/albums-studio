@@ -68,6 +68,17 @@ export default function App() {
     return data.session ? ('signed-in' as const) : ('confirm-email' as const)
   }
 
+  async function sendMagicLink(email: string) {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+        shouldCreateUser: false,
+      },
+    })
+    if (error) throw error
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -83,7 +94,7 @@ export default function App() {
   }
 
   if (authState.status === 'signed-out') {
-    return <AuthForm onSignIn={signIn} onSignUp={signUp} />
+    return <AuthForm onSignIn={signIn} onSignUp={signUp} onMagicLink={sendMagicLink} />
   }
 
   return <Library identity={authState.identity} onSignOut={signOut} />

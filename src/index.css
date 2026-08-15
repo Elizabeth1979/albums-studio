@@ -217,6 +217,7 @@ input:focus-visible {
 }
 
 .primary-button,
+.secondary-button,
 .text-button {
   border: 0;
   cursor: pointer;
@@ -238,7 +239,23 @@ input:focus-visible {
   background: #996130;
 }
 
+.secondary-button {
+  min-height: 3.35rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid #bdb3a6;
+  border-radius: 0.55rem;
+  color: #3f3a34;
+  background: transparent;
+  font-weight: 800;
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: #996130;
+  color: #996130;
+}
+
 .primary-button:disabled,
+.secondary-button:disabled,
 .text-button:disabled {
   cursor: wait;
   opacity: 0.6;

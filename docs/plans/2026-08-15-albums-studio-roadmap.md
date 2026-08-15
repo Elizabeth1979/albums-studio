@@ -30,9 +30,9 @@ subscription, Supabase, RLS, share links, Family Travels.
   notes/alt text remain the owner-control and review layer.
 - ✅ **Frontend stack chosen:** React and TypeScript on Vite.
 
-**Next action:** complete one real email-confirmed signup/sign-in/sign-out pass, verify its
-`profiles` row, then begin Phase 2: create, rename, and delete album shells with masonry and
-grid layouts. The first AI checkpoint comes after the upload/text foundation.
+**Next action:** complete one real signup, password or magic-link sign-in, and sign-out pass;
+verify its `profiles` row; then begin Phase 2: create, rename, and delete album shells with
+masonry and grid layouts. The first AI checkpoint comes after the upload/text foundation.
 
 **Known schema gaps:** add forward-only migrations when their phases begin for
 `albums.layout`, `photos.caption_visibility`, `photo_stories`, `ai_drafts`,

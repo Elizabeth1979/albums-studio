@@ -17,7 +17,7 @@ AI cost.
   signed URLs from trusted server code.
 - Phase 1 passes type checks, component tests, a production build, dependency audit, and a
   local runtime smoke test. It is deployed to
-  [albums-studio.vercel.app](https://albums-studio.vercel.app). A real email-confirmed auth
+  [albums-studio.vercel.app](https://albums-studio.vercel.app). A real signup/sign-in/sign-out
   pass remains its human checkpoint.
 - Next after that checkpoint: Phase 2 album shells with masonry and grid layouts.
 

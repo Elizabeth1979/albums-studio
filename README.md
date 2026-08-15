@@ -43,8 +43,8 @@ protected empty library. The hosted Supabase project is configured and versioned
 `ai_usage`. Later-phase structures will be added only when implemented.
 
 Phase 1 is implemented and automatically verified. Its remaining human checkpoint is one
-real signup/sign-in/sign-out pass with email confirmation. Phase 2 adds album shells and the
-first masonry/grid layout choice.
+real signup/sign-in/sign-out pass. Password and magic-link sign-in are supported; signup does
+not require email confirmation. Phase 2 adds album shells and the first masonry/grid layout.
 
 Production: [albums-studio.vercel.app](https://albums-studio.vercel.app)
 

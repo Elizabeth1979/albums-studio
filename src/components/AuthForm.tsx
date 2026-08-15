@@ -11,11 +11,12 @@ type SignUpResult = 'signed-in' | 'confirm-email'
 type AuthFormProps = {
   onSignIn: (credentials: AuthCredentials) => Promise<void>
   onSignUp: (credentials: AuthCredentials) => Promise<SignUpResult>
+  onMagicLink: (email: string) => Promise<void>
 }
 
 type Mode = 'sign-in' | 'sign-up'
 
-export function AuthForm({ onSignIn, onSignUp }: AuthFormProps) {
+export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
   const [mode, setMode] = useState<Mode>('sign-in')
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -53,6 +54,28 @@ export function AuthForm({ onSignIn, onSignUp }: AuthFormProps) {
       }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Authentication failed.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function handleMagicLink() {
+    const trimmedEmail = email.trim()
+
+    if (!trimmedEmail) {
+      setError('Enter your email first.')
+      return
+    }
+
+    setPending(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      await onMagicLink(trimmedEmail)
+      setNotice('We sent a one-time sign-in link. Check your email.')
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Could not send the link.')
     } finally {
       setPending(false)
     }
@@ -146,10 +169,8 @@ export function AuthForm({ onSignIn, onSignUp }: AuthFormProps) {
                 autoComplete={isSignUp ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
                 required
               />
-              {isSignUp && <small>Use at least 8 characters.</small>}
             </label>
 
             {error && <p className="form-message error" role="alert">{error}</p>}
@@ -158,6 +179,17 @@ export function AuthForm({ onSignIn, onSignUp }: AuthFormProps) {
             <button className="primary-button" type="submit" disabled={pending}>
               {pending ? 'Please wait…' : isSignUp ? 'Create private library' : 'Sign in'}
             </button>
+
+            {!isSignUp && (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={handleMagicLink}
+                disabled={pending}
+              >
+                {pending ? 'Sending…' : 'Email me a magic link'}
+              </button>
+            )}
           </form>
         </div>
       </section>
