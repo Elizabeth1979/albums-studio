@@ -20,6 +20,11 @@ sharing, private Storage, signed URLs, Supabase, RLS, accessibility, AI cost.
 - [Albums Studio roadmap](plans/2026-08-15-albums-studio-roadmap.md) — active phased build
   plan and open product decisions.
 
+## Architecture
+
+- [Project structure](project-structure.md) — visual frontend/backend map, planned services,
+  and album lifecycle state machine.
+
 ## Session logs
 
 - [Roadmap reorder](sessions/2026-08-15-roadmap-reorder.md) — established the AI-led,
