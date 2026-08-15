@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Environment — never commit real keys. The service-role key and any user's
+# provider key belong in your shell or a local .env only.
+.env
+.env.local
+.env.*.local
+
+# Supabase CLI local state
+.supabase/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deploy
+.vercel/
+.netlify/
