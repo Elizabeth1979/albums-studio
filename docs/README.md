@@ -15,11 +15,15 @@ AI cost.
   RLS and explicit Data API grants.
 - The `photos` bucket is private and owner-namespaced. Shared delivery will use short-lived
   signed URLs from trusted server code.
-- Phase 1 passes type checks, component tests, a production build, dependency audit, and a
-  local runtime smoke test. It is deployed to
-  [albums-studio.vercel.app](https://albums-studio.vercel.app). A real signup/sign-in/sign-out
-  pass remains its human checkpoint.
-- Next after that checkpoint: Phase 2 album shells with masonry and grid layouts.
+- Authentication covers password sign-in, magic links, and password reset. Password inputs
+  carry a reveal toggle, and a recovery link must reach the set-a-new-password step before
+  the library opens.
+- Phase 1 passes type checks, component tests, `App` state-machine tests, an end-to-end
+  Chromium suite, a production build, and a dependency audit. It is deployed to
+  [albums-studio.vercel.app](https://albums-studio.vercel.app), where sign-in and password
+  reset have been confirmed by hand. Magic-link delivery is still unexercised manually.
+- Checks run on every push and pull request via `.github/workflows/ci.yml`.
+- Next: Phase 2 album shells with masonry and grid layouts.
 
 ## Plans
 
