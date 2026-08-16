@@ -27,9 +27,10 @@ AI cost.
   to [albums-studio.vercel.app](https://albums-studio.vercel.app), where sign-in and
   password reset have been confirmed by hand.
 - Magic-link delivery has never succeeded in production. The one real attempt was refused
-  with `over_email_send_rate_limit` because it followed a reset email by five seconds. The
-  project still uses Supabase's shared test mail service, which is throttled per address
-  and unsuitable for real users; custom SMTP is required before signup opens.
+  with `over_email_send_rate_limit` because it followed a reset email by five seconds.
+- Auth mail still comes from Supabase's built-in sender, which delivers only to addresses
+  on the project organization's team. Owner email arrives for that reason; nobody else's
+  would. Custom SMTP is a prerequisite for opening signup — see roadmap open question 12b.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
 - Next: Phase 3 browser-side upload into the private `photos` bucket.
 
