@@ -146,6 +146,32 @@ found five contrast violations on its first run, none of which were the two foun
 inactive auth tabs at 4.10:1, the trust-row numerals at 4.02:1, and trust-row body copy at
 4.16:1. Manual checking had missed all three, which is the argument for the tool.
 
+## Phase 2 shipped broken, and why nothing caught it
+
+`albums.layout` was added by `20260816173548` without the column privileges that make it
+writable. Client writes on this project are granted per column, so both
+
+```
+insert into albums (..., layout)   -- permission denied for column layout
+update albums set layout = ...     -- permission denied for column layout
+```
+
+were refused in production from the moment Phase 2 merged. Album creation did not work.
+
+**Every test passed anyway.** The unit suite mocks `supabase.from`; the end-to-end suite
+intercepts Supabase over the network and answers from an in-memory table. Neither reaches a
+real grant, so the whole suite is green against a schema that refuses the write. The bug was
+found by reading the grant list in `20260815162714` while planning Phase 3, not by any check.
+
+`AGENTS.md` already required verifying grants after a schema change. That step was skipped in
+favour of running the advisors, which do not check column privileges. The rule is now
+sharpened to say grants belong in the same migration as the column, and the shape of the
+blind spot is written down next to it.
+
+Fixed by `20260816185714_grant_album_layout_column`. All seventeen columns the client writes
+across `albums` and `photos` were then checked against
+`information_schema.column_privileges`; every one is now granted.
+
 ## Still open
 
 - **Magic-link delivery has still never succeeded end to end.** The single real attempt was

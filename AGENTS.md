@@ -23,6 +23,11 @@
 - Before applying a migration, confirm the hosted project is `ACTIVE_HEALTHY`. Verify the
   recorded migration and run security and performance advisors afterward.
 - Never edit an applied migration; add a forward-only migration.
+- Client writes are granted per column. A new column the client writes needs its
+  `grant insert`/`grant update` in the same migration that adds it, and the grant must be
+  confirmed against `information_schema.column_privileges` afterwards. No test catches a
+  missing grant: the unit suite mocks the client and the end-to-end suite intercepts the
+  network, so both pass against a schema that would refuse the write.
 - Enforce tenant ownership in constraints as well as RLS. Do not trust a client-supplied
   `owner_id` by itself.
 - Keep privileged functions outside exposed schemas unless they are intentional public RPCs.
