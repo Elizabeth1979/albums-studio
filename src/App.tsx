@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AuthCredentials, AuthForm } from './components/AuthForm'
 import { Identity, Library } from './components/Library'
+import { ResetPasswordForm } from './components/ResetPasswordForm'
 import { supabase } from './lib/supabase'
 
 type AuthState =
   | { status: 'loading' }
   | { status: 'signed-out' }
+  | { status: 'recovering' }
   | { status: 'signed-in'; identity: Identity }
 
 async function getIdentity(): Promise<Identity | null> {
@@ -22,6 +24,9 @@ async function getIdentity(): Promise<Identity | null> {
 
 export default function App() {
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
+  // A recovery link produces a real session, so identity refreshes must not
+  // route past the set-a-new-password step before it is finished.
+  const recovering = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -29,7 +34,7 @@ export default function App() {
 
     async function refreshIdentity() {
       const identity = await getIdentity()
-      if (active) {
+      if (active && !recovering.current) {
         setAuthState(identity ? { status: 'signed-in', identity } : { status: 'signed-out' })
       }
     }
@@ -38,8 +43,17 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    } = supabase.auth.onAuthStateChange((event) => {
       window.clearTimeout(refreshTimer)
+
+      if (event === 'PASSWORD_RECOVERY') {
+        recovering.current = true
+        if (active) {
+          setAuthState({ status: 'recovering' })
+        }
+        return
+      }
+
       refreshTimer = window.setTimeout(() => void refreshIdentity(), 0)
     })
 
@@ -68,6 +82,30 @@ export default function App() {
     return data.session ? ('signed-in' as const) : ('confirm-email' as const)
   }
 
+  async function requestPasswordReset(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    })
+    if (error) throw error
+  }
+
+  async function setNewPassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+
+    recovering.current = false
+    const identity = await getIdentity()
+    setAuthState(identity ? { status: 'signed-in', identity } : { status: 'signed-out' })
+  }
+
+  async function cancelRecovery() {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+
+    recovering.current = false
+    setAuthState({ status: 'signed-out' })
+  }
+
   async function sendMagicLink(email: string) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -93,8 +131,19 @@ export default function App() {
     )
   }
 
+  if (authState.status === 'recovering') {
+    return <ResetPasswordForm onSetPassword={setNewPassword} onCancel={cancelRecovery} />
+  }
+
   if (authState.status === 'signed-out') {
-    return <AuthForm onSignIn={signIn} onSignUp={signUp} onMagicLink={sendMagicLink} />
+    return (
+      <AuthForm
+        onSignIn={signIn}
+        onSignUp={signUp}
+        onMagicLink={sendMagicLink}
+        onResetRequest={requestPasswordReset}
+      />
+    )
   }
 
   return <Library identity={authState.identity} onSignOut={signOut} />
