@@ -154,6 +154,44 @@ describe('App', () => {
     )
   })
 
+  it('explains a rate-limited magic link instead of repeating Supabase', async () => {
+    // Requesting a magic link moments after a reset email trips Supabase's
+    // per-address email throttle; the raw reply names no cause.
+    auth.signInWithOtp.mockResolvedValue({
+      error: {
+        message: 'For security purposes, you can only request this after 53 seconds.',
+        code: 'over_email_send_rate_limit',
+        status: 429,
+      },
+    })
+
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Welcome back' })
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a magic link' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Too many sign-in emails at once. You can ask for another in about 53 seconds.',
+    )
+  })
+
+  it('explains a rate-limited reset request', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({
+      error: { message: 'Email rate limit exceeded', status: 429 },
+    })
+
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Welcome back' })
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Too many sign-in emails at once. Wait a minute, then try again.',
+    )
+  })
+
   it('surfaces a rejected sign-in without leaving the form', async () => {
     auth.signInWithPassword.mockResolvedValue({
       error: new Error('Invalid login credentials'),

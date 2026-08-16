@@ -79,6 +79,8 @@ export type StubOptions = {
   albums?: AlbumRecord[]
   /** Status and body returned by writes to `albums`, for failure cases. */
   albumWrite?: { status: number; body: object }
+  /** Status and body returned by the magic-link and reset endpoints. */
+  emailSend?: { status: number; body: object }
 }
 
 export type AuthCalls = {
@@ -187,7 +189,8 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
 
     // Recovery and magic-link requests both answer with an empty object.
     if (path.endsWith('/auth/v1/recover') || path.endsWith('/auth/v1/otp')) {
-      return json({})
+      const failure = options.emailSend
+      return failure ? json(failure.body, failure.status) : json({})
     }
 
     if (path.endsWith('/auth/v1/logout')) {

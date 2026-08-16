@@ -132,6 +132,27 @@ test.describe('password reset', () => {
 })
 
 test.describe('magic link', () => {
+  test('explains a rate-limited request in its own words', async ({ page }) => {
+    // Supabase throttles auth email per address, so asking for a magic link
+    // just after a reset link is refused. Its own wording names no cause.
+    await stubSupabase(page, {
+      emailSend: {
+        status: 429,
+        body: {
+          message: 'For security purposes, you can only request this after 53 seconds.',
+          code: 'over_email_send_rate_limit',
+        },
+      },
+    })
+    await page.goto('/')
+
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByRole('button', { name: 'Email me a magic link' }).click()
+
+    await expect(page.getByRole('alert')).toContainText('Too many sign-in emails at once')
+    await expect(page.getByRole('alert')).toContainText('about 53 seconds')
+  })
+
   test('never creates an account from a magic link request', async ({ page }) => {
     const calls = await stubSupabase(page)
     await page.goto('/')
