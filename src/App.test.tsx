@@ -4,7 +4,12 @@ import App from './App'
 
 type AuthEvent = 'INITIAL_SESSION' | 'SIGNED_IN' | 'SIGNED_OUT' | 'PASSWORD_RECOVERY'
 
-const { auth } = vi.hoisted(() => ({
+const { auth, from } = vi.hoisted(() => ({
+  // Studio loads albums as soon as the library renders; an empty list keeps
+  // these tests about the auth state machine.
+  from: vi.fn(() => ({
+    select: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
+  })),
   auth: {
     getClaims: vi.fn(),
     onAuthStateChange: vi.fn(),
@@ -17,7 +22,7 @@ const { auth } = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('./lib/supabase', () => ({ supabase: { auth } }))
+vi.mock('./lib/supabase', () => ({ supabase: { auth, from } }))
 
 const SESSION = { data: { claims: { sub: 'user-1', email: 'person@example.com' } }, error: null }
 const NO_SESSION = { data: null, error: null }

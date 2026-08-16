@@ -1,6 +1,6 @@
 # Roadmap: Albums Studio — AI-led stories, albums, layouts, curation, and accessible text
 
-**Status:** Phase 1 implemented; human auth checkpoint pending. Roadmap revised on
+**Status:** Phases 1-2 implemented; auth checkpoint met. Roadmap revised on
 2026-08-15: AI Story Studio is core; voice and text are input methods; manual
 captions/story notes/alt text are the review and control layer.
 **Keywords:** AI-led, AI Story Studio, proactive AI, freemium, paywall, trial quota, voice,
@@ -29,14 +29,21 @@ subscription, Supabase, RLS, share links, Family Travels.
   searchable context, slideshow scripts, and accessible descriptions. Manual captions/story
   notes/alt text remain the owner-control and review layer.
 - ✅ **Frontend stack chosen:** React and TypeScript on Vite.
+- ✅ **Phase 1 checkpoint met.** Password sign-in and password reset confirmed against
+  production by the owner. Magic-link delivery is wired and covered by tests but has not
+  been exercised by hand.
+- ✅ **Phase 2 implemented.** `albums.layout` exists with a `masonry`/`grid` check
+  constraint. Albums can be created, opened, renamed, relayouted, and deleted behind a
+  confirmation, with the empty album page rendering in the chosen layout.
 
-**Next action:** complete one real signup, password or magic-link sign-in, and sign-out pass;
-verify its `profiles` row; then begin Phase 2: create, rename, and delete album shells with
-masonry and grid layouts. The first AI checkpoint comes after the upload/text foundation.
+**Next action:** Phase 3 upload. Browser-side resize, thumbnail, pHash, and sharpness per
+file, uploaded to `<owner>/<album>/<uuid>` in the private `photos` bucket, throttled to
+about four concurrent with progress and retry. The first AI checkpoint comes after the
+upload/text foundation.
 
 **Known schema gaps:** add forward-only migrations when their phases begin for
-`albums.layout`, `photos.caption_visibility`, `photo_stories`, `ai_drafts`,
-`studio_interactions`, `ai_suggestions`, and any face/embedding structures.
+`photos.caption_visibility`, `photo_stories`, `ai_drafts`, `studio_interactions`,
+`ai_suggestions`, and any face/embedding structures.
 
 ## Context
 
@@ -352,8 +359,10 @@ in the same release as the feature — not later.
    comparison views, and editors have real interaction state.
 2. **Signed URL delivery.** Storage is private. Choose whether trusted server routes or Edge
    Functions create short-lived image URLs before upload and sharing are implemented.
-3. **Layout schema.** Add an album layout field before Phase 2 ships. Initial values:
-   `masonry`, `grid`; later `story`, `slideshow`, `map`, `blog`.
+3. ~~**Layout schema.**~~ Resolved. `albums.layout` ships with Phase 2 as `text not null
+   default 'masonry'` checked against `masonry` and `grid`. Each later layout (`story`,
+   `slideshow`, `map`, `blog`) widens the constraint in the migration for the phase that
+   renders it, so the database never advertises a layout the app cannot draw.
 4. **Caption/story visibility schema.** Add `caption_visibility` before Phase 4 so captions
    can be visible or hidden/search-only. Add `photo_stories` with its own visibility field.
 5. **Story region model.** Decide whether story notes can attach to normalized image

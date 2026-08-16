@@ -588,3 +588,401 @@ input:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Albums ------------------------------------------------------------------- */
+
+.section-title {
+  margin: 3rem 0 1rem;
+  color: #6d6459;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.new-album {
+  margin-top: 3rem;
+  padding: 1.6rem;
+  border: 1px solid #ded6ca;
+  border-radius: 0.9rem;
+  background: #fffdf9;
+}
+
+.new-album h2 {
+  margin: 0 0 1.1rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.new-album-form {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+}
+
+.new-album-form > label {
+  display: grid;
+  flex: 1 1 18rem;
+  gap: 0.45rem;
+  color: #4d4740;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.new-album-form input[type="text"] {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+}
+
+.new-album-form input[type="text"]:focus {
+  border-color: #996130;
+  box-shadow: 0 0 0 3px rgb(153 97 48 / 12%);
+}
+
+.new-album-form .primary-button {
+  flex: none;
+  margin-top: 0;
+}
+
+.layout-choice {
+  display: flex;
+  flex: none;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.layout-choice legend {
+  padding: 0 0 0.45rem;
+  color: #4d4740;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.layout-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 3.25rem;
+  color: #3f3a34;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.layout-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #996130;
+}
+
+.library-status {
+  margin: 3rem 0;
+  color: #746d64;
+}
+
+.album-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.album-card {
+  display: flex;
+}
+
+.album-open {
+  display: grid;
+  gap: 1.4rem;
+  width: 100%;
+  padding: 1.4rem;
+  border: 1px solid #ded6ca;
+  border-radius: 0.9rem;
+  color: inherit;
+  background: #fffdf9;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.album-open:hover {
+  border-color: #996130;
+  transform: translateY(-2px);
+}
+
+.album-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.album-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #81786d;
+  font-size: 0.78rem;
+}
+
+.layout-badge {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #cbbfaa;
+  border-radius: 2rem;
+  color: #675844;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Album page --------------------------------------------------------------- */
+
+.album-main {
+  width: min(100% - 2.5rem, 78rem);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0 4rem;
+}
+
+.back-link {
+  margin-bottom: 1.5rem;
+}
+
+.album-heading h1 {
+  margin: 0 0 0.6rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.rename-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 32rem;
+}
+
+.rename-form > label {
+  display: grid;
+  gap: 0.45rem;
+  color: #4d4740;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.rename-form input {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+}
+
+.rename-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rename-actions .primary-button {
+  margin-top: 0;
+}
+
+.album-controls {
+  margin-top: 2.5rem;
+}
+
+.album-controls h2,
+.danger-zone h2 {
+  margin: 0 0 0.8rem;
+  color: #6d6459;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.layout-switch {
+  display: inline-flex;
+  padding: 0.25rem;
+  border: 1px solid #ded6ca;
+  border-radius: 0.6rem;
+  background: #fffdf9;
+}
+
+.layout-button {
+  padding: 0.6rem 1.2rem;
+  border: 0;
+  border-radius: 0.45rem;
+  color: #4d4740;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.layout-button.active {
+  color: #fffaf2;
+  background: #2d2924;
+}
+
+.layout-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.layout-hint {
+  max-width: 40rem;
+  margin: 0.9rem 0 0;
+  color: #746d64;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.album-canvas {
+  margin-top: 2.5rem;
+  padding: 1.6rem;
+  border: 1px solid #ded6ca;
+  border-radius: 0.9rem;
+  background: #fffdf9;
+}
+
+.layout-preview {
+  gap: 0.7rem;
+}
+
+.layout-masonry {
+  columns: 3;
+  column-gap: 0.7rem;
+}
+
+.layout-masonry .layout-tile {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.7rem;
+  break-inside: avoid;
+}
+
+.layout-masonry .tile-0 { height: 7rem; }
+.layout-masonry .tile-1 { height: 11rem; }
+.layout-masonry .tile-2 { height: 9rem; }
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.layout-grid .layout-tile {
+  aspect-ratio: 1;
+}
+
+.layout-tile {
+  border-radius: 0.5rem;
+  background: linear-gradient(160deg, #efe8dd, #e2d8c9);
+}
+
+.album-empty-copy {
+  margin-top: 1.6rem;
+  text-align: center;
+}
+
+.album-empty-copy h2 {
+  margin: 0 0 0.5rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.album-empty-copy p {
+  max-width: 32rem;
+  margin: 0 auto;
+  color: #746d64;
+  line-height: 1.6;
+}
+
+.danger-zone {
+  margin-top: 3.5rem;
+  padding: 1.5rem;
+  border: 1px solid #e3cfc4;
+  border-radius: 0.9rem;
+  background: #fdf6f2;
+}
+
+.danger-zone p {
+  max-width: 40rem;
+  margin: 0 0 1.1rem;
+  color: #6d5c52;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.danger-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.danger-button {
+  min-height: 3rem;
+  padding: 0.7rem 1.2rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff6f2;
+  background: #96361d;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #7d2c16;
+}
+
+.danger-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+@media (max-width: 720px) {
+  .new-album-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .new-album-form .primary-button {
+    width: 100%;
+  }
+
+  .layout-masonry {
+    columns: 2;
+  }
+
+  .layout-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .album-main {
+    width: min(100% - 2rem, 78rem);
+  }
+}
