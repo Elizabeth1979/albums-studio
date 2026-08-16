@@ -172,6 +172,42 @@ Fixed by `20260816185714_grant_album_layout_column`. All seventeen columns the c
 across `albums` and `photos` were then checked against
 `information_schema.column_privileges`; every one is now granted.
 
+## The second reason album creation failed
+
+Fixing the missing `layout` grant exposed the real one. Creating an album then failed with
+`new row violates row-level security policy for table "albums"`, and the INSERT check was
+not at fault:
+
+```sql
+insert into albums (...) values (...);                   -- succeeds
+insert into albums (...) values (...) returning id, ...; -- refused
+```
+
+PostgREST asks for the created row back, so every insert is an `INSERT ... RETURNING`, and
+`RETURNING` is filtered by the **SELECT** policy rather than the insert check.
+
+`albums_select` delegated to `private.can_view_album_id(id)`, which is `STABLE` and
+re-queries `public.albums`. A `STABLE` function reads the snapshot from the start of the
+statement, so the row being inserted by that very statement is invisible to it. The policy
+concluded the owner could not see their own new row, and Postgres rejected the insert.
+
+The helper exists to avoid recursion when a policy on `albums` needs to consult `albums`.
+That reasoning holds for the public and link-shared cases, which look up rows that already
+exist. It never applied to the owner case, which only needs the row's own `owner_id`:
+
+```sql
+using (owner_id = (select auth.uid()) or private.can_view_album_id(id))
+```
+
+No lookup, so nothing depends on the row being visible yet. `photos_select` got the same
+treatment for symmetry; it was not affected, because a photo's album always exists first.
+
+**Two bugs, one symptom, neither catchable by the suite.** The missing grant and the
+snapshot-blind policy both live entirely in the database, and every test replaces the
+database with a stub that accepts whatever it is sent. Verified afterwards by running the
+real statements — insert, update, and a Phase 3 photo insert — under
+`set local role authenticated` with the owner's JWT claims.
+
 ## Still open
 
 - **Magic-link delivery has still never succeeded end to end.** The single real attempt was

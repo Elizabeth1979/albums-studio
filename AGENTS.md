@@ -23,6 +23,10 @@
 - Before applying a migration, confirm the hosted project is `ACTIVE_HEALTHY`. Verify the
   recorded migration and run security and performance advisors afterward.
 - Never edit an applied migration; add a forward-only migration.
+- A `SELECT` policy is what filters `RETURNING`, and PostgREST makes every insert an
+  `INSERT ... RETURNING`. A select policy that looks the row up through a `STABLE` function
+  cannot see a row the same statement is creating, so it silently blocks inserts. Test
+  ownership against the row's own columns and reserve lookups for rows that already exist.
 - Client writes are granted per column. A new column the client writes needs its
   `grant insert`/`grant update` in the same migration that adds it, and the grant must be
   confirmed against `information_schema.column_privileges` afterwards. No test catches a
