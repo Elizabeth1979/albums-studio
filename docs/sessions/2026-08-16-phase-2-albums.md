@@ -103,6 +103,49 @@ Two consequences:
   owner's mail arrives for that reason alone; a stranger's reset or magic link would never
   be sent, while the app still showed "check your email". Now open question 12b.
 
+## Pre-Phase-3 review
+
+A plan-versus-reality pass before starting uploads found four things.
+
+**`docs/project-structure.md` was stale.** It claimed to reflect the live schema while
+omitting `albums.layout`, and still marked album editing as planned. Its own footer asks for
+an update whenever a planned component becomes real; nothing had updated it. Refreshed, with
+a routing table added.
+
+**Two contrast failures**, `#81786d` at 4.27:1 against 4.5:1 required, on album card metadata
+and form hints. Accessibility is a stated product requirement, so this was a defect rather
+than a preference.
+
+**`albums.description` was fetched on every query and never rendered.** Phase 2's gate says
+create/*edit*/delete, and description is part of an album shell. Now editable on the album
+page; a cleared description is stored as `null` rather than an empty string, so "no
+description" is one state rather than two that look identical.
+
+**Phase 1's `profiles` row was never actually verified.** It exists, with `display_name`
+carried from signup metadata. Noted because the checkpoint had been treated as met without
+anyone checking.
+
+### Routing, decided ahead of uploads
+
+Albums now live at `/albums/:slug`. This was scheduled for Phase 6 sharing, but Phase 3
+uploads run long enough that losing the album on a reload is a real cost, and retrofitting
+routing under an upload queue is worse than adding it first.
+
+History-API routing, deliberately not hash routing: Supabase delivers recovery and
+magic-link tokens in the URL hash, and a hash router would consume them. `vercel.json` now
+rewrites every path to `index.html`, without which a reload on `/albums/anything` would 404
+in production.
+
+The slug's stability pays off here — a rename leaves the address working, and there is a
+test that renames and reloads to prove it.
+
+### Accessibility is now enforced
+
+axe-core runs inside the Playwright suite over ten screens at WCAG 2.0/2.1 A and AA. It
+found five contrast violations on its first run, none of which were the two found by hand:
+inactive auth tabs at 4.10:1, the trust-row numerals at 4.02:1, and trust-row body copy at
+4.16:1. Manual checking had missed all three, which is the argument for the tool.
+
 ## Still open
 
 - **Magic-link delivery has still never succeeded end to end.** The single real attempt was

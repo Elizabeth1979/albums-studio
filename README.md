@@ -38,8 +38,9 @@ server code must create short-lived signed URLs for owners and shared viewers.
 ## Current state
 
 The React and TypeScript application provides email/password authentication and an album
-library: albums can be created, opened, renamed, switched between masonry and grid layouts,
-and deleted behind a confirmation. Photos come next. The hosted Supabase project is
+library: albums can be created, opened, renamed, described, switched between masonry and
+grid layouts, and deleted behind a confirmation. The library lives at `/` and each album at
+`/albums/:slug`. Photos come next. The hosted Supabase project is
 configured and versioned in `supabase/migrations/`; its minimal schema contains `profiles`,
 `albums`, `photos`, and `ai_usage`. Later-phase structures will be added only when
 implemented.
@@ -71,6 +72,8 @@ Run the project checks with `npm run typecheck`, `npm test`, `npm run build`, an
 `npm test` covers components and the `App` authentication state machine with a mocked
 Supabase client. `npm run test:e2e` drives the real client in Chromium with every Supabase
 request intercepted in the browser, so neither suite needs credentials or network access.
+The end-to-end suite includes an axe-core accessibility pass over every screen at WCAG
+2.0/2.1 A and AA.
 Both run on every push and pull request via `.github/workflows/ci.yml`.
 
 The database history can be replayed with `npx supabase start` and

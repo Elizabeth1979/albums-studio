@@ -1,7 +1,7 @@
 # Albums Studio project structure
 
 This is the living visual map of the project. Green nodes exist now; blue nodes are planned
-by the roadmap. The authentication frontend exists; album editing and trusted server
+by the roadmap. Authentication and album shells exist; photo upload, AI, and trusted server
 functions remain planned.
 
 ## Frontend and backend architecture
@@ -14,16 +14,19 @@ flowchart LR
 
     subgraph Frontend["Frontend - browser"]
         App["React and TypeScript app"]:::current
-        AuthUI["Email auth and protected library"]:::current
-        AlbumUI["Album layouts and editors"]:::planned
+        AuthUI["Email auth, reset, protected library"]:::current
+        Router["Client routing<br/>/ and /albums/:slug"]:::current
+        AlbumUI["Album shells<br/>create, rename, layout, describe, delete"]:::current
+        PhotoUI["Photo grid and editors"]:::planned
         Studio["AI Story Studio"]:::planned
         Local["Local image processing<br/>resize, thumbnail, pHash, sharpness"]:::planned
         Upload["Upload queue"]:::planned
 
         App --> AuthUI
-        App --> AlbumUI
+        App --> Router --> AlbumUI
+        AlbumUI --> PhotoUI
         App --> Studio
-        AlbumUI --> Local --> Upload
+        PhotoUI --> Local --> Upload
     end
 
     subgraph Supabase["Supabase backend"]
@@ -104,6 +107,7 @@ erDiagram
         text slug "NOT NULL; unique with owner_id"
         date date
         text description
+        text layout "NOT NULL; masonry or grid"
         float8 lat
         float8 lng
         album_visibility visibility "NOT NULL; private, link, or public"
@@ -149,6 +153,10 @@ erDiagram
 
 The human-facing text fields have separate purposes:
 
+- `albums.title` is editable; `albums.slug` is not. The slug is the stable half of a future
+  share URL and of the current `/albums/:slug` address, so a rename must not move it.
+- `albums.layout` selects the presentation. Its check constraint lists only the layouts the
+  application can draw today, and each later phase widens it when it ships the renderer.
 - `albums.description` describes the album as a whole.
 - `photos.caption` provides visible context for one photo. Caption visibility is planned but
   is not yet stored separately.
@@ -197,7 +205,12 @@ stateDiagram-v2
 
 ```text
 albums-studio/
-|-- src/                         current React and TypeScript application
+|-- src/
+|   |-- components/              current screens and shared UI
+|   |-- lib/                     current data access and helpers
+|   `-- *.test.tsx               current component and state-machine tests
+|-- e2e/                         current Playwright suites, including axe checks
+|-- .github/workflows/ci.yml     current typecheck, tests, build, end-to-end
 |-- supabase/
 |   |-- config.toml              current local Supabase configuration
 |   |-- migrations/              current schema history and source of truth
@@ -209,6 +222,19 @@ albums-studio/
 |-- AGENTS.md                    repository guidance
 `-- README.md                    project overview
 ```
+
+## Routing
+
+Addresses are history-API routes, not hash routes: Supabase delivers recovery and
+magic-link tokens in the URL hash, which a hash router would consume before the client
+reads them. `vercel.json` rewrites every path to `index.html` so a deep link survives a
+reload in production.
+
+| Path | Screen |
+| --- | --- |
+| `/` | Library: album list and creation |
+| `/albums/:slug` | One album: rename, description, layout, delete |
+| anything else | Redirected to `/` |
 
 Update this file when a planned component becomes real or an architectural boundary
 changes. Keep implementation details in the roadmap or feature-specific documents rather

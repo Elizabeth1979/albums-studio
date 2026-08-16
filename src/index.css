@@ -165,7 +165,7 @@ input:focus-visible {
   padding: 0.85rem 0.5rem;
   border: 0;
   border-bottom: 2px solid transparent;
-  color: #7d756b;
+  color: #6b6459;
   background: transparent;
   cursor: pointer;
   font-size: 0.88rem;
@@ -248,7 +248,7 @@ input:focus-visible {
 }
 
 .auth-form small {
-  color: #81786d;
+  color: #6f675c;
   font-size: 0.72rem;
   font-weight: 500;
 }
@@ -330,7 +330,7 @@ input:focus-visible {
   width: 4rem;
   height: 4rem;
   place-items: center;
-  border: 1px solid #81786d;
+  border: 1px solid #6f675c;
   border-radius: 50%;
   color: #2d2924;
   font-size: 0.78rem;
@@ -493,7 +493,7 @@ input:focus-visible {
 }
 
 .trust-row article > span {
-  color: #a56a38;
+  color: #8d5526;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 0.8rem;
 }
@@ -505,7 +505,7 @@ input:focus-visible {
 
 .trust-row p {
   margin: 0.45rem 0 0;
-  color: #7c746a;
+  color: #6b6459;
   font-size: 0.78rem;
   line-height: 1.55;
 }
@@ -734,7 +734,7 @@ input:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  color: #81786d;
+  color: #6f675c;
   font-size: 0.78rem;
 }
 
@@ -985,4 +985,25 @@ input:focus-visible {
   .album-main {
     width: min(100% - 2rem, 78rem);
   }
+}
+
+.rename-form textarea {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.rename-form textarea:focus {
+  border-color: #996130;
+  box-shadow: 0 0 0 3px rgb(153 97 48 / 12%);
+}
+
+.album-controls + .album-controls {
+  margin-top: 2rem;
 }

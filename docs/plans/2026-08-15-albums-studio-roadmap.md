@@ -34,8 +34,15 @@ subscription, Supabase, RLS, share links, Family Travels.
   Supabase's shared mail throttle, so it remains unconfirmed end to end; see open question
   12b on transactional email.
 - ✅ **Phase 2 implemented.** `albums.layout` exists with a `masonry`/`grid` check
-  constraint. Albums can be created, opened, renamed, relayouted, and deleted behind a
-  confirmation, with the empty album page rendering in the chosen layout.
+  constraint. Albums can be created, opened, renamed, described, relayouted, and deleted
+  behind a confirmation, with the empty album page rendering in the chosen layout. The
+  `profiles` row that Phase 1's checkpoint called for was verified present on 2026-08-16
+  (`display_name` populated from signup metadata by `private.handle_new_user`).
+- ✅ **Client routing exists.** `/` is the library and `/albums/:slug` is one album, on
+  history-API routes because Supabase delivers auth tokens in the URL hash. `vercel.json`
+  rewrites all paths to `index.html` so deep links survive a reload.
+- ✅ **Accessibility is enforced, not asserted.** An axe-core pass over ten screens runs in
+  CI against WCAG 2.0/2.1 A and AA. It found five real contrast failures on first run.
 
 **Next action:** Phase 3 upload. Browser-side resize, thumbnail, pHash, and sharpness per
 file, uploaded to `<owner>/<album>/<uuid>` in the private `photos` bucket, throttled to
@@ -356,8 +363,8 @@ in the same release as the feature — not later.
 
 ## Open questions
 
-1. **Frontend stack.** React is recommended because album layouts, upload queues, selection,
-   comparison views, and editors have real interaction state.
+1. ~~**Frontend stack.**~~ Resolved. React and TypeScript on Vite, with `react-router-dom`
+   for addresses. Routing landed before Phase 3 so a long upload survives a reload.
 2. **Signed URL delivery.** Storage is private. Choose whether trusted server routes or Edge
    Functions create short-lived image URLs before upload and sharing are implemented.
 3. ~~**Layout schema.**~~ Resolved. `albums.layout` ships with Phase 2 as `text not null

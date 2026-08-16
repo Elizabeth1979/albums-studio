@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -50,20 +51,20 @@ afterEach(() => {
 
 describe('App', () => {
   it('shows the sign-in form when there is no session', async () => {
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
   })
 
   it('shows the library when a session already exists', async () => {
     auth.getClaims.mockResolvedValue(SESSION)
 
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     expect(await screen.findByRole('heading', { name: 'Your albums' })).toBeInTheDocument()
     expect(screen.getByText('person@example.com')).toBeInTheDocument()
   })
 
   it('asks for a new password after a recovery link', async () => {
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     emitAuthEvent('PASSWORD_RECOVERY')
@@ -82,7 +83,7 @@ describe('App', () => {
       }),
     )
 
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     emitAuthEvent('PASSWORD_RECOVERY')
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeInTheDocument()
 
@@ -95,7 +96,7 @@ describe('App', () => {
   })
 
   it('saves a new password and then opens the library', async () => {
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     emitAuthEvent('PASSWORD_RECOVERY')
@@ -110,7 +111,7 @@ describe('App', () => {
   })
 
   it('returns to sign-in when recovery is cancelled', async () => {
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     emitAuthEvent('PASSWORD_RECOVERY')
@@ -123,7 +124,7 @@ describe('App', () => {
   })
 
   it('requests a reset link that returns to this origin', async () => {
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
@@ -137,7 +138,7 @@ describe('App', () => {
   })
 
   it('never creates an account from a magic link request', async () => {
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
@@ -165,7 +166,7 @@ describe('App', () => {
       },
     })
 
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
@@ -181,7 +182,7 @@ describe('App', () => {
       error: { message: 'Email rate limit exceeded', status: 429 },
     })
 
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
@@ -197,7 +198,7 @@ describe('App', () => {
       error: new Error('Invalid login credentials'),
     })
 
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Welcome back' })
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
@@ -211,7 +212,7 @@ describe('App', () => {
   it('signs out from the library', async () => {
     auth.getClaims.mockResolvedValue(SESSION)
 
-    render(<App />)
+    render(<App />, { wrapper: MemoryRouter })
     await screen.findByRole('heading', { name: 'Your albums' })
 
     auth.getClaims.mockResolvedValue(NO_SESSION)

@@ -11,6 +11,7 @@ type AlbumPageProps = {
   onBack: () => void
   onRename: (title: string) => Promise<void>
   onChangeLayout: (layout: AlbumLayout) => Promise<void>
+  onChangeDescription: (description: string) => Promise<void>
   onDelete: () => Promise<void>
 }
 
@@ -21,10 +22,13 @@ export function AlbumPage({
   onBack,
   onRename,
   onChangeLayout,
+  onChangeDescription,
   onDelete,
 }: AlbumPageProps) {
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(album.title)
+  const [describing, setDescribing] = useState(false)
+  const [description, setDescription] = useState(album.description ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,6 +52,22 @@ export function AlbumPage({
     setTitle(album.title)
     setError(null)
     setRenaming(true)
+  }
+
+  function startDescribing() {
+    setDescription(album.description ?? '')
+    setError(null)
+    setDescribing(true)
+  }
+
+  async function handleDescription(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const saved = await run(
+      () => onChangeDescription(description),
+      'Could not save the description.',
+    )
+    if (saved) setDescribing(false)
   }
 
   async function handleRename(event: FormEvent<HTMLFormElement>) {
@@ -111,6 +131,47 @@ export function AlbumPage({
             </div>
           )}
         </div>
+
+        <section className="album-controls" aria-labelledby="description-title">
+          <h2 id="description-title">Description</h2>
+          {describing ? (
+            <form className="rename-form" onSubmit={handleDescription}>
+              <label htmlFor="album-description">
+                <span>What is this album about?</span>
+                <textarea
+                  id="album-description"
+                  name="album-description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={2000}
+                  rows={4}
+                />
+              </label>
+              <div className="rename-actions">
+                <button className="primary-button" type="submit" disabled={pending}>
+                  {pending ? 'Saving…' : 'Save description'}
+                </button>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => setDescribing(false)}
+                  disabled={pending}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <p className="layout-hint">
+                {album.description || 'No description yet.'}
+              </p>
+              <button className="text-button" type="button" onClick={startDescribing}>
+                {album.description ? 'Edit description' : 'Add a description'}
+              </button>
+            </>
+          )}
+        </section>
 
         <section className="album-controls" aria-labelledby="layout-title">
           <h2 id="layout-title">Layout</h2>

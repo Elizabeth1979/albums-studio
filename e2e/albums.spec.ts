@@ -72,6 +72,7 @@ test.describe('albums', () => {
 
     await page.getByRole('button', { name: /Summer by the lake/ }).click()
 
+    await expect(page).toHaveURL(/\/albums\/summer-by-the-lake$/)
     await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Grid' })).toHaveAttribute(
@@ -80,7 +81,51 @@ test.describe('albums', () => {
     )
 
     await page.getByRole('button', { name: '← All albums' }).click()
+    await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { name: '1 album' })).toBeVisible()
+  })
+
+  test('an album address survives a reload', async ({ page }) => {
+    // The reason routing exists: Phase 3 uploads run long enough that a refresh
+    // must not drop the owner back at the library.
+    await signIn(page, { albums: [albumRecord()] })
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await expect(page).toHaveURL(/\/albums\/summer-by-the-lake$/)
+
+    await page.reload()
+
+    await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
+  })
+
+  test('an unknown album address explains itself', async ({ page }) => {
+    await signIn(page, { albums: [albumRecord()] })
+
+    await page.goto('/albums/never-existed')
+
+    await expect(page.getByRole('heading', { name: 'Album not found' })).toBeVisible()
+    await page.getByRole('button', { name: 'Back to your albums' }).click()
+    await expect(page.getByRole('heading', { name: '1 album' })).toBeVisible()
+  })
+
+  test('saves and clears an album description', async ({ page }) => {
+    const calls = await signIn(page, { albums: [albumRecord()] })
+
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByRole('button', { name: 'Add a description' }).click()
+    await page.getByLabel('What is this album about?').fill('A week by the water')
+    await page.getByRole('button', { name: 'Save description' }).click()
+
+    await expect(page.getByText('A week by the water')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Edit description' }).click()
+    await page.getByLabel('What is this album about?').fill('   ')
+    await page.getByRole('button', { name: 'Save description' }).click()
+
+    await expect(page.getByText('No description yet.')).toBeVisible()
+
+    const patches = calls.all.filter((call) => call.method === 'PATCH')
+    expect(patches.at(-1)?.body).toEqual({ description: null })
   })
 
   test('renames an album and keeps its slug', async ({ page }) => {
@@ -99,6 +144,22 @@ test.describe('albums', () => {
 
     await page.getByRole('button', { name: '← All albums' }).click()
     await expect(page.getByRole('button', { name: /Lake days/ })).toBeVisible()
+  })
+
+  test('a rename keeps the album address working', async ({ page }) => {
+    await signIn(page, { albums: [albumRecord()] })
+
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByRole('button', { name: 'Rename album' }).click()
+    await page.getByLabel('Album title').fill('Lake days')
+    await page.getByRole('button', { name: 'Save title' }).click()
+    await expect(page.getByRole('heading', { name: 'Lake days' })).toBeVisible()
+
+    // The slug is deliberately stable, so the address a rename was made under
+    // still resolves.
+    await expect(page).toHaveURL(/\/albums\/summer-by-the-lake$/)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Lake days' })).toBeVisible()
   })
 
   test('switches an album between the two layouts', async ({ page }) => {
@@ -159,6 +220,7 @@ test.describe('albums', () => {
     await page.getByRole('button', { name: 'Delete album' }).click()
     await page.getByRole('button', { name: 'Yes, delete this album' }).click()
 
+    await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { name: 'No albums yet' })).toBeVisible()
     expect(calls.albums()).toHaveLength(0)
   })

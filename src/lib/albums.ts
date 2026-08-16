@@ -139,8 +139,26 @@ export async function renameAlbum(id: string, title: string): Promise<Album> {
   return updateAlbum(id, { title: trimmed })
 }
 
-export async function setAlbumLayout(id: string, layout: AlbumLayout): Promise<Album> {
-  return updateAlbum(id, { layout })
+/**
+ * Partial edits to an album shell. `description` is trimmed and stored as null
+ * when cleared, so "no description" is one state in the database rather than
+ * two that read the same on screen.
+ */
+export async function updateAlbumDetails(
+  id: string,
+  patch: { layout?: AlbumLayout; description?: string },
+): Promise<Album> {
+  const columns: Record<string, unknown> = {}
+
+  if (patch.layout !== undefined) {
+    columns.layout = patch.layout
+  }
+
+  if (patch.description !== undefined) {
+    columns.description = patch.description.trim() || null
+  }
+
+  return updateAlbum(id, columns)
 }
 
 export async function deleteAlbum(id: string): Promise<void> {
