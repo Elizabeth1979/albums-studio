@@ -96,9 +96,12 @@ Two consequences:
 - `describeAuthError` now translates `over_email_send_rate_limit` (and any 429) into a
   sentence that names the cause and repeats the wait, instead of echoing Supabase's
   "For security purposes, you can only request this after 53 seconds."
-- The project still uses Supabase's **shared test mail service**, which is throttled per
-  address and explicitly not meant for production. Custom SMTP is required before signup
-  opens; this is now open question 12b on the roadmap.
+- The project uses Supabase's **built-in sender** (`noreply@mail.app.supabase.io`), which
+  the documentation calls "for demonstration purposes only" and "not meant for production
+  use". Its binding restriction is not the throttle but the recipient allowlist: without
+  custom SMTP, Auth refuses to deliver to any address outside the organization's team. The
+  owner's mail arrives for that reason alone; a stranger's reset or magic link would never
+  be sent, while the app still showed "check your email". Now open question 12b.
 
 ## Still open
 

@@ -388,12 +388,25 @@ in the same release as the feature — not later.
    without creating open-ended platform AI cost.
 12. **Free tier limits.** Storage is the constraint, not compute. A per-user byte quota is
    needed before signup opens to anyone.
-12b. **Transactional email.** The project still sends auth mail through Supabase's shared
-   test service, which is throttled per address and explicitly not for production. A real
-   magic-link request was refused with `over_email_send_rate_limit` on 2026-08-16 because
-   it followed a reset email by five seconds. Custom SMTP must be configured before signup
-   opens to anyone; until then every email-based flow is rate-limited in ways users will
-   read as breakage.
+12b. **Transactional email.** The project sends auth mail from
+   `noreply@mail.app.supabase.io`, Supabase's built-in sender, which the documentation
+   describes as "for demonstration purposes only" and "not meant for production use".
+
+   The binding restriction is the recipient allowlist, not the rate limit: without custom
+   SMTP, Supabase Auth refuses to deliver to any address outside the project
+   organization's team. Owner email works for that reason alone. For anyone else, signup
+   still succeeds because this project does not require confirmation, but password reset
+   and magic links would never arrive — the app would show "check your email" for a
+   message that was never sent.
+
+   Two smaller limits sit underneath it: a per-address minimum interval, which refused a
+   real magic-link request with `over_email_send_rate_limit` on 2026-08-16 five seconds
+   after a reset email, and an hourly cap on the built-in sender.
+
+   Custom SMTP (Resend, Postmark, Brevo, SES, or any SMTP service) is therefore a
+   prerequisite for opening signup to anyone, and for Phase 6 sharing if shared viewers
+   are ever emailed. Disable link tracking on whichever provider is chosen: the docs warn
+   it rewrites confirmation links.
 13. **Slideshow/movie export pipeline.** Decide whether exports are browser-rendered,
    server-rendered, or powered by a dedicated video pipeline. Music requires clear rules for
    upload, storage, rights, and whether shared viewers can download the final movie.
