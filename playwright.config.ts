@@ -15,9 +15,15 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `npm run dev -- --port ${PORT} --strictPort`,
+    // Serve the production bundle, and bind 127.0.0.1 explicitly: left to
+    // resolve "localhost" the server can listen on ::1 only, which the probe
+    // below never reaches, and the run dies as a bare timeout.
+    command: `npm run build && npm run preview -- --port ${PORT} --strictPort --host 127.0.0.1`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    stdout: 'pipe',
+    stderr: 'pipe',
     // The suite never reaches Supabase; every call is intercepted in the browser.
     env: {
       VITE_SUPABASE_URL: 'https://stub.supabase.co',
