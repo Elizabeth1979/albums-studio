@@ -21,12 +21,14 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   function changeMode(nextMode: Mode) {
     setMode(nextMode)
+    setPasswordVisible(false)
     setError(null)
     setNotice(null)
   }
@@ -161,17 +163,32 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
               />
             </label>
 
-            <label>
-              <span>Password</span>
-              <input
-                type="password"
-                name="password"
-                autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
+            <div className="auth-field">
+              <label htmlFor="password">Password</label>
+              <div className="password-field">
+                <input
+                  id="password"
+                  type={passwordVisible ? 'text' : 'password'}
+                  name="password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                  aria-pressed={passwordVisible}
+                  onClick={() => setPasswordVisible((visible) => !visible)}
+                >
+                  {passwordVisible ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
 
             {error && <p className="form-message error" role="alert">{error}</p>}
             {notice && <p className="form-message notice" role="status">{notice}</p>}

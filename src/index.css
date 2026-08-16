@@ -182,12 +182,43 @@ input:focus-visible {
   gap: 1rem;
 }
 
-.auth-form label {
+.auth-form label,
+.auth-form .auth-field {
   display: grid;
   gap: 0.45rem;
   color: #4d4740;
   font-size: 0.83rem;
   font-weight: 700;
+}
+
+.password-field {
+  position: relative;
+  display: grid;
+}
+
+.password-field input {
+  padding-right: 4.6rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 0.4rem;
+  color: #6d6459;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.password-toggle:hover {
+  color: #996130;
+  background: #f1ebe1;
 }
 
 .auth-form input {
