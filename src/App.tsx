@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AuthCredentials, AuthForm } from './components/AuthForm'
-import { Identity, Library } from './components/Library'
 import { ResetPasswordForm } from './components/ResetPasswordForm'
+import { Studio } from './components/Studio'
+import type { Identity } from './lib/identity'
 import { supabase } from './lib/supabase'
 
 type AuthState =
@@ -146,5 +147,5 @@ export default function App() {
     )
   }
 
-  return <Library identity={authState.identity} onSignOut={signOut} />
+  return <Studio identity={authState.identity} onSignOut={signOut} />
 }

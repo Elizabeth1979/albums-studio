@@ -8,8 +8,8 @@ AI cost.
 
 ## Current state
 
-- The React and TypeScript application has email/password authentication and a protected
-  empty library.
+- The React and TypeScript application has email/password authentication and an album
+  library: albums can be created, opened, renamed, relayouted, and deleted.
 - Supabase is healthy and its complete migration history is committed.
 - The minimal schema is `profiles`, `albums`, `photos`, and `ai_usage`, all protected by
   RLS and explicit Data API grants.
@@ -18,12 +18,17 @@ AI cost.
 - Authentication covers password sign-in, magic links, and password reset. Password inputs
   carry a reveal toggle, and a recovery link must reach the set-a-new-password step before
   the library opens.
-- Phase 1 passes type checks, component tests, `App` state-machine tests, an end-to-end
-  Chromium suite, a production build, and a dependency audit. It is deployed to
-  [albums-studio.vercel.app](https://albums-studio.vercel.app), where sign-in and password
-  reset have been confirmed by hand. Magic-link delivery is still unexercised manually.
+- `albums.layout` is `masonry` or `grid`, checked in the database. Later layouts widen that
+  constraint in the migration for the phase that renders them.
+- Renaming an album leaves its slug untouched, because the slug is the stable half of a
+  future share URL.
+- Phases 1 and 2 pass type checks, component tests, `App` state-machine tests, an
+  end-to-end Chromium suite, a production build, and a dependency audit. They are deployed
+  to [albums-studio.vercel.app](https://albums-studio.vercel.app), where sign-in and
+  password reset have been confirmed by hand. Magic-link delivery is still unexercised
+  manually.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
-- Next: Phase 2 album shells with masonry and grid layouts.
+- Next: Phase 3 browser-side upload into the private `photos` bucket.
 
 ## Plans
 
@@ -43,5 +48,8 @@ AI cost.
   migration history, reduced the schema, tightened authorization, and adopted `AGENTS.md`.
 - [Phase 1 authentication](sessions/2026-08-15-phase-1-auth.md) — scaffolded the frontend,
   connected Supabase Auth, and added the protected empty library.
+- [Password recovery, tests, and Phase 2 albums](sessions/2026-08-16-phase-2-albums.md) —
+  added the password reveal toggle and reset flow, the recovery-session guard, the
+  end-to-end suite and CI, and album shells with masonry and grid layouts.
 
 When adding or materially changing a document under `docs/`, update its entry here.

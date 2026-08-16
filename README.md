@@ -37,16 +37,18 @@ server code must create short-lived signed URLs for owners and shared viewers.
 
 ## Current state
 
-The React and TypeScript application now provides email/password authentication and a
-protected empty library. The hosted Supabase project is configured and versioned in
-`supabase/migrations/`; its minimal schema contains `profiles`, `albums`, `photos`, and
-`ai_usage`. Later-phase structures will be added only when implemented.
+The React and TypeScript application provides email/password authentication and an album
+library: albums can be created, opened, renamed, switched between masonry and grid layouts,
+and deleted behind a confirmation. Photos come next. The hosted Supabase project is
+configured and versioned in `supabase/migrations/`; its minimal schema contains `profiles`,
+`albums`, `photos`, and `ai_usage`. Later-phase structures will be added only when
+implemented.
 
-Phase 1 is implemented and automatically verified. Password sign-in, magic links, and
-password reset are supported; signup does not require email confirmation. A real
-sign-in and password-reset pass has been confirmed against production; magic-link
-delivery has not yet been exercised by hand. Phase 2 adds album shells and the first
-masonry/grid layout.
+Phases 1 and 2 are implemented and automatically verified. Password sign-in, magic links,
+and password reset are supported; signup does not require email confirmation. A real
+sign-in and password-reset pass has been confirmed against production; magic-link delivery
+has not yet been exercised by hand. Phase 3 adds browser-side upload into the private
+`photos` bucket.
 
 Production: [albums-studio.vercel.app](https://albums-studio.vercel.app)
 
