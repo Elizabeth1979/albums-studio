@@ -44,6 +44,27 @@ describe('AuthForm', () => {
     expect(screen.getByRole('status')).toHaveTextContent('one-time sign-in link')
   })
 
+  it('reveals and re-hides the password on demand', () => {
+    render(<AuthForm onSignIn={vi.fn()} onSignUp={vi.fn()} onMagicLink={vi.fn()} />)
+    const password = screen.getByLabelText('Password')
+    expect(password).toHaveAttribute('type', 'password')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(password).toHaveAttribute('type', 'text')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }))
+    expect(password).toHaveAttribute('type', 'password')
+  })
+
+  it('re-hides a revealed password when the mode changes', () => {
+    render(<AuthForm onSignIn={vi.fn()} onSignUp={vi.fn()} onMagicLink={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show account creation form' }))
+    expect(screen.getByLabelText(/^Password/)).toHaveAttribute('type', 'password')
+  })
+
   it('does not impose a browser-side password length rule', () => {
     render(<AuthForm onSignIn={vi.fn()} onSignUp={vi.fn()} onMagicLink={vi.fn()} />)
     expect(screen.getByLabelText('Password')).not.toHaveAttribute('minlength')
