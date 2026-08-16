@@ -9,7 +9,11 @@ type LibraryProps = {
   albums: Album[]
   loading: boolean
   error: string | null
-  onCreateAlbum: (input: { title: string; layout: AlbumLayout }) => Promise<void>
+  onCreateAlbum: (input: {
+    title: string
+    layout: AlbumLayout
+    description: string
+  }) => Promise<void>
   onOpenAlbum: (album: Album) => void
 }
 
@@ -35,6 +39,7 @@ export function Library({
   onOpenAlbum,
 }: LibraryProps) {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [layout, setLayout] = useState<AlbumLayout>('masonry')
   const [creating, setCreating] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -51,8 +56,9 @@ export function Library({
     setFormError(null)
 
     try {
-      await onCreateAlbum({ title, layout })
+      await onCreateAlbum({ title, layout, description })
       setTitle('')
+      setDescription('')
       setLayout('masonry')
     } catch (caughtError) {
       setFormError(
@@ -91,6 +97,19 @@ export function Library({
                 maxLength={120}
                 placeholder="Summer by the lake"
                 required
+              />
+            </label>
+
+            <label htmlFor="album-description">
+              <span>Description <em>(optional)</em></span>
+              <textarea
+                id="album-description"
+                name="album-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="What is this album about?"
               />
             </label>
 
