@@ -66,8 +66,19 @@ describe('createAlbum', () => {
       title: 'Summer by the lake',
       slug: 'summer-by-the-lake',
       layout: 'masonry',
+      description: null,
     })
     expect(created.id).toBe('album-1')
+  })
+
+  it('stores a trimmed description, or null when it is blank', async () => {
+    const insert = insertBuilder([{ data: ROW, error: null }, { data: ROW, error: null }])
+
+    await createAlbum({ title: 'Eilat', layout: 'masonry', description: '  Red sea  ' })
+    expect(insert.mock.calls[0][0]).toMatchObject({ description: 'Red sea' })
+
+    await createAlbum({ title: 'Eilat', layout: 'masonry', description: '   ' })
+    expect(insert.mock.calls[1][0]).toMatchObject({ description: null })
   })
 
   it('finds a free slug when the first one is taken', async () => {

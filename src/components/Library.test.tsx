@@ -52,7 +52,11 @@ describe('Library', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
     await waitFor(() =>
-      expect(onCreateAlbum).toHaveBeenCalledWith({ title: 'Wedding', layout: 'masonry' }),
+      expect(onCreateAlbum).toHaveBeenCalledWith({
+        title: 'Wedding',
+        layout: 'masonry',
+        description: '',
+      }),
     )
   })
 
@@ -65,17 +69,42 @@ describe('Library', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
     await waitFor(() =>
-      expect(onCreateAlbum).toHaveBeenCalledWith({ title: 'School trip', layout: 'grid' }),
+      expect(onCreateAlbum).toHaveBeenCalledWith({
+        title: 'School trip',
+        layout: 'grid',
+        description: '',
+      }),
+    )
+  })
+
+  it('creates an album with a description', async () => {
+    const onCreateAlbum = vi.fn().mockResolvedValue(undefined)
+
+    renderLibrary({ onCreateAlbum })
+    fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Eilat' } })
+    fireEvent.change(screen.getByLabelText(/^Description/), {
+      target: { value: 'Red sea, October' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
+
+    await waitFor(() =>
+      expect(onCreateAlbum).toHaveBeenCalledWith({
+        title: 'Eilat',
+        layout: 'masonry',
+        description: 'Red sea, October',
+      }),
     )
   })
 
   it('clears the form after a successful creation', async () => {
     renderLibrary()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
+    fireEvent.change(screen.getByLabelText(/^Description/), { target: { value: 'Notes' } })
     fireEvent.click(screen.getByRole('radio', { name: 'Grid' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
     await waitFor(() => expect(screen.getByLabelText('Album title')).toHaveValue(''))
+    expect(screen.getByLabelText(/^Description/)).toHaveValue('')
     expect(screen.getByRole('radio', { name: 'Masonry' })).toBeChecked()
   })
 

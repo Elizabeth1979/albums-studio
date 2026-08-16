@@ -968,6 +968,12 @@ input:focus-visible {
     flex-direction: column;
   }
 
+  /* flex-basis measures the main axis, so the 18rem that sets a comfortable
+     field width in a row became a 18rem-tall field once the form stacked. */
+  .new-album-form > label {
+    flex: 0 0 auto;
+  }
+
   .new-album-form .primary-button {
     width: 100%;
   }
@@ -1006,4 +1012,27 @@ input:focus-visible {
 
 .album-controls + .album-controls {
   margin-top: 2rem;
+}
+
+.new-album-form > label > span em {
+  color: #6f675c;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.new-album-form textarea {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.new-album-form textarea:focus {
+  border-color: #996130;
+  box-shadow: 0 0 0 3px rgb(153 97 48 / 12%);
 }

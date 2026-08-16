@@ -85,6 +85,7 @@ export async function listAlbums(): Promise<Album[]> {
 export async function createAlbum(input: {
   title: string
   layout: AlbumLayout
+  description?: string
 }): Promise<Album> {
   const title = input.title.trim()
 
@@ -92,6 +93,7 @@ export async function createAlbum(input: {
     throw new Error('Give the album a title.')
   }
 
+  const description = input.description?.trim() || null
   const ownerId = await currentOwnerId()
   const base = slugify(title)
 
@@ -101,7 +103,7 @@ export async function createAlbum(input: {
     const slug = attempt === 1 ? base : `${base}-${attempt}`
     const { data, error } = await supabase
       .from('albums')
-      .insert({ owner_id: ownerId, title, slug, layout: input.layout })
+      .insert({ owner_id: ownerId, title, slug, layout: input.layout, description })
       .select(ALBUM_COLUMNS)
       .single()
 

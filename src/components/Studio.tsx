@@ -116,7 +116,11 @@ export function Studio({ identity, onSignOut }: StudioProps) {
     setAlbums((current) => current.map((item) => (item.id === album.id ? album : item)))
   }
 
-  async function handleCreate(input: { title: string; layout: AlbumLayout }) {
+  async function handleCreate(input: {
+    title: string
+    layout: AlbumLayout
+    description: string
+  }) {
     const album = await createAlbum(input)
     setAlbums((current) => [album, ...current])
   }
