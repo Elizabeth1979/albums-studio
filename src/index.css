@@ -221,6 +221,12 @@ input:focus-visible {
   background: #f1ebe1;
 }
 
+.field-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.55rem;
+}
+
 .auth-form input {
   width: 100%;
   min-height: 3.25rem;

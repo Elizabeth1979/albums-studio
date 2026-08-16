@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react'
+import { PasswordField } from './PasswordField'
 
 export type AuthCredentials = {
   displayName?: string
@@ -12,30 +13,32 @@ type AuthFormProps = {
   onSignIn: (credentials: AuthCredentials) => Promise<void>
   onSignUp: (credentials: AuthCredentials) => Promise<SignUpResult>
   onMagicLink: (email: string) => Promise<void>
+  onResetRequest: (email: string) => Promise<void>
 }
 
 type Mode = 'sign-in' | 'sign-up'
 
-export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
+/** Which control is awaiting a response, so only that control shows a busy label. */
+type PendingAction = 'submit' | 'magic-link' | 'reset'
+
+export function AuthForm({ onSignIn, onSignUp, onMagicLink, onResetRequest }: AuthFormProps) {
   const [mode, setMode] = useState<Mode>('sign-in')
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [passwordVisible, setPasswordVisible] = useState(false)
-  const [pending, setPending] = useState(false)
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   function changeMode(nextMode: Mode) {
     setMode(nextMode)
-    setPasswordVisible(false)
     setError(null)
     setNotice(null)
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setPending(true)
+    setPendingAction('submit')
     setError(null)
     setNotice(null)
 
@@ -57,11 +60,16 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Authentication failed.')
     } finally {
-      setPending(false)
+      setPendingAction(null)
     }
   }
 
-  async function handleMagicLink() {
+  async function runEmailAction(
+    pending: PendingAction,
+    action: (email: string) => Promise<void>,
+    successNotice: string,
+    failureMessage: string,
+  ) {
     const trimmedEmail = email.trim()
 
     if (!trimmedEmail) {
@@ -69,21 +77,40 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
       return
     }
 
-    setPending(true)
+    setPendingAction(pending)
     setError(null)
     setNotice(null)
 
     try {
-      await onMagicLink(trimmedEmail)
-      setNotice('We sent a one-time sign-in link. Check your email.')
+      await action(trimmedEmail)
+      setNotice(successNotice)
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Could not send the link.')
+      setError(caughtError instanceof Error ? caughtError.message : failureMessage)
     } finally {
-      setPending(false)
+      setPendingAction(null)
     }
   }
 
+  function handleMagicLink() {
+    return runEmailAction(
+      'magic-link',
+      onMagicLink,
+      'We sent a one-time sign-in link. Check your email.',
+      'Could not send the link.',
+    )
+  }
+
+  function handleResetRequest() {
+    return runEmailAction(
+      'reset',
+      onResetRequest,
+      'If that address has an account, we sent a link to choose a new password.',
+      'Could not send the reset link.',
+    )
+  }
+
   const isSignUp = mode === 'sign-up'
+  const pending = pendingAction !== null
 
   return (
     <main className="auth-shell">
@@ -163,38 +190,37 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
               />
             </label>
 
-            <div className="auth-field">
-              <label htmlFor="password">Password</label>
-              <div className="password-field">
-                <input
-                  id="password"
-                  type={passwordVisible ? 'text' : 'password'}
-                  name="password"
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                />
+            <PasswordField
+              key={mode}
+              id="password"
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            />
+
+            {!isSignUp && (
+              <div className="field-actions">
                 <button
-                  className="password-toggle"
+                  className="text-button"
                   type="button"
-                  aria-label={passwordVisible ? 'Hide password' : 'Show password'}
-                  aria-pressed={passwordVisible}
-                  onClick={() => setPasswordVisible((visible) => !visible)}
+                  onClick={handleResetRequest}
+                  disabled={pending}
                 >
-                  {passwordVisible ? 'Hide' : 'Show'}
+                  {pendingAction === 'reset' ? 'Sending…' : 'Forgot password?'}
                 </button>
               </div>
-            </div>
+            )}
 
             {error && <p className="form-message error" role="alert">{error}</p>}
             {notice && <p className="form-message notice" role="status">{notice}</p>}
 
             <button className="primary-button" type="submit" disabled={pending}>
-              {pending ? 'Please wait…' : isSignUp ? 'Create private library' : 'Sign in'}
+              {pendingAction === 'submit'
+                ? 'Please wait…'
+                : isSignUp
+                  ? 'Create private library'
+                  : 'Sign in'}
             </button>
 
             {!isSignUp && (
@@ -204,7 +230,7 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink }: AuthFormProps) {
                 onClick={handleMagicLink}
                 disabled={pending}
               >
-                {pending ? 'Sending…' : 'Email me a magic link'}
+                {pendingAction === 'magic-link' ? 'Sending…' : 'Email me a magic link'}
               </button>
             )}
           </form>
