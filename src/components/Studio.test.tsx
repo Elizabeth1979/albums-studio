@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Studio } from './Studio'
 import type { Album } from '../lib/albums'
@@ -8,7 +9,7 @@ const { albumsApi } = vi.hoisted(() => ({
     listAlbums: vi.fn(),
     createAlbum: vi.fn(),
     renameAlbum: vi.fn(),
-    setAlbumLayout: vi.fn(),
+    updateAlbumDetails: vi.fn(),
     deleteAlbum: vi.fn(),
   },
 }))
@@ -30,8 +31,12 @@ function album(overrides: Partial<Album> = {}): Album {
   }
 }
 
-function renderStudio() {
-  return render(<Studio identity={{ email: 'person@example.com' }} onSignOut={vi.fn()} />)
+function renderStudio(initialPath = '/') {
+  return render(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <Studio identity={{ email: 'person@example.com' }} onSignOut={vi.fn()} />
+    </MemoryRouter>,
+  )
 }
 
 beforeEach(() => {
@@ -98,7 +103,7 @@ describe('Studio', () => {
 
   it('keeps a switched layout on the open album', async () => {
     albumsApi.listAlbums.mockResolvedValue([album()])
-    albumsApi.setAlbumLayout.mockResolvedValue(album({ layout: 'grid' }))
+    albumsApi.updateAlbumDetails.mockResolvedValue(album({ layout: 'grid' }))
 
     renderStudio()
     fireEvent.click(await screen.findByRole('button', { name: /Summer by the lake/ }))
@@ -110,7 +115,44 @@ describe('Studio', () => {
         'true',
       ),
     )
-    expect(albumsApi.setAlbumLayout).toHaveBeenCalledWith('album-1', 'grid')
+    expect(albumsApi.updateAlbumDetails).toHaveBeenCalledWith('album-1', { layout: 'grid' })
+  })
+
+  it('opens an album straight from its address', async () => {
+    albumsApi.listAlbums.mockResolvedValue([album()])
+
+    renderStudio('/albums/summer-by-the-lake')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Summer by the lake' }),
+    ).toBeInTheDocument()
+  })
+
+  it('reports an address that matches no album', async () => {
+    albumsApi.listAlbums.mockResolvedValue([album()])
+
+    renderStudio('/albums/never-existed')
+
+    expect(await screen.findByRole('heading', { name: 'Album not found' })).toBeInTheDocument()
+  })
+
+  it('saves an album description', async () => {
+    albumsApi.listAlbums.mockResolvedValue([album()])
+    albumsApi.updateAlbumDetails.mockResolvedValue(album({ description: 'A week by the water' }))
+
+    renderStudio('/albums/summer-by-the-lake')
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a description' }))
+    fireEvent.change(screen.getByLabelText('What is this album about?'), {
+      target: { value: 'A week by the water' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save description' }))
+
+    await waitFor(() =>
+      expect(albumsApi.updateAlbumDetails).toHaveBeenCalledWith('album-1', {
+        description: 'A week by the water',
+      }),
+    )
+    expect(await screen.findByText('A week by the water')).toBeInTheDocument()
   })
 
   it('returns to an emptied library after a delete', async () => {

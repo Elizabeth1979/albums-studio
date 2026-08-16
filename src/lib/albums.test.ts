@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAlbum, renameAlbum, slugify } from './albums'
+import { createAlbum, renameAlbum, slugify, updateAlbumDetails } from './albums'
 
 const { auth, from } = vi.hoisted(() => ({
   auth: { getClaims: vi.fn() },
@@ -108,6 +108,50 @@ describe('createAlbum', () => {
       'Your session has expired. Sign in again.',
     )
     expect(from).not.toHaveBeenCalled()
+  })
+})
+
+function updateBuilder(row: object) {
+  const update = vi.fn((_patch: Record<string, unknown>) => ({
+    eq: () => ({
+      select: () => ({ single: () => Promise.resolve({ data: row, error: null }) }),
+    }),
+  }))
+  from.mockReturnValue({ update })
+  return update
+}
+
+describe('updateAlbumDetails', () => {
+  it('writes only the fields it was given', async () => {
+    const update = updateBuilder({ ...ROW, layout: 'grid' })
+
+    await updateAlbumDetails('album-1', { layout: 'grid' })
+
+    expect(update).toHaveBeenCalledWith({ layout: 'grid' })
+  })
+
+  it('trims a description', async () => {
+    const update = updateBuilder({ ...ROW, description: 'A week by the water' })
+
+    await updateAlbumDetails('album-1', { description: '  A week by the water  ' })
+
+    expect(update).toHaveBeenCalledWith({ description: 'A week by the water' })
+  })
+
+  it('stores a cleared description as null rather than an empty string', async () => {
+    const update = updateBuilder({ ...ROW, description: null })
+
+    await updateAlbumDetails('album-1', { description: '   ' })
+
+    expect(update).toHaveBeenCalledWith({ description: null })
+  })
+
+  it('can change layout and description together', async () => {
+    const update = updateBuilder({ ...ROW, layout: 'grid', description: 'Both' })
+
+    await updateAlbumDetails('album-1', { layout: 'grid', description: 'Both' })
+
+    expect(update).toHaveBeenCalledWith({ layout: 'grid', description: 'Both' })
   })
 })
 

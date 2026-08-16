@@ -25,6 +25,7 @@ function renderAlbumPage(props: Partial<ComponentProps<typeof AlbumPage>> = {}) 
       onBack={vi.fn()}
       onRename={vi.fn().mockResolvedValue(undefined)}
       onChangeLayout={vi.fn().mockResolvedValue(undefined)}
+      onChangeDescription={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       {...props}
     />,
@@ -122,6 +123,46 @@ describe('AlbumPage', () => {
 
     expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText(/Grid crops to equal tiles/)).toBeInTheDocument()
+  })
+
+  it('invites a description when the album has none', () => {
+    renderAlbumPage()
+
+    expect(screen.getByText('No description yet.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add a description' })).toBeInTheDocument()
+  })
+
+  it('shows an existing description and offers to edit it', () => {
+    renderAlbumPage({ album: album({ description: 'A week by the water' }) })
+
+    expect(screen.getByText('A week by the water')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit description' })).toBeInTheDocument()
+  })
+
+  it('saves a description', async () => {
+    const onChangeDescription = vi.fn().mockResolvedValue(undefined)
+
+    renderAlbumPage({ onChangeDescription })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a description' }))
+    fireEvent.change(screen.getByLabelText('What is this album about?'), {
+      target: { value: 'A week by the water' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save description' }))
+
+    await waitFor(() => expect(onChangeDescription).toHaveBeenCalledWith('A week by the water'))
+  })
+
+  it('allows a description to be cleared', async () => {
+    const onChangeDescription = vi.fn().mockResolvedValue(undefined)
+
+    renderAlbumPage({ album: album({ description: 'Remove me' }), onChangeDescription })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    fireEvent.change(screen.getByLabelText('What is this album about?'), {
+      target: { value: '' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save description' }))
+
+    await waitFor(() => expect(onChangeDescription).toHaveBeenCalledWith(''))
   })
 
   it('never deletes on a single click', () => {

@@ -9,7 +9,10 @@ AI cost.
 ## Current state
 
 - The React and TypeScript application has email/password authentication and an album
-  library: albums can be created, opened, renamed, relayouted, and deleted.
+  library: albums can be created, opened, renamed, described, relayouted, and deleted.
+- Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
+  routing, because Supabase delivers auth tokens in the URL hash.
+- Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
 - Supabase is healthy and its complete migration history is committed.
 - The minimal schema is `profiles`, `albums`, `photos`, and `ai_usage`, all protected by
   RLS and explicit Data API grants.
@@ -54,6 +57,7 @@ AI cost.
   connected Supabase Auth, and added the protected empty library.
 - [Password recovery, tests, and Phase 2 albums](sessions/2026-08-16-phase-2-albums.md) —
   added the password reveal toggle and reset flow, the recovery-session guard, the
-  end-to-end suite and CI, and album shells with masonry and grid layouts.
+  end-to-end suite and CI, album shells with masonry and grid layouts, and a pre-Phase-3
+  review that added routing, album descriptions, and enforced accessibility.
 
 When adding or materially changing a document under `docs/`, update its entry here.
