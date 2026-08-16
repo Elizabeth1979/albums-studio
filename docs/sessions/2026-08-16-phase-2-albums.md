@@ -76,12 +76,37 @@ arrive in Phase 3.
 - 65 unit and component tests, 21 end-to-end tests, typecheck, and production build all pass.
 - Sign-in and password reset confirmed by hand against production.
 
+## Magic link: root cause found
+
+The auth logs settle what "untested" meant. The magic link was not skipped; it was refused:
+
+```
+13:24:03  POST /recover  200   mail.send  mail_type=recovery -> el.patrick79@gmail.com
+13:24:08  POST /otp      429   over_email_send_rate_limit
+                               "you can only request this after 53 seconds"
+```
+
+The request came five seconds after a reset email, and Supabase's per-address email
+throttle rejected it. The application code was never at fault, and mail delivery itself
+demonstrably works — the recovery mail sent and was followed to a completed password
+change at 13:24:20.
+
+Two consequences:
+
+- `describeAuthError` now translates `over_email_send_rate_limit` (and any 429) into a
+  sentence that names the cause and repeats the wait, instead of echoing Supabase's
+  "For security purposes, you can only request this after 53 seconds."
+- The project still uses Supabase's **shared test mail service**, which is throttled per
+  address and explicitly not meant for production. Custom SMTP is required before signup
+  opens; this is now open question 12b on the roadmap.
+
 ## Still open
 
-- **Magic-link delivery has never been exercised by hand.** The request is covered by tests,
-  but no one has followed a real magic-link email through to a session.
+- **Magic-link delivery has still never succeeded end to end.** The single real attempt was
+  rate-limited. Retrying more than a minute after any other auth email should work.
 - **Leaked-password protection is disabled** on the Supabase project. The security advisor
   flags it; enabling it checks new passwords against HaveIBeenPwned. It is a dashboard
-  setting, not a migration.
+  setting with no migration and no MCP tool behind it, so it cannot be changed from a
+  session — Authentication → Sign In / Providers → Password, in the project dashboard.
 - **Album navigation has no URL.** Opening an album is component state, so an album cannot
   be linked or reloaded into. Phase 6 sharing will force this decision.

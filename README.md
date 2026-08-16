@@ -46,9 +46,11 @@ implemented.
 
 Phases 1 and 2 are implemented and automatically verified. Password sign-in, magic links,
 and password reset are supported; signup does not require email confirmation. A real
-sign-in and password-reset pass has been confirmed against production; magic-link delivery
-has not yet been exercised by hand. Phase 3 adds browser-side upload into the private
-`photos` bucket.
+sign-in and password-reset pass has been confirmed against production. A magic-link request
+made seconds after a reset email was refused by Supabase's per-address email throttle, so
+successful magic-link delivery is still unconfirmed; the app now explains that refusal
+rather than repeating it. Phase 3 adds browser-side upload into the private `photos`
+bucket.
 
 Production: [albums-studio.vercel.app](https://albums-studio.vercel.app)
 

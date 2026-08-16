@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AuthCredentials, AuthForm } from './components/AuthForm'
 import { ResetPasswordForm } from './components/ResetPasswordForm'
 import { Studio } from './components/Studio'
+import { describeAuthError } from './lib/authErrors'
 import type { Identity } from './lib/identity'
 import { supabase } from './lib/supabase'
 
@@ -67,7 +68,7 @@ export default function App() {
 
   async function signIn({ email, password }: AuthCredentials) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    if (error) throw new Error(describeAuthError(error, 'Could not sign in.'))
   }
 
   async function signUp({ displayName, email, password }: AuthCredentials) {
@@ -79,7 +80,7 @@ export default function App() {
         emailRedirectTo: window.location.origin,
       },
     })
-    if (error) throw error
+    if (error) throw new Error(describeAuthError(error, 'Could not create the account.'))
     return data.session ? ('signed-in' as const) : ('confirm-email' as const)
   }
 
@@ -87,12 +88,12 @@ export default function App() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
     })
-    if (error) throw error
+    if (error) throw new Error(describeAuthError(error, 'Could not send the reset link.'))
   }
 
   async function setNewPassword(password: string) {
     const { error } = await supabase.auth.updateUser({ password })
-    if (error) throw error
+    if (error) throw new Error(describeAuthError(error, 'Could not set the password.'))
 
     recovering.current = false
     const identity = await getIdentity()
@@ -115,7 +116,7 @@ export default function App() {
         shouldCreateUser: false,
       },
     })
-    if (error) throw error
+    if (error) throw new Error(describeAuthError(error, 'Could not send the link.'))
   }
 
   async function signOut() {

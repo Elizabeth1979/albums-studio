@@ -30,8 +30,9 @@ subscription, Supabase, RLS, share links, Family Travels.
   notes/alt text remain the owner-control and review layer.
 - ✅ **Frontend stack chosen:** React and TypeScript on Vite.
 - ✅ **Phase 1 checkpoint met.** Password sign-in and password reset confirmed against
-  production by the owner. Magic-link delivery is wired and covered by tests but has not
-  been exercised by hand.
+  production by the owner. Magic-link delivery has been attempted once and was refused by
+  Supabase's shared mail throttle, so it remains unconfirmed end to end; see open question
+  12b on transactional email.
 - ✅ **Phase 2 implemented.** `albums.layout` exists with a `masonry`/`grid` check
   constraint. Albums can be created, opened, renamed, relayouted, and deleted behind a
   confirmation, with the empty album page rendering in the chosen layout.
@@ -387,6 +388,12 @@ in the same release as the feature — not later.
    without creating open-ended platform AI cost.
 12. **Free tier limits.** Storage is the constraint, not compute. A per-user byte quota is
    needed before signup opens to anyone.
+12b. **Transactional email.** The project still sends auth mail through Supabase's shared
+   test service, which is throttled per address and explicitly not for production. A real
+   magic-link request was refused with `over_email_send_rate_limit` on 2026-08-16 because
+   it followed a reset email by five seconds. Custom SMTP must be configured before signup
+   opens to anyone; until then every email-based flow is rate-limited in ways users will
+   read as breakage.
 13. **Slideshow/movie export pipeline.** Decide whether exports are browser-rendered,
    server-rendered, or powered by a dedicated video pipeline. Music requires clear rules for
    upload, storage, rights, and whether shared viewers can download the final movie.
