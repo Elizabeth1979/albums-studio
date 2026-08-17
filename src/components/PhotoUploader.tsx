@@ -1,4 +1,4 @@
-import { type ChangeEvent, type DragEvent, useId, useRef, useState } from 'react'
+import { type ChangeEvent, type DragEvent, useId, useState } from 'react'
 import { UNIVERSAL_FORMATS } from '../lib/imaging/formats'
 import type { UploadItem } from '../lib/uploads'
 
@@ -19,7 +19,6 @@ const STATUS_LABELS: Record<UploadItem['status'], string> = {
 
 export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploaderProps) {
   const inputId = useId()
-  const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
   function take(files: FileList | null) {
@@ -66,7 +65,6 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
             that as permission to convert *into* HEIC, which breaks the very
             case the attribute is here to handle. */}
         <input
-          ref={inputRef}
           id={inputId}
           className="visually-hidden"
           type="file"
