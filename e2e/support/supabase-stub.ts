@@ -82,8 +82,18 @@ export type PhotoRecord = {
   width: number | null
   height: number | null
   caption: string | null
+  caption_visibility: string
   alt: string | null
+  alt_source: string | null
   sort_order: number
+}
+
+export type StoryRecord = {
+  id: string
+  photo_id: string
+  body: string
+  visibility: string
+  created_at: string
 }
 
 export type StubOptions = {
@@ -97,6 +107,14 @@ export type StubOptions = {
   emailSend?: { status: number; body: object }
   /** Status and body returned by writes to `photos`, for failure cases. */
   photoWrite?: { status: number; body: object }
+  /**
+   * Status and body returned by edits to an existing `photos` row. Separate from
+   * `photoWrite` so a test can refuse a caption without also refusing the upload
+   * that has to happen first.
+   */
+  photoUpdate?: { status: number; body: object }
+  /** Status and body returned by writes to `photo_stories`, for failure cases. */
+  storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
   storageUpload?: { status: number; body: object }
 }
@@ -109,6 +127,8 @@ export type AuthCalls = {
   albums: () => AlbumRecord[]
   /** Current contents of the fake `photos` table. */
   photos: () => PhotoRecord[]
+  /** Current contents of the fake `photo_stories` table. */
+  stories: () => StoryRecord[]
   /** Object keys written to the fake Storage bucket. */
   objects: () => string[]
 }
@@ -149,9 +169,11 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
   const calls: AuthCalls['all'] = []
   let albums: AlbumRecord[] = [...(options.albums ?? [])]
   let photos: PhotoRecord[] = []
+  let stories: StoryRecord[] = []
   let objects: string[] = []
   let created = 0
   let photosCreated = 0
+  let storiesCreated = 0
 
   await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
     const request = route.request()
@@ -218,6 +240,45 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       return json({})
     }
 
+    if (path.endsWith('/rest/v1/photo_stories')) {
+      if (method !== 'GET' && options.storyWrite) {
+        return json(options.storyWrite.body, options.storyWrite.status)
+      }
+
+      if (method === 'GET') {
+        const ids = inFilter(url, 'photo_id')
+        return json(stories.filter((row) => ids === null || ids.includes(row.photo_id)))
+      }
+
+      if (method === 'POST') {
+        const body = parseBody(request) as Record<string, unknown>
+        storiesCreated += 1
+        const row: StoryRecord = {
+          id: `story-${storiesCreated}`,
+          photo_id: String(body.photo_id ?? ''),
+          body: String(body.body ?? ''),
+          visibility: String(body.visibility ?? 'hidden'),
+          created_at: new Date().toISOString(),
+        }
+        stories = [...stories, row]
+        return json(wantsObject ? row : [row], 201)
+      }
+
+      if (method === 'PATCH') {
+        const id = eqFilter(url, 'id')
+        const patch = parseBody(request) as Partial<StoryRecord>
+        stories = stories.map((row) => (row.id === id ? { ...row, ...patch } : row))
+        const updated = stories.find((row) => row.id === id)
+        return json(wantsObject ? (updated ?? {}) : stories.filter((row) => row.id === id))
+      }
+
+      if (method === 'DELETE') {
+        const id = eqFilter(url, 'id')
+        stories = stories.filter((row) => row.id !== id)
+        return route.fulfill({ status: 204, body: '' })
+      }
+    }
+
     if (path.endsWith('/rest/v1/photos')) {
       if (method !== 'GET' && options.photoWrite) {
         return json(options.photoWrite.body, options.photoWrite.status)
@@ -250,11 +311,26 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           width: (body.width as number | null) ?? null,
           height: (body.height as number | null) ?? null,
           caption: null,
+          // The column default. A caption is never public until someone says so.
+          caption_visibility: 'hidden',
           alt: null,
+          alt_source: null,
           sort_order: (body.sort_order as number) ?? 0,
         }
         photos = [...photos, row]
         return json(wantsObject ? row : [row], 201)
+      }
+
+      if (method === 'PATCH') {
+        if (options.photoUpdate) {
+          return json(options.photoUpdate.body, options.photoUpdate.status)
+        }
+
+        const id = eqFilter(url, 'id')
+        const patch = parseBody(request) as Partial<PhotoRecord>
+        photos = photos.map((row) => (row.id === id ? { ...row, ...patch } : row))
+        const updated = photos.find((row) => row.id === id)
+        return json(wantsObject ? (updated ?? {}) : photos.filter((row) => row.id === id))
       }
     }
 
@@ -338,6 +414,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     find: (path: string) => calls.find((call) => call.path.endsWith(path)),
     albums: () => albums,
     photos: () => photos,
+    stories: () => stories,
     objects: () => objects,
   }
 }

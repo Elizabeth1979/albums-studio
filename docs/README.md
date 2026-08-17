@@ -21,8 +21,17 @@ AI cost.
 - Phone layout is covered by an end-to-end suite at a 412x915 viewport, including a guard on
   field height and a check that no page scrolls sideways.
 - Supabase is healthy and its complete migration history is committed.
-- The minimal schema is `profiles`, `albums`, `photos`, and `ai_usage`, all protected by
-  RLS and explicit Data API grants.
+- The minimal schema is `profiles`, `albums`, `photos`, `photo_stories`, and `ai_usage`,
+  all protected by RLS and explicit Data API grants.
+- Owners write three separate kinds of text about a photo: a caption (private by default,
+  publishable per photo), alt text (always delivered, since it exists to be read out), and
+  story notes (several per photo, each with its own visibility). Writing alt text records
+  `alt_source = 'human'` so a Phase 5 AI draft can never quietly overwrite it.
+- Hidden text is hidden in the database, not only in the interface. `get_shared_album`
+  returns a caption only when it is marked visible, and `anon` holds a named column list on
+  `photos` that excludes `caption`. Story notes have no anon grant at all.
+- Album cards in the library show a cover photo. The first photo into an album with no cover
+  becomes one; an album that already has a cover keeps it.
 - The `photos` bucket is private and owner-namespaced. Shared delivery will use short-lived
   signed URLs from trusted server code.
 - Authentication covers password sign-in, magic links, and password reset. Password inputs
@@ -42,8 +51,7 @@ AI cost.
   on the project organization's team. Owner email arrives for that reason; nobody else's
   would. Custom SMTP is a prerequisite for opening signup — see roadmap open question 12b.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
-- Next: Phase 4 captions, story notes, and manual alt text. Photos currently render with an
-  empty `alt`, which correctly marks them decorative until an owner can write one.
+- Next: Phase 5 AI Story Studio. Phases 1 to 4 are done and deployed.
 
 ## Plans
 
@@ -69,5 +77,8 @@ AI cost.
   review that added routing, album descriptions, and enforced accessibility.
 - [Phase 3 upload spine](sessions/2026-08-17-phase-3-upload.md) — browser-side resize,
   thumbnail, perceptual hash and sharpness in a worker, with a throttled upload queue.
+- [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
+  photo editor, per-photo visibility choices, and the grant and share-function fixes that
+  had to land before any text could be called hidden.
 
 When adding or materially changing a document under `docs/`, update its entry here.

@@ -26,6 +26,7 @@ function photo(id: string, sortOrder: number): Photo {
     width: 2000,
     height: 1500,
     caption: null,
+    captionVisibility: 'hidden',
     alt: null,
     sortOrder,
   }

@@ -6,6 +6,17 @@ export const PHOTO_BUCKET = 'photos'
 /** Signed URLs are short-lived on purpose; the bucket itself stays private. */
 const SIGNED_URL_TTL_SECONDS = 60 * 60
 
+/**
+ * Whether a piece of owner-written text is published with the album.
+ *
+ * Hidden is not a lesser state. A caption written to remember who is in the
+ * photograph is worth keeping whether or not it belongs under the picture, and
+ * it still feeds search and, later, the story studio.
+ */
+export const TEXT_VISIBILITIES = ['hidden', 'visible'] as const
+
+export type TextVisibility = (typeof TEXT_VISIBILITIES)[number]
+
 export type Photo = {
   id: string
   storagePath: string
@@ -13,6 +24,7 @@ export type Photo = {
   width: number | null
   height: number | null
   caption: string | null
+  captionVisibility: TextVisibility
   alt: string | null
   sortOrder: number
 }
@@ -24,12 +36,13 @@ type PhotoRow = {
   width: number | null
   height: number | null
   caption: string | null
+  caption_visibility: TextVisibility
   alt: string | null
   sort_order: number
 }
 
 const PHOTO_COLUMNS =
-  'id, storage_path, thumbnail_path, width, height, caption, alt, sort_order'
+  'id, storage_path, thumbnail_path, width, height, caption, caption_visibility, alt, sort_order'
 
 function toPhoto(row: PhotoRow): Photo {
   return {
@@ -39,9 +52,55 @@ function toPhoto(row: PhotoRow): Photo {
     width: row.width,
     height: row.height,
     caption: row.caption,
+    captionVisibility: row.caption_visibility,
     alt: row.alt,
     sortOrder: row.sort_order,
   }
+}
+
+/** Empty text is stored as null, so "never written" and "cleared" read alike. */
+function trimmedOrNull(value: string): string | null {
+  return value.trim() || null
+}
+
+/**
+ * Saves the owner's own words about one photograph.
+ *
+ * Only the fields passed are written, so a screen that edits alt text alone
+ * cannot blank a caption it never showed. Writing alt text records that a person
+ * wrote it: Phase 5 will draft alt text with AI, and the two must stay
+ * distinguishable so a human's wording is never quietly overwritten.
+ */
+export async function updatePhotoText(
+  id: string,
+  patch: { caption?: string; captionVisibility?: TextVisibility; alt?: string },
+): Promise<Photo> {
+  const columns: Record<string, unknown> = {}
+
+  if (patch.caption !== undefined) {
+    columns.caption = trimmedOrNull(patch.caption)
+  }
+
+  if (patch.captionVisibility !== undefined) {
+    columns.caption_visibility = patch.captionVisibility
+  }
+
+  if (patch.alt !== undefined) {
+    const alt = trimmedOrNull(patch.alt)
+    columns.alt = alt
+    columns.alt_source = alt ? 'human' : null
+  }
+
+  const { data, error } = await supabase
+    .from('photos')
+    .update(columns)
+    .eq('id', id)
+    .select(PHOTO_COLUMNS)
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  return toPhoto(data as PhotoRow)
 }
 
 export async function listPhotos(albumId: string): Promise<Photo[]> {

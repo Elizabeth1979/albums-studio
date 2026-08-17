@@ -1233,6 +1233,231 @@ input:focus-visible {
   background: linear-gradient(160deg, #efe8dd, #e2d8c9);
 }
 
+/* The tile is the control that opens a photo's text, so it is a real button
+   rather than a click handler on the image. */
+.photo-open {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.photo-open.selected {
+  outline: 3px solid #996130;
+  outline-offset: -3px;
+}
+
+/* A quiet mark that this photo already has words on it, so an owner can see at
+   a glance which ones still need attention. */
+.photo-written {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  color: #fffdf9;
+  background: rgba(60, 48, 34, 0.72);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.album-hint {
+  margin: 0 0 0.9rem;
+  color: #6f675c;
+  font-size: 0.85rem;
+}
+
+/* Photo editor ------------------------------------------------------------- */
+
+.photo-editor {
+  margin-top: 1.4rem;
+  padding: 1.3rem;
+  border: 1px solid #ded6ca;
+  border-radius: 0.9rem;
+  background: #fffdf9;
+}
+
+.photo-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.photo-editor-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.photo-editor-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.3rem;
+}
+
+.photo-editor-preview {
+  flex: 0 0 11rem;
+  width: 11rem;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.6rem;
+  object-fit: cover;
+  background: #efe8dd;
+}
+
+.photo-editor-form {
+  display: grid;
+  gap: 0.9rem;
+  flex: 1 1 auto;
+  /* Without this a long caption stretches the flex item instead of wrapping. */
+  min-width: 0;
+}
+
+.photo-editor-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.photo-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.field-hint {
+  margin: -0.4rem 0 0;
+  color: #6f675c;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.form-message.success {
+  color: #33583c;
+  background: #e5f0e6;
+}
+
+.visibility-choice {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e3dbcf;
+  border-radius: 0.6rem;
+}
+
+.visibility-choice legend {
+  padding: 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.visibility-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.visibility-option em {
+  display: block;
+  color: #6f675c;
+  font-size: 0.76rem;
+  font-style: normal;
+}
+
+/* Story notes -------------------------------------------------------------- */
+
+.story-notes {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid #e7dfd3;
+}
+
+.story-notes h4 {
+  margin: 0 0 0.3rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+}
+
+.story-list {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-item {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem;
+  border: 1px solid #e3dbcf;
+  border-radius: 0.6rem;
+  background: #fbf7f0;
+}
+
+.story-body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.story-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.visibility-badge {
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #cbbfaa;
+  border-radius: 2rem;
+  color: #675844;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.story-form {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+}
+
+.story-form label {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .photo-editor-body {
+    display: block;
+  }
+
+  /* The preview is a reminder of which photo is being written about, not the
+     subject of the screen; on a phone the fields matter more. */
+  .photo-editor-preview {
+    width: 7rem;
+    margin-bottom: 0.9rem;
+  }
+}
+
 @media (max-width: 720px) {
   .photo-gallery.layout-masonry {
     columns: 2;

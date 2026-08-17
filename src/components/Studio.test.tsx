@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Studio } from './Studio'
 import type { Album } from '../lib/albums'
 
-const { albumsApi, photosApi, processorApi } = vi.hoisted(() => ({
+const { albumsApi, photosApi, processorApi, storiesApi } = vi.hoisted(() => ({
   albumsApi: {
     listAlbums: vi.fn(),
     createAlbum: vi.fn(),
@@ -20,7 +20,15 @@ const { albumsApi, photosApi, processorApi } = vi.hoisted(() => ({
     thumbnailsByPhotoId: vi.fn(),
   },
   processorApi: { process: vi.fn(), dispose: vi.fn() },
+  storiesApi: {
+    listStories: vi.fn(),
+    createStory: vi.fn(),
+    updateStory: vi.fn(),
+    deleteStory: vi.fn(),
+  },
 }))
+
+vi.mock('../lib/stories', () => storiesApi)
 
 // jsdom has neither Worker nor a canvas, so the real processor would fall back
 // to the main thread and then fail to decode. What a photograph becomes is
@@ -67,6 +75,7 @@ beforeEach(() => {
   photosApi.listPhotos.mockResolvedValue([])
   photosApi.signedUrls.mockResolvedValue(new Map())
   photosApi.thumbnailsByPhotoId.mockResolvedValue(new Map())
+  storiesApi.listStories.mockResolvedValue([])
   processorApi.process.mockResolvedValue({
     full: new Blob(['full']),
     thumbnail: new Blob(['thumb']),

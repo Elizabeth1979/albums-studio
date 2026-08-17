@@ -4,17 +4,25 @@ import { AlbumPhotos } from './AlbumPhotos'
 import type { Album } from '../lib/albums'
 import type { Photo } from '../lib/photos'
 
-const { photosApi, processorApi, createImageProcessor } = vi.hoisted(() => ({
+const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted(() => ({
   photosApi: {
     listPhotos: vi.fn(),
     storePhoto: vi.fn(),
     signedUrls: vi.fn(),
+    updatePhotoText: vi.fn(),
   },
   processorApi: { process: vi.fn(), dispose: vi.fn() },
   createImageProcessor: vi.fn(),
+  storiesApi: {
+    listStories: vi.fn(),
+    createStory: vi.fn(),
+    updateStory: vi.fn(),
+    deleteStory: vi.fn(),
+  },
 }))
 
 vi.mock('../lib/photos', () => photosApi)
+vi.mock('../lib/stories', () => storiesApi)
 vi.mock('../lib/imaging/processor', () => ({ createImageProcessor }))
 
 const album: Album = {
@@ -43,6 +51,7 @@ function photo(index: number): Photo {
     width: 2000,
     height: 1500,
     caption: null,
+    captionVisibility: 'hidden',
     alt: null,
     sortOrder: index,
   }
@@ -58,6 +67,7 @@ function chooseFiles(names: string[]) {
 beforeEach(() => {
   vi.clearAllMocks()
   createImageProcessor.mockReturnValue(processorApi)
+  storiesApi.listStories.mockResolvedValue([])
   onCoverChosen.mockResolvedValue(undefined)
   photosApi.listPhotos.mockResolvedValue([])
   photosApi.signedUrls.mockResolvedValue(new Map())
@@ -106,11 +116,11 @@ describe('AlbumPhotos', () => {
     expect(screen.queryByRole('heading', { name: 'No photos yet' })).not.toBeInTheDocument()
   })
 
-  it('leaves a photo without alt text out of the accessibility tree', async () => {
-    // Until Phase 4 lets an owner write alt text, an empty alt is the honest
-    // answer: a screen reader should skip the image rather than announce a
-    // filename that describes nothing.
-    photosApi.listPhotos.mockResolvedValue([photo(0)])
+  it('keeps the image itself out of the accessibility tree', async () => {
+    // The tile is a button now, and the button carries the description. An image
+    // that also announced itself would make a screen reader read every photo
+    // twice over.
+    photosApi.listPhotos.mockResolvedValue([{ ...photo(0), alt: 'The reef at sunset' }])
     photosApi.signedUrls.mockResolvedValue(
       new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/0']]),
     )
@@ -121,7 +131,7 @@ describe('AlbumPhotos', () => {
     expect(screen.queryAllByRole('img')).toHaveLength(0)
   })
 
-  it('announces a photo that does have alt text', async () => {
+  it('names a photo by its alt text once the owner has written some', async () => {
     photosApi.listPhotos.mockResolvedValue([{ ...photo(0), alt: 'The reef at sunset' }])
     photosApi.signedUrls.mockResolvedValue(
       new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/0']]),
@@ -129,7 +139,21 @@ describe('AlbumPhotos', () => {
 
     renderPhotos()
 
-    expect(await screen.findByRole('img', { name: 'The reef at sunset' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Edit photo 1: The reef at sunset' }),
+    ).toBeInTheDocument()
+  })
+
+  it('still tells photos apart before anything has been written', async () => {
+    // Position is the only thing that distinguishes two undescribed pictures,
+    // so it stays in the name rather than leaving a row of identical buttons.
+    photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
+    photosApi.signedUrls.mockResolvedValue(new Map())
+
+    renderPhotos()
+
+    expect(await screen.findByRole('button', { name: 'Edit photo 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit photo 2' })).toBeInTheDocument()
   })
 
   it('reports a failed load', async () => {
@@ -191,6 +215,159 @@ describe('AlbumPhotos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear this list' }))
 
     expect(screen.queryByText('Added 1 of 1.')).not.toBeInTheDocument()
+  })
+
+  describe('writing about a photo', () => {
+    async function openEditor() {
+      photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
+      photosApi.signedUrls.mockResolvedValue(
+        new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/0']]),
+      )
+
+      renderPhotos()
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit photo 1' }))
+
+      return screen.findByRole('heading', { name: 'What do you want to remember?' })
+    }
+
+    it('opens an editor for the photo that was chosen', async () => {
+      await openEditor()
+
+      expect(screen.getByText('Photo 1')).toBeInTheDocument()
+    })
+
+    it('closes it again when the same photo is chosen twice', async () => {
+      await openEditor()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit photo 1' }))
+
+      expect(
+        screen.queryByRole('heading', { name: 'What do you want to remember?' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('saves the text against the right photo', async () => {
+      photosApi.updatePhotoText.mockResolvedValue({ ...photo(1), caption: 'Dinner' })
+      await openEditor()
+
+      // Switch to the second photo before saving: the editor is one component
+      // reused for whichever photo is open, so it has to write to that one.
+      fireEvent.click(screen.getByRole('button', { name: 'Edit photo 2' }))
+      fireEvent.change(screen.getByLabelText('Caption'), { target: { value: 'Dinner' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() =>
+        expect(photosApi.updatePhotoText).toHaveBeenCalledWith(
+          'photo-1',
+          expect.objectContaining({ caption: 'Dinner' }),
+        ),
+      )
+    })
+
+    it('shows the saved text without reloading the album', async () => {
+      photosApi.updatePhotoText.mockResolvedValue({
+        ...photo(0),
+        alt: 'A table by the sea',
+      })
+      await openEditor()
+
+      fireEvent.change(screen.getByLabelText('Alt text'), {
+        target: { value: 'A table by the sea' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      // The tile takes its name from the alt text, so this is the album seeing
+      // the new value rather than the form still holding it.
+      expect(
+        await screen.findByRole('button', { name: 'Edit photo 1: A table by the sea' }),
+      ).toBeInTheDocument()
+    })
+
+    it('starts a fresh draft when a different photo is opened', async () => {
+      // Otherwise a half-typed caption follows the owner to the next picture and
+      // gets saved to the wrong one.
+      await openEditor()
+
+      fireEvent.change(screen.getByLabelText('Caption'), { target: { value: 'Half a th' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Edit photo 2' }))
+
+      expect(screen.getByLabelText('Caption')).toHaveValue('')
+    })
+
+    it('adds a story to the open photo', async () => {
+      storiesApi.createStory.mockResolvedValue({
+        id: 'story-1',
+        photoId: 'photo-0',
+        body: 'A long day.',
+        visibility: 'hidden',
+        createdAt: '2026-08-17T10:00:00Z',
+      })
+      await openEditor()
+
+      fireEvent.change(screen.getByLabelText('Add a story'), {
+        target: { value: 'A long day.' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Save story' }))
+
+      await waitFor(() =>
+        expect(storiesApi.createStory).toHaveBeenCalledWith({
+          photoId: 'photo-0',
+          body: 'A long day.',
+          visibility: 'hidden',
+        }),
+      )
+      expect(await screen.findByText('A long day.')).toBeInTheDocument()
+    })
+
+    it('shows each photo only its own stories', async () => {
+      storiesApi.listStories.mockResolvedValue([
+        {
+          id: 'story-1',
+          photoId: 'photo-1',
+          body: 'Belongs to the second photo.',
+          visibility: 'hidden',
+          createdAt: '2026-08-17T10:00:00Z',
+        },
+      ])
+      await openEditor()
+
+      expect(screen.queryByText('Belongs to the second photo.')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit photo 2' }))
+      expect(screen.getByText('Belongs to the second photo.')).toBeInTheDocument()
+    })
+
+    it('takes a deleted story off the screen', async () => {
+      storiesApi.listStories.mockResolvedValue([
+        {
+          id: 'story-1',
+          photoId: 'photo-0',
+          body: 'A long day.',
+          visibility: 'hidden',
+          createdAt: '2026-08-17T10:00:00Z',
+        },
+      ])
+      storiesApi.deleteStory.mockResolvedValue(undefined)
+      await openEditor()
+
+      await screen.findByText('A long day.')
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }))
+
+      await waitFor(() => expect(screen.queryByText('A long day.')).not.toBeInTheDocument())
+    })
+
+    it('opens the album even when the stories cannot be read', async () => {
+      // Story notes are the secondary half of this screen. A failure to read
+      // them is not a reason to refuse to show the photographs.
+      storiesApi.listStories.mockRejectedValue(new Error('timeout'))
+      photosApi.listPhotos.mockResolvedValue([photo(0)])
+
+      renderPhotos()
+
+      expect(await screen.findByRole('button', { name: 'Edit photo 1' })).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 
   describe('the image processor', () => {

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listPhotos, signedUrls, storePhoto, thumbnailsByPhotoId } from './photos'
+import {
+  listPhotos,
+  signedUrls,
+  storePhoto,
+  thumbnailsByPhotoId,
+  updatePhotoText,
+} from './photos'
 
 const { auth, from, storage } = vi.hoisted(() => ({
   auth: { getClaims: vi.fn() },
@@ -18,6 +24,7 @@ const ROW = {
   width: 2000,
   height: 1500,
   caption: null,
+  caption_visibility: 'hidden',
   alt: null,
   sort_order: 0,
 }
@@ -186,6 +193,106 @@ describe('signedUrls', () => {
     createSignedUrls.mockResolvedValue({ data: null, error: { message: 'object not found' } })
 
     await expect(signedUrls(['a.jpg'])).rejects.toThrow('object not found')
+  })
+})
+
+describe('updatePhotoText', () => {
+  /** Mirrors the `.update().eq().select().single()` chain. */
+  function updateBuilder(row: object = ROW) {
+    const update = vi.fn((_patch: Record<string, unknown>) => ({
+      eq: () => ({
+        select: () => ({ single: () => Promise.resolve({ data: row, error: null }) }),
+      }),
+    }))
+
+    from.mockReturnValue({ update })
+
+    return update
+  }
+
+  it('writes only the fields it was given', async () => {
+    // The alt-text field and the caption field are saved by the same form today,
+    // but a partial patch must never blank the half it was not shown.
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', { caption: 'Dinner on the last night' })
+
+    expect(update).toHaveBeenCalledWith({ caption: 'Dinner on the last night' })
+  })
+
+  it('stores cleared text as null rather than an empty string', async () => {
+    // Otherwise "never written" and "deleted" are two states that read alike.
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', { caption: '   ' })
+
+    expect(update).toHaveBeenCalledWith({ caption: null })
+  })
+
+  it('trims surrounding whitespace', async () => {
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', { caption: '  Dinner  ' })
+
+    expect(update).toHaveBeenCalledWith({ caption: 'Dinner' })
+  })
+
+  it('records that a person wrote the alt text', async () => {
+    // Phase 5 drafts alt text with AI. The two have to stay distinguishable, or
+    // a suggestion will one day overwrite a sentence someone chose carefully.
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', { alt: 'Two children on a jetty' })
+
+    expect(update).toHaveBeenCalledWith({
+      alt: 'Two children on a jetty',
+      alt_source: 'human',
+    })
+  })
+
+  it('clears the authorship when the alt text is removed', async () => {
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', { alt: '' })
+
+    expect(update).toHaveBeenCalledWith({ alt: null, alt_source: null })
+  })
+
+  it('changes caption visibility without touching the caption', async () => {
+    // Publishing a caption you already wrote should not require retyping it.
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', { captionVisibility: 'visible' })
+
+    expect(update).toHaveBeenCalledWith({ caption_visibility: 'visible' })
+  })
+
+  it('returns the stored photo, including its visibility', async () => {
+    updateBuilder({ ...ROW, caption: 'Dinner', caption_visibility: 'visible' })
+
+    const photo = await updatePhotoText('photo-1', { caption: 'Dinner' })
+
+    expect(photo.caption).toBe('Dinner')
+    expect(photo.captionVisibility).toBe('visible')
+  })
+
+  it('reports a refused write', async () => {
+    const update = vi.fn(() => ({
+      eq: () => ({
+        select: () => ({
+          single: () =>
+            Promise.resolve({
+              data: null,
+              error: { message: 'permission denied for column caption_visibility' },
+            }),
+        }),
+      }),
+    }))
+    from.mockReturnValue({ update })
+
+    await expect(updatePhotoText('photo-1', { caption: 'x' })).rejects.toThrow(
+      'permission denied',
+    )
   })
 })
 
