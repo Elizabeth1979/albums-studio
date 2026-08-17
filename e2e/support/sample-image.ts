@@ -18,15 +18,15 @@ function chunk(tag: string, data: Buffer): Buffer {
  * perceptual hash and a sharpness score from whatever it decodes, and a flat
  * or single-axis image would exercise those with degenerate input.
  */
-export function samplePng(size = 96): Buffer {
-  const raw = Buffer.alloc(size * (size * 3 + 1))
+export function samplePng(width = 96, height = width): Buffer {
+  const raw = Buffer.alloc(height * (width * 3 + 1))
   let offset = 0
 
-  for (let y = 0; y < size; y += 1) {
+  for (let y = 0; y < height; y += 1) {
     raw[offset] = 0 // no per-scanline filter
     offset += 1
 
-    for (let x = 0; x < size; x += 1) {
+    for (let x = 0; x < width; x += 1) {
       raw[offset] = 120 + 100 * ((Math.floor(x / 8) + Math.floor(y / 8)) % 2)
       raw[offset + 1] = 80 + ((x * 2) % 160)
       raw[offset + 2] = 200 - ((y * 2) % 160)
@@ -35,8 +35,8 @@ export function samplePng(size = 96): Buffer {
   }
 
   const header = Buffer.alloc(13)
-  header.writeUInt32BE(size, 0)
-  header.writeUInt32BE(size, 4)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
   header[8] = 8 // bit depth
   header[9] = 2 // truecolour
 
@@ -48,6 +48,6 @@ export function samplePng(size = 96): Buffer {
   ])
 }
 
-export function sampleFile(name = 'reef.png', size = 96) {
-  return { name, mimeType: 'image/png', buffer: samplePng(size) }
+export function sampleFile(name = 'reef.png', width = 96, height = width) {
+  return { name, mimeType: 'image/png', buffer: samplePng(width, height) }
 }
