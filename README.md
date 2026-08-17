@@ -32,26 +32,28 @@ Browser
 Shared viewer -> token endpoint -> album metadata + short-lived signed image URLs
 ```
 
-The `photos` bucket is private. The database stores canonical object paths, and trusted
-server code must create short-lived signed URLs for owners and shared viewers.
+The `photos` bucket is private and the database stores canonical object paths rather than
+URLs. An owner signs their own images from the browser: Storage checks its policy against
+the caller's token first, so an owner can only ever sign objects under their own prefix.
+Shared viewers carry no token, so trusted server code must sign on their behalf.
 
 ## Current state
 
 The React and TypeScript application provides email/password authentication and an album
 library: albums can be created, opened, renamed, described, switched between masonry and
-grid layouts, and deleted behind a confirmation. The library lives at `/` and each album at
-`/albums/:slug`. Photos come next. The hosted Supabase project is
+grid layouts, and deleted behind a confirmation. Photos can be added from a phone's gallery
+or dropped in, and are resized, thumbnailed, hashed and scored in the browser before
+upload. The library lives at `/` and each album at `/albums/:slug`. The hosted Supabase project is
 configured and versioned in `supabase/migrations/`; its minimal schema contains `profiles`,
 `albums`, `photos`, and `ai_usage`. Later-phase structures will be added only when
 implemented.
 
-Phases 1 and 2 are implemented and automatically verified. Password sign-in, magic links,
+Phases 1 to 3 are implemented and automatically verified. Password sign-in, magic links,
 and password reset are supported; signup does not require email confirmation. A real
 sign-in and password-reset pass has been confirmed against production. A magic-link request
 made seconds after a reset email was refused by Supabase's per-address email throttle, so
 successful magic-link delivery is still unconfirmed; the app now explains that refusal
-rather than repeating it. Phase 3 adds browser-side upload into the private `photos`
-bucket.
+rather than repeating it. Phase 4 adds captions, story notes, and manual alt text.
 
 Production: [albums-studio.vercel.app](https://albums-studio.vercel.app)
 

@@ -8,8 +8,13 @@ AI cost.
 
 ## Current state
 
-- The React and TypeScript application has email/password authentication and an album
-  library: albums can be created, opened, renamed, described, relayouted, and deleted.
+- The React and TypeScript application has email/password authentication, an album library
+  (create, open, rename, describe, relayout, delete), and photo upload.
+- Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
+  sharpness in a Web Worker, then uploaded four at a time with retry. Measurements are
+  stored so Phase 7 duplicate detection and best-shot ranking need no model calls.
+- Owners sign their own thumbnail URLs from the browser; Storage checks its policy against
+  the caller's token first. Shared viewers have no token and still need Phase 6 server code.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
@@ -37,7 +42,8 @@ AI cost.
   on the project organization's team. Owner email arrives for that reason; nobody else's
   would. Custom SMTP is a prerequisite for opening signup — see roadmap open question 12b.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
-- Next: Phase 3 browser-side upload into the private `photos` bucket.
+- Next: Phase 4 captions, story notes, and manual alt text. Photos currently render with an
+  empty `alt`, which correctly marks them decorative until an owner can write one.
 
 ## Plans
 
@@ -61,5 +67,7 @@ AI cost.
   added the password reveal toggle and reset flow, the recovery-session guard, the
   end-to-end suite and CI, album shells with masonry and grid layouts, and a pre-Phase-3
   review that added routing, album descriptions, and enforced accessibility.
+- [Phase 3 upload spine](sessions/2026-08-17-phase-3-upload.md) — browser-side resize,
+  thumbnail, perceptual hash and sharpness in a worker, with a throttled upload queue.
 
 When adding or materially changing a document under `docs/`, update its entry here.

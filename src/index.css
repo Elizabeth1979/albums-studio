@@ -1036,3 +1036,194 @@ input:focus-visible {
   border-color: #996130;
   box-shadow: 0 0 0 3px rgb(153 97 48 / 12%);
 }
+
+/* Photos -------------------------------------------------------------------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.uploader {
+  margin-top: 2.5rem;
+}
+
+.uploader h2 {
+  margin: 0 0 0.8rem;
+  color: #6d6459;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.drop-zone {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.6rem;
+  border: 1px dashed #c3b8a8;
+  border-radius: 0.9rem;
+  background: #fffdf9;
+  justify-items: center;
+  text-align: center;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.drop-zone.dragging {
+  border-color: #996130;
+  background: #f7f0e6;
+}
+
+/* A label styled as the button: tapping it opens the picker, which is the only
+   way in on a phone. */
+.choose-photos {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0;
+  padding: 0.9rem 1.5rem;
+}
+
+.drop-hint {
+  max-width: 32rem;
+  margin: 0;
+  color: #6f675c;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.upload-progress {
+  margin-top: 1.2rem;
+}
+
+.upload-progress > p {
+  margin: 0 0 0.7rem;
+  color: #4d4740;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.upload-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+
+.upload-item {
+  display: grid;
+  gap: 0.15rem 0.75rem;
+  grid-template-columns: 1fr auto;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #e3ddd3;
+  border-radius: 0.5rem;
+  background: #fffdf9;
+  font-size: 0.82rem;
+}
+
+.upload-name {
+  overflow: hidden;
+  color: #3f3a34;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-status {
+  color: #6f675c;
+  font-weight: 700;
+}
+
+.upload-item.status-done .upload-status {
+  color: #33583c;
+}
+
+.upload-item.status-failed {
+  border-color: #e3cfc4;
+  background: #fdf6f2;
+}
+
+.upload-item.status-failed .upload-status {
+  color: #96361d;
+}
+
+.upload-error {
+  grid-column: 1 / -1;
+  color: #6d5c52;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.photo-gallery {
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-gallery.layout-masonry {
+  columns: 3;
+  column-gap: 0.7rem;
+}
+
+.photo-gallery.layout-masonry .photo-tile {
+  margin-bottom: 0.7rem;
+  break-inside: avoid;
+}
+
+.photo-gallery.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.photo-tile {
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: #efe8dd;
+}
+
+.photo-gallery.layout-masonry img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Grid crops to equal tiles; masonry keeps each photo's own proportions. */
+.photo-gallery.layout-grid .photo-tile {
+  aspect-ratio: 1;
+}
+
+.photo-gallery.layout-grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(160deg, #efe8dd, #e2d8c9);
+}
+
+@media (max-width: 720px) {
+  .photo-gallery.layout-masonry {
+    columns: 2;
+  }
+
+  .photo-gallery.layout-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .choose-photos {
+    width: 100%;
+    justify-content: center;
+  }
+}

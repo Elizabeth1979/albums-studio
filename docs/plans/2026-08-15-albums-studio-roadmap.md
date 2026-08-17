@@ -1,6 +1,6 @@
 # Roadmap: Albums Studio — AI-led stories, albums, layouts, curation, and accessible text
 
-**Status:** Phases 1-2 implemented; auth checkpoint met. Roadmap revised on
+**Status:** Phases 1-3 implemented; auth and album checkpoints met. Roadmap revised on
 2026-08-15: AI Story Studio is core; voice and text are input methods; manual
 captions/story notes/alt text are the review and control layer.
 **Keywords:** AI-led, AI Story Studio, proactive AI, freemium, paywall, trial quota, voice,
@@ -41,17 +41,22 @@ subscription, Supabase, RLS, share links, Family Travels.
 - ✅ **Client routing exists.** `/` is the library and `/albums/:slug` is one album, on
   history-API routes because Supabase delivers auth tokens in the URL hash. `vercel.json`
   rewrites all paths to `index.html` so deep links survive a reload.
+- ✅ **Phase 3 implemented.** Photos are chosen from the gallery or dropped in, resized to
+  2000px with a 400px thumbnail, hashed and scored for sharpness in a Web Worker, uploaded
+  four at a time with retry, and recorded with their measurements. Album creation and the
+  photo insert are both verified against the real schema.
 - ✅ **Accessibility is enforced, not asserted.** An axe-core pass over ten screens runs in
   CI against WCAG 2.0/2.1 A and AA. It found five real contrast failures on first run.
 
-**Next action:** Phase 3 upload. Browser-side resize, thumbnail, pHash, and sharpness per
-file, uploaded to `<owner>/<album>/<uuid>` in the private `photos` bucket, throttled to
-about four concurrent with progress and retry. The first AI checkpoint comes after the
-upload/text foundation.
+**Next action:** Phase 4 text foundation. Captions with a visibility flag, story notes, and
+manual alt text, each needing a forward-only migration before the phase ships. Photos
+currently render with an empty `alt`, which marks them decorative; that is honest until an
+owner can write alt text, and Phase 4 is what changes it. The first AI checkpoint follows.
 
 **Known schema gaps:** add forward-only migrations when their phases begin for
 `photos.caption_visibility`, `photo_stories`, `ai_drafts`, `studio_interactions`,
-`ai_suggestions`, and any face/embedding structures.
+`ai_suggestions`, and any face/embedding structures. Every client-written column needs its
+column grant in the same migration; two bugs today came from missing one.
 
 ## Context
 
@@ -365,8 +370,12 @@ in the same release as the feature — not later.
 
 1. ~~**Frontend stack.**~~ Resolved. React and TypeScript on Vite, with `react-router-dom`
    for addresses. Routing landed before Phase 3 so a long upload survives a reload.
-2. **Signed URL delivery.** Storage is private. Choose whether trusted server routes or Edge
-   Functions create short-lived image URLs before upload and sharing are implemented.
+2. **Signed URL delivery.** Partly resolved. An **owner** signs their own thumbnails from
+   the browser: Storage mints a URL only after checking its own policy against the caller's
+   token, so an owner can sign nothing but objects under their own prefix, and the token is
+   the authorization. **Shared viewers have no token at all**, so Phase 6 still needs
+   trusted server code to authorize and sign on their behalf. Do not extend the client path
+   to cover them.
 3. ~~**Layout schema.**~~ Resolved. `albums.layout` ships with Phase 2 as `text not null
    default 'masonry'` checked against `masonry` and `grid`. Each later layout (`story`,
    `slideshow`, `map`, `blog`) widens the constraint in the migration for the phase that

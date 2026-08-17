@@ -2,6 +2,12 @@ import { type ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AlbumPage } from './AlbumPage'
+
+// Photos load their own data and run a worker; AlbumPhotos has its own suite.
+// Stubbing it keeps these tests about album metadata.
+vi.mock('./AlbumPhotos', () => ({
+  AlbumPhotos: () => <div data-testid="album-photos" />,
+}))
 import type { Album } from '../lib/albums'
 
 function album(overrides: Partial<Album> = {}): Album {
@@ -41,7 +47,7 @@ describe('AlbumPage', () => {
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('heading', { name: 'No photos yet' })).toBeInTheDocument()
+    expect(screen.getByTestId('album-photos')).toBeInTheDocument()
   })
 
   it('returns to the library', () => {
