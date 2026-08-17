@@ -70,6 +70,11 @@ export function PhotoGallery({
                 <span className="photo-placeholder" aria-hidden="true" />
               )}
               <span className="visually-hidden">{tileLabel(photo, index, isCover)}</span>
+              {selectedId === photo.id && (
+                <span className="photo-editing-mark" aria-hidden="true">
+                  Editing
+                </span>
+              )}
               {isCover && (
                 <span className="photo-cover-mark" aria-hidden="true" title="Album cover">
                   Cover

@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Opening a pull request does not always produce a run: it silently failed to
+  # on two consecutive attempts for the same branch while pushes to main kept
+  # working. Without this there is no way to ask for the checks, and the choice
+  # is between merging unverified and pushing a commit that exists only to
+  # nudge GitHub.
+  workflow_dispatch:
 
 jobs:
   verify:

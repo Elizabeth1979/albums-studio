@@ -370,6 +370,55 @@ describe('AlbumPhotos', () => {
     })
   })
 
+  describe('showing which photo is open', () => {
+    async function openSecondOfThree() {
+      photosApi.listPhotos.mockResolvedValue([photo(0), photo(1), photo(2)])
+      photosApi.signedUrls.mockResolvedValue(new Map())
+
+      renderPhotos()
+      fireEvent.click(await screen.findByRole('button', { name: /^Edit photo 2/ }))
+    }
+
+    it('says which photo is open rather than only tinting it', async () => {
+      // A coloured ring is drawn over a photograph, so how visible it is depends
+      // on what the photograph contains. Words do not have that problem, and
+      // colour alone would fail WCAG 1.4.1 besides.
+      await openSecondOfThree()
+
+      expect(screen.getByText('Editing')).toBeInTheDocument()
+    })
+
+    it('marks exactly one photo at a time', async () => {
+      await openSecondOfThree()
+
+      expect(screen.getAllByText('Editing')).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: /^Edit photo 3/ }))
+      expect(screen.getAllByText('Editing')).toHaveLength(1)
+    })
+
+    it('drops the mark when the editor is closed', async () => {
+      await openSecondOfThree()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+      expect(screen.queryByText('Editing')).not.toBeInTheDocument()
+    })
+
+    it('tells assistive technology which tile is expanded', async () => {
+      await openSecondOfThree()
+
+      expect(screen.getByRole('button', { name: /^Edit photo 2/ })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: /^Edit photo 1/ })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+    })
+  })
+
   describe('choosing the album cover', () => {
     /** `name` is matched loosely: a cover's button carries a suffix. */
     async function openEditorFor(name: RegExp, overrides: Partial<Album> = {}) {
