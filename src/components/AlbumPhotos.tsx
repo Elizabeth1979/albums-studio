@@ -29,9 +29,17 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // worker up costs more than the first photo takes to process.
   const processorRef = useRef<ReturnType<typeof createImageProcessor> | null>(null)
 
-  useEffect(() => {
-    processorRef.current = createImageProcessor()
+  /**
+   * Built on first use rather than in an effect. Someone who taps the button the
+   * moment the screen appears can choose a file before effects have run, and a
+   * processor that is not there yet meant the upload was dropped in silence.
+   */
+  function imageProcessor() {
+    processorRef.current ??= createImageProcessor()
+    return processorRef.current
+  }
 
+  useEffect(() => {
     return () => {
       processorRef.current?.dispose()
       processorRef.current = null
@@ -83,9 +91,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   }, [album.id, refreshThumbnails])
 
   async function handleFiles(files: File[]) {
-    const processor = processorRef.current
-    if (!processor) return
-
+    const processor = imageProcessor()
     const requests = files.map((file) => ({ id: crypto.randomUUID(), file }))
 
     setItems(

@@ -4,19 +4,18 @@ import { AlbumPhotos } from './AlbumPhotos'
 import type { Album } from '../lib/albums'
 import type { Photo } from '../lib/photos'
 
-const { photosApi, processorApi } = vi.hoisted(() => ({
+const { photosApi, processorApi, createImageProcessor } = vi.hoisted(() => ({
   photosApi: {
     listPhotos: vi.fn(),
     storePhoto: vi.fn(),
     signedUrls: vi.fn(),
   },
   processorApi: { process: vi.fn(), dispose: vi.fn() },
+  createImageProcessor: vi.fn(),
 }))
 
 vi.mock('../lib/photos', () => photosApi)
-vi.mock('../lib/imaging/processor', () => ({
-  createImageProcessor: () => processorApi,
-}))
+vi.mock('../lib/imaging/processor', () => ({ createImageProcessor }))
 
 const album: Album = {
   id: 'album-1',
@@ -58,6 +57,7 @@ function chooseFiles(names: string[]) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  createImageProcessor.mockReturnValue(processorApi)
   onCoverChosen.mockResolvedValue(undefined)
   photosApi.listPhotos.mockResolvedValue([])
   photosApi.signedUrls.mockResolvedValue(new Map())
@@ -191,6 +191,52 @@ describe('AlbumPhotos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear this list' }))
 
     expect(screen.queryByText('Added 1 of 1.')).not.toBeInTheDocument()
+  })
+
+  describe('the image processor', () => {
+    it('is not built until there is a photo to process', () => {
+      // It was built in an effect, and a file chosen before that effect ran was
+      // dropped without a word: no upload, no error, nothing on screen. Building
+      // it on demand is what removes that gap, so the timing is pinned here.
+      renderPhotos()
+
+      expect(createImageProcessor).not.toHaveBeenCalled()
+    })
+
+    it('is built once and reused across batches', async () => {
+      // Starting a worker costs more than the first photo takes to process.
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+      await screen.findByText('Added 1 of 1.')
+
+      chooseFiles(['two.jpg'])
+      await screen.findByText('Added 1 of 1.')
+
+      expect(createImageProcessor).toHaveBeenCalledTimes(1)
+    })
+
+    it('is shut down when the screen goes away', async () => {
+      const { unmount } = renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+      await screen.findByText('Added 1 of 1.')
+
+      unmount()
+
+      expect(processorApi.dispose).toHaveBeenCalledOnce()
+    })
+
+    it('leaves nothing to shut down when no photo was ever chosen', () => {
+      // The common case: opening an album to look at it. Nothing was started,
+      // so there is nothing to tear down.
+      const { unmount } = renderPhotos()
+      unmount()
+
+      expect(processorApi.dispose).not.toHaveBeenCalled()
+    })
   })
 
   describe('choosing a cover', () => {
