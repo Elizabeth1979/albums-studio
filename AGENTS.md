@@ -125,6 +125,11 @@ saying so.
   that silently got no run at all, and a cached "in progress" reported as a stalled job
   minutes after it had passed.
 - After schema changes, verify migration history, RLS, grants, constraints, Storage policies,
-  and Supabase advisors.
+  and Supabase advisors, then run `supabase/checks/client_paths.sql`. It performs the writes
+  the client performs, as `authenticated` and `anon`, against the real schema, and rolls
+  everything back. It is the only check in the repository that touches a real database, and
+  it exists because every fault listed above passed a fully green suite. A column the client
+  starts writing belongs in it in the same change, or the next missing grant will reach the
+  deployed app exactly as the last four did.
 - Update `docs/README.md` when adding or materially changing a document under `docs/`.
 - Add a short session log only for work that changes durable decisions or project state.
