@@ -1,7 +1,7 @@
 import { mapWithConcurrency, withRetry } from './concurrency'
 import type { ImageProcessor } from './imaging/processor'
 import type { Photo } from './photos'
-import type { ProcessedImage } from './imaging/process'
+import { type ProcessedImage, detailOf, isPermanentFailure } from './imaging/process'
 
 /**
  * Four at a time. Each slot holds a decoded bitmap plus two encoded blobs, so
@@ -18,6 +18,8 @@ export type UploadItem = {
   fileName: string
   status: UploadStatus
   error: string | null
+  /** The browser's own words about the failure, when it gave any. */
+  detail: string | null
   /** True when retrying is pointless, e.g. a format this browser cannot decode. */
   permanent: boolean
 }
@@ -42,13 +44,11 @@ export type UploadRequest = {
 }
 
 /**
- * A format the browser cannot decode fails identically every time, so retrying
- * only delays the same answer. Matched by name because the worker relays the
- * failure across a message boundary, where the class itself cannot survive.
+ * A file the browser cannot read or decode fails identically every time, so
+ * retrying only delays the same answer. The decision lives beside the errors
+ * themselves so this and the worker cannot drift apart about what counts.
  */
-function isPermanent(error: unknown): boolean {
-  return error instanceof Error && error.name === 'UnreadableImageError'
-}
+const isPermanent = isPermanentFailure
 
 function messageFor(error: unknown, fileName: string): string {
   return error instanceof Error ? error.message : `${fileName} could not be uploaded.`
@@ -82,6 +82,7 @@ export async function runUploads(
       fileName: request.file.name,
       status: 'processing',
       error: null,
+      detail: null,
       permanent: false,
     }
 
@@ -114,6 +115,7 @@ export async function runUploads(
         ...base,
         status: 'failed',
         error: messageFor(error, request.file.name),
+        detail: detailOf(error) || null,
         permanent: isPermanent(error),
       })
     }

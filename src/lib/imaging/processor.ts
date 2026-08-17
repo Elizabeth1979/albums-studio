@@ -2,9 +2,12 @@ import { type ProcessedImage, processImage } from './process'
 import type { ProcessRequest, ProcessResponse } from './worker'
 
 class RelayedUnreadableError extends Error {
-  constructor(message: string) {
+  detail: string
+
+  constructor(message: string, detail: string) {
     super(message)
     this.name = 'UnreadableImageError'
+    this.detail = detail
   }
 }
 
@@ -63,7 +66,7 @@ export function createImageProcessor(): ImageProcessor {
     // from the text would only risk losing it.
     waiting.reject(
       response.unreadable
-        ? new RelayedUnreadableError(response.message)
+        ? new RelayedUnreadableError(response.message, response.detail)
         : new Error(response.message),
     )
   })

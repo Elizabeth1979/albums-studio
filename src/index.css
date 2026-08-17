@@ -1185,6 +1185,18 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 
+/* Quieter than the sentence above it: this is for reporting a problem, not for
+   reading every day. */
+.upload-detail {
+  grid-column: 1 / -1;
+  margin-top: 0.15rem;
+  color: #857468;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .photo-gallery {
   gap: 0.7rem;
   margin: 0;

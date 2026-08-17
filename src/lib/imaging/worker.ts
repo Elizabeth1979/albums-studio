@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { type ProcessedImage, UnreadableImageError, processImage } from './process'
+import { type ProcessedImage, detailOf, isPermanentFailure, processImage } from './process'
 
 export type ProcessRequest = {
   id: string
@@ -9,7 +9,7 @@ export type ProcessRequest = {
 
 export type ProcessResponse =
   | ({ id: string; ok: true } & ProcessedImage)
-  | { id: string; ok: false; message: string; unreadable: boolean }
+  | { id: string; ok: false; message: string; detail: string; unreadable: boolean }
 
 /**
  * Decoding and resizing a 50-megapixel photo takes long enough to drop frames,
@@ -27,8 +27,11 @@ self.addEventListener('message', async (event: MessageEvent<ProcessRequest>) => 
     const response: ProcessResponse = {
       id,
       ok: false,
-      unreadable: error instanceof UnreadableImageError,
+      unreadable: isPermanentFailure(error),
       message: error instanceof Error ? error.message : `${fileName} could not be processed.`,
+      // Relayed rather than re-derived: the worker is the only place that saw
+      // what the decoder actually said, and a class cannot cross postMessage.
+      detail: detailOf(error),
     }
     self.postMessage(response)
   }
