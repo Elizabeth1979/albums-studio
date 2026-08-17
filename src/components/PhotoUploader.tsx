@@ -98,6 +98,12 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
                 <span className="upload-name">{item.fileName}</span>
                 <span className="upload-status">{STATUS_LABELS[item.status]}</span>
                 {item.error && <span className="upload-error">{item.error}</span>}
+                {item.detail && (
+                  // The browser's own words. Nobody wants to read a DOMException,
+                  // but "it may be damaged" was a guess, and when the guess is
+                  // wrong this is the only thing that says so.
+                  <span className="upload-detail">{item.detail}</span>
+                )}
               </li>
             ))}
           </ul>

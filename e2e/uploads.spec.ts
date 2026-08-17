@@ -149,6 +149,62 @@ test.describe('uploading photos', () => {
     await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
   })
 
+  test('does not call an empty file damaged', async ({ page }) => {
+    // The real report: a photograph chosen on Android failed with "may be
+    // damaged, or in a format this browser does not support". A file that hands
+    // over no bytes is neither, and sending someone to check a photo that is
+    // perfectly fine is the wrong advice.
+    await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles({
+      name: 'cloud-only.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
+    })
+
+    const item = page.locator('.upload-item')
+    await expect(item).toContainText('could not be read from your device', { timeout: 15000 })
+    await expect(item).toContainText('open it once in your gallery')
+    await expect(item).not.toContainText('damaged')
+
+    // And says how many bytes turned up, so a report is diagnosable.
+    await expect(page.locator('.upload-detail')).toContainText('0 bytes')
+  })
+
+  test('gives up on an empty file immediately rather than retrying', async ({ page }) => {
+    await openAlbum(page)
+
+    const started = Date.now()
+    await page.getByLabel('Choose photos').setInputFiles({
+      name: 'cloud-only.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.alloc(0),
+    })
+    await expect(page.getByRole('alert')).toContainText('Retrying will not help', {
+      timeout: 15000,
+    })
+
+    // Three attempts with backoff would take well over a second.
+    expect(Date.now() - started).toBeLessThan(4000)
+  })
+
+  test('reports what the browser said about a file it cannot decode', async ({ page }) => {
+    await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles({
+      name: 'not-really.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('this is not an image at all'),
+    })
+
+    const item = page.locator('.upload-item')
+    await expect(item).toContainText('could not be read as an image here', { timeout: 15000 })
+
+    // The browser's own words, which is the only thing that can contradict the
+    // guess above it when the guess is wrong.
+    await expect(page.locator('.upload-detail')).not.toBeEmpty()
+  })
+
   test('does not leave orphaned objects when the row is refused', async ({ page }) => {
     // Bytes with no row are invisible to the owner; the upload path removes
     // them rather than letting the bucket fill with unreferenced objects.

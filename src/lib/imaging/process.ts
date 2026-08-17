@@ -1,4 +1,4 @@
-import { explainUnreadable } from './formats'
+import { explainUnreadable, explainUnreadableFile } from './formats'
 import { toLuma } from './luma'
 import { perceptualHash } from './phash'
 import { laplacianVariance } from './sharpness'
@@ -25,9 +25,114 @@ export type ProcessedImage = {
 }
 
 export class UnreadableImageError extends Error {
-  constructor(fileName: string, mimeType = '') {
+  /** The browser's own words, kept so a report says more than "it failed". */
+  detail: string
+
+  constructor(fileName: string, mimeType = '', detail = '') {
     super(explainUnreadable(fileName, mimeType))
     this.name = 'UnreadableImageError'
+    this.detail = detail
+  }
+}
+
+/**
+ * The bytes never arrived, so nothing can be said about the format.
+ *
+ * On Android a file chosen through the picker is handed over by whichever app
+ * owns it, and one that lives only in cloud storage can produce a File that
+ * reads as empty or fails outright. Calling that a damaged or unsupported image
+ * is both wrong and unhelpful: the remedy is to open it once in the gallery so
+ * it downloads.
+ */
+export class UnreadableFileError extends Error {
+  detail: string
+
+  constructor(fileName: string, detail = '') {
+    super(explainUnreadableFile(fileName))
+    this.name = 'UnreadableFileError'
+    this.detail = detail
+  }
+}
+
+/**
+ * Failures that will repeat identically, so the queue must not spend three
+ * attempts arriving at the same answer.
+ *
+ * Matched by name rather than by class: the worker relays failures across
+ * postMessage, where a class cannot survive. Keeping the set here means the
+ * worker and the upload queue cannot drift apart about what "permanent" means.
+ */
+const PERMANENT = new Set(['UnreadableImageError', 'UnreadableFileError'])
+
+export function isPermanentFailure(error: unknown): boolean {
+  return error instanceof Error && PERMANENT.has(error.name)
+}
+
+/** The browser's own words, when the failure carried any. */
+export function detailOf(error: unknown): string {
+  return error instanceof Error &&
+    'detail' in error &&
+    typeof (error as { detail: unknown }).detail === 'string'
+    ? (error as { detail: string }).detail
+    : ''
+}
+
+function describe(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message ? `${error.name}: ${error.message}` : error.name
+  }
+
+  return String(error)
+}
+
+/**
+ * Turns the chosen file into bytes this device definitely holds.
+ *
+ * Reading up front separates two failures that used to look identical: bytes
+ * that could not be fetched at all, and bytes that could not be decoded. Only
+ * the second is anything to do with the image format.
+ */
+async function readBytes(file: File | Blob, fileName: string): Promise<Blob> {
+  let bytes: ArrayBuffer
+
+  try {
+    bytes = await file.arrayBuffer()
+  } catch (error) {
+    throw new UnreadableFileError(fileName, describe(error))
+  }
+
+  if (bytes.byteLength === 0) {
+    throw new UnreadableFileError(fileName, 'the file was empty (0 bytes)')
+  }
+
+  return new Blob([bytes], { type: file.type })
+}
+
+/**
+ * Decodes, retrying at a bounded size if the first attempt fails.
+ *
+ * A phone camera writes photographs far larger than anything shown on screen,
+ * and decoding one at full resolution allocates four bytes per pixel: a
+ * 108-megapixel frame is over 400 MB before any resizing happens, which a phone
+ * can refuse. Asking the decoder to scale as it reads costs one line and needs
+ * a fraction of that. Passing only a width keeps the aspect ratio, so the
+ * result is never distorted, only sometimes a little larger than the ceiling —
+ * which the resize below brings down anyway.
+ */
+async function decode(source: Blob, fileName: string, mimeType: string): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(source)
+  } catch (first) {
+    try {
+      return await createImageBitmap(source, {
+        resizeWidth: FULL_SIZE,
+        resizeQuality: 'high',
+      })
+    } catch {
+      // The first failure is the honest one to report: the retry only narrows
+      // the size, so its message describes the same underlying problem.
+      throw new UnreadableImageError(fileName, mimeType, describe(first))
+    }
   }
 }
 
@@ -66,16 +171,12 @@ function draw(source: ImageBitmap, width: number, height: number): OffscreenCanv
  * local is what lets duplicate detection and best-shot ranking stay free later.
  */
 export async function processImage(file: File | Blob, fileName: string): Promise<ProcessedImage> {
-  let bitmap: ImageBitmap
-
-  try {
-    // Asking the browser to decode is the only reliable capability test: it
-    // needs no list of formats, devices or versions, and a format the browser
-    // learns to read later starts working with no change here.
-    bitmap = await createImageBitmap(file)
-  } catch {
-    throw new UnreadableImageError(fileName, file.type)
-  }
+  // Asking the browser to decode is the only reliable capability test: it needs
+  // no list of formats, devices or versions, and a format the browser learns to
+  // read later starts working with no change here. What it cannot tell us is
+  // whether the file arrived at all, which is why the bytes are read first.
+  const bytes = await readBytes(file, fileName)
+  const bitmap = await decode(bytes, fileName, file.type)
 
   try {
     const full = fitWithin(bitmap.width, bitmap.height, FULL_SIZE)

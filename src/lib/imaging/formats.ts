@@ -33,3 +33,15 @@ export function explainUnreadable(fileName: string, mimeType: string): string {
 
   return `${fileName} could not be read as an image here. It may be damaged, or in a format this browser does not support.`
 }
+
+/**
+ * The file handed over no bytes, so its format is beside the point.
+ *
+ * Worth its own sentence because the remedy is specific and the previous
+ * message actively misled: a photo that lives in cloud storage and has not been
+ * downloaded to the device is not damaged, and telling someone it might be sends
+ * them looking for a problem with a photograph that is perfectly fine.
+ */
+export function explainUnreadableFile(fileName: string): string {
+  return `${fileName} could not be read from your device. If it is stored in the cloud rather than on the phone, open it once in your gallery so it downloads, then add it again.`
+}

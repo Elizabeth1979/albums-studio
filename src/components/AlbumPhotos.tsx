@@ -145,6 +145,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
         fileName: request.file.name,
         status: 'waiting' as const,
         error: null,
+        detail: null,
         permanent: false,
       })),
     )
