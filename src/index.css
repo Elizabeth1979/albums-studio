@@ -21,8 +21,12 @@ body {
   margin: 0;
 }
 
+/* textarea and select default to monospace, which is why every form control
+   belongs here rather than being fixed one rule at a time. */
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -33,7 +37,8 @@ a {
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible {
   outline: 3px solid #d89045;
   outline-offset: 3px;
 }
@@ -1319,11 +1324,34 @@ input:focus-visible {
   min-width: 0;
 }
 
-.photo-editor-form label {
+/* Direct children only. The radio labels inside the fieldset are labels too,
+   and a grid rule reaching them would stack each control away from its text. */
+.photo-editor-form > label {
   display: grid;
   gap: 0.35rem;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.photo-editor-form textarea,
+.story-form textarea,
+.story-item textarea {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+  font-weight: 400;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.photo-editor-form textarea:focus,
+.story-form textarea:focus,
+.story-item textarea:focus {
+  border-color: #996130;
+  box-shadow: 0 0 0 3px rgb(153 97 48 / 12%);
 }
 
 .photo-editor-actions {
@@ -1359,12 +1387,25 @@ input:focus-visible {
   font-weight: 700;
 }
 
-.visibility-option {
+/* Scoped through the fieldset so this keeps beating any label rule the
+   surrounding form sets. */
+.visibility-choice .visibility-option {
   display: flex;
   align-items: flex-start;
-  gap: 0.55rem;
+  gap: 0.6rem;
   font-size: 0.85rem;
   font-weight: 400;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.visibility-choice .visibility-option input {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  /* Sits on the first line of the label rather than the middle of two. */
+  margin: 0.1rem 0 0;
+  accent-color: #996130;
 }
 
 .visibility-option em {
@@ -1417,7 +1458,27 @@ input:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.9rem;
+}
+
+/* Four controls in a row at the page's usual button weight read as four
+   equally urgent choices. These sit under a story the owner is reading, so
+   they step back until wanted. */
+.story-actions .text-button {
+  padding: 0.25rem 0;
+  color: #6f675c;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.story-actions .text-button:hover:not(:disabled) {
+  color: #996130;
+}
+
+/* The badge states what is true now; it is not a control and should not be
+   read as the first item in a row of them. */
+.story-actions .visibility-badge {
+  margin-right: auto;
 }
 
 .visibility-badge {
@@ -1437,7 +1498,8 @@ input:focus-visible {
   justify-items: start;
 }
 
-.story-form label {
+.story-form > label,
+.story-item > label {
   display: grid;
   gap: 0.35rem;
   width: 100%;

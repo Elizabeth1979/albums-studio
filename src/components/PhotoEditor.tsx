@@ -99,7 +99,7 @@ export function PhotoEditor({
           </label>
 
           <fieldset className="visibility-choice">
-            <legend>Show this caption to people you share the album with?</legend>
+            <legend>Who can see this caption?</legend>
             <label className="visibility-option">
               <input
                 type="radio"

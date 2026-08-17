@@ -156,6 +156,46 @@ test.describe('writing about a photo', () => {
     await expect(page.locator('.photo-written')).toHaveCount(1)
   })
 
+  test('writes in the page typeface, not the browser default', async ({ page }) => {
+    // A textarea defaults to monospace, and the reset only covered button and
+    // input. Every earlier textarea had worked around it one rule at a time, so
+    // the first one that did not looked like a code editor.
+    await openPhoto(page)
+
+    const body = await page.evaluate(() => getComputedStyle(document.body).fontFamily)
+
+    for (const field of ['Caption', 'Alt text', 'Add a story']) {
+      expect(
+        await page.getByLabel(field).evaluate((el) => getComputedStyle(el).fontFamily),
+      ).toBe(body)
+    }
+  })
+
+  test('keeps each radio beside its own label', async ({ page }) => {
+    // The label rule for the editor's fields also matched the labels around the
+    // radios, which stacked every control above its text and centred it.
+    await openPhoto(page)
+
+    const option = page
+      .locator('.visibility-option')
+      .filter({ hasText: 'Keep it to myself' })
+
+    const radio = (await option.locator('input[type="radio"]').boundingBox())!
+    const text = (await option.locator('span').first().boundingBox())!
+
+    expect(radio).not.toBeNull()
+    expect(text).not.toBeNull()
+
+    // Beside, not above. Stacking put the control in the same column as its
+    // text, so the horizontal check is what actually distinguishes the two.
+    expect(radio.x + radio.width).toBeLessThanOrEqual(text.x + 1)
+
+    // And on the same line: the control's box has to overlap the text's, not
+    // sit finished above it.
+    expect(radio.y).toBeLessThan(text.y + text.height)
+    expect(radio.y + radio.height).toBeGreaterThan(text.y)
+  })
+
   test('reports a refused save and keeps the words on screen', async ({ page }) => {
     await openPhoto(page, {
       photoUpdate: { status: 403, body: { message: 'permission denied for column caption' } },
