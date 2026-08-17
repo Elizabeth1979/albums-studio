@@ -1,5 +1,4 @@
 import { mapWithConcurrency, withRetry } from './concurrency'
-import { UnreadableImageError } from './imaging/process'
 import type { ImageProcessor } from './imaging/processor'
 import type { Photo } from './photos'
 import type { ProcessedImage } from './imaging/process'
@@ -42,9 +41,13 @@ export type UploadRequest = {
   file: File
 }
 
-/** A format the browser cannot decode will fail identically every time. */
+/**
+ * A format the browser cannot decode fails identically every time, so retrying
+ * only delays the same answer. Matched by name because the worker relays the
+ * failure across a message boundary, where the class itself cannot survive.
+ */
 function isPermanent(error: unknown): boolean {
-  return error instanceof UnreadableImageError
+  return error instanceof Error && error.name === 'UnreadableImageError'
 }
 
 function messageFor(error: unknown, fileName: string): string {

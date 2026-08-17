@@ -1,3 +1,4 @@
+import { explainUnreadable } from './formats'
 import { toLuma } from './luma'
 import { perceptualHash } from './phash'
 import { laplacianVariance } from './sharpness'
@@ -24,8 +25,8 @@ export type ProcessedImage = {
 }
 
 export class UnreadableImageError extends Error {
-  constructor(fileName: string) {
-    super(`${fileName} could not be read as an image in this browser.`)
+  constructor(fileName: string, mimeType = '') {
+    super(explainUnreadable(fileName, mimeType))
     this.name = 'UnreadableImageError'
   }
 }
@@ -68,11 +69,12 @@ export async function processImage(file: File | Blob, fileName: string): Promise
   let bitmap: ImageBitmap
 
   try {
-    // HEIC is the common casualty here: most browsers outside Safari cannot
-    // decode it, and the failure has to name the file rather than vanish.
+    // Asking the browser to decode is the only reliable capability test: it
+    // needs no list of formats, devices or versions, and a format the browser
+    // learns to read later starts working with no change here.
     bitmap = await createImageBitmap(file)
   } catch {
-    throw new UnreadableImageError(fileName)
+    throw new UnreadableImageError(fileName, file.type)
   }
 
   try {

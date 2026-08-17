@@ -136,7 +136,23 @@ describe('runUploads', () => {
       status: 'failed',
       permanent: true,
     })
-    expect(finalState(items, 'holiday.heic')?.error).toContain('could not be read')
+    // The message says what to do about it, not just that it failed.
+    expect(finalState(items, 'holiday.heic')?.error).toContain('HEIC photo')
+    expect(finalState(items, 'holiday.heic')?.error).toContain('JPEG')
+  })
+
+  it('treats a failure relayed from the worker as permanent too', async () => {
+    // The class cannot survive postMessage, so the worker's rejection arrives as
+    // a plain Error carrying only the name. Retrying it would be pointless.
+    const relayed = new Error('holiday.heic is a HEIC photo, which this browser cannot open.')
+    relayed.name = 'UnreadableImageError'
+    const process = vi.fn().mockRejectedValue(relayed)
+    const { items, deps } = harness({ processor: { process, dispose: vi.fn() } })
+
+    await runUploads('album-1', [{ id: 'a', file: file('holiday.heic') }], 0, deps)
+
+    expect(process).toHaveBeenCalledOnce()
+    expect(finalState(items, 'holiday.heic')).toMatchObject({ permanent: true })
   })
 
   it('lets the rest of a batch through when one file is unreadable', async () => {
