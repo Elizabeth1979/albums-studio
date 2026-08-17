@@ -7,9 +7,11 @@ import {
   deleteAlbum,
   listAlbums,
   renameAlbum,
+  setAlbumCover,
   updateAlbumDetails,
 } from '../lib/albums'
 import type { Identity } from '../lib/identity'
+import { thumbnailsByPhotoId } from '../lib/photos'
 import { AlbumPage } from './AlbumPage'
 import { AppHeader } from './AppHeader'
 import { Library } from './Library'
@@ -32,6 +34,7 @@ type AlbumRouteProps = {
   onChangeLayout: (album: Album, layout: AlbumLayout) => Promise<void>
   onChangeDescription: (album: Album, description: string) => Promise<void>
   onDelete: (album: Album) => Promise<void>
+  onCoverChosen: (album: Album, photoId: string) => Promise<void>
 }
 
 /**
@@ -47,6 +50,7 @@ function AlbumRoute({
   onChangeLayout,
   onChangeDescription,
   onDelete,
+  onCoverChosen,
 }: AlbumRouteProps) {
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -63,6 +67,7 @@ function AlbumRoute({
         onChangeLayout={(layout) => onChangeLayout(album, layout)}
         onChangeDescription={(description) => onChangeDescription(album, description)}
         onDelete={() => onDelete(album)}
+        onCoverChosen={(photoId) => onCoverChosen(album, photoId)}
       />
     )
   }
@@ -91,6 +96,7 @@ function AlbumRoute({
 
 export function Studio({ identity, onSignOut }: StudioProps) {
   const [albums, setAlbums] = useState<Album[]>([])
+  const [covers, setCovers] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -111,6 +117,42 @@ export function Studio({ identity, onSignOut }: StudioProps) {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Keyed on the cover ids alone: renaming an album or changing its layout
+  // replaces the album object but leaves the pictures on the cards unchanged,
+  // and re-signing them on every edit would be wasted round trips.
+  const coverIds = albums
+    .map((album) => album.coverPhotoId)
+    .filter((id): id is string => Boolean(id))
+    .join(',')
+
+  useEffect(() => {
+    let active = true
+    const ids = coverIds ? coverIds.split(',') : []
+
+    if (ids.length === 0) {
+      setCovers(new Map())
+      return
+    }
+
+    async function loadCovers() {
+      try {
+        const signed = await thumbnailsByPhotoId(ids)
+        if (active) setCovers(signed)
+      } catch {
+        // A library that shows titles without pictures is still usable, so a
+        // failure here stays quiet rather than replacing the album list with an
+        // error the owner can do nothing about.
+        if (active) setCovers(new Map())
+      }
+    }
+
+    void loadCovers()
+
+    return () => {
+      active = false
+    }
+  }, [coverIds])
 
   function replace(album: Album) {
     setAlbums((current) => current.map((item) => (item.id === album.id ? album : item)))
@@ -134,6 +176,7 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             identity={identity}
             onSignOut={onSignOut}
             albums={albums}
+            covers={covers}
             loading={loading}
             error={error}
             onCreateAlbum={handleCreate}
@@ -155,6 +198,9 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             }
             onChangeDescription={async (album, description) =>
               replace(await updateAlbumDetails(album.id, { description }))
+            }
+            onCoverChosen={async (album, photoId) =>
+              replace(await setAlbumCover(album.id, photoId))
             }
             onDelete={async (album) => {
               await deleteAlbum(album.id)

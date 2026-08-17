@@ -24,7 +24,16 @@ const album: Album = {
   slug: 'eilat',
   layout: 'masonry',
   description: null,
+  coverPhotoId: null,
   createdAt: '2026-08-16T20:27:38Z',
+}
+
+const onCoverChosen = vi.fn()
+
+function renderPhotos(overrides: Partial<Album> = {}) {
+  return render(
+    <AlbumPhotos album={{ ...album, ...overrides }} onCoverChosen={onCoverChosen} />,
+  )
 }
 
 function photo(index: number): Photo {
@@ -49,6 +58,7 @@ function chooseFiles(names: string[]) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  onCoverChosen.mockResolvedValue(undefined)
   photosApi.listPhotos.mockResolvedValue([])
   photosApi.signedUrls.mockResolvedValue(new Map())
   processorApi.process.mockResolvedValue({
@@ -66,14 +76,14 @@ beforeEach(() => {
 
 describe('AlbumPhotos', () => {
   it('offers a way in that works without dragging', async () => {
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
 
     // A phone has nothing to drag, so the control has to be the file input.
     expect(await screen.findByLabelText('Choose photos')).toBeInTheDocument()
   })
 
   it('shows the empty album in its layout', async () => {
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
 
     expect(await screen.findByRole('heading', { name: 'No photos yet' })).toBeInTheDocument()
   })
@@ -87,7 +97,7 @@ describe('AlbumPhotos', () => {
       ]),
     )
 
-    const { container } = render(<AlbumPhotos album={album} />)
+    const { container } = renderPhotos()
 
     // Queried through the DOM rather than by role: a photo with no alt text yet
     // is deliberately decorative, so it has no `img` role to find.
@@ -105,7 +115,7 @@ describe('AlbumPhotos', () => {
       new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/0']]),
     )
 
-    const { container } = render(<AlbumPhotos album={album} />)
+    const { container } = renderPhotos()
 
     await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(1))
     expect(screen.queryAllByRole('img')).toHaveLength(0)
@@ -117,7 +127,7 @@ describe('AlbumPhotos', () => {
       new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/0']]),
     )
 
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
 
     expect(await screen.findByRole('img', { name: 'The reef at sunset' })).toBeInTheDocument()
   })
@@ -125,13 +135,13 @@ describe('AlbumPhotos', () => {
   it('reports a failed load', async () => {
     photosApi.listPhotos.mockRejectedValue(new Error('Network unreachable'))
 
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Network unreachable')
   })
 
   it('uploads chosen files and counts them as they land', async () => {
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
     await screen.findByLabelText('Choose photos')
 
     chooseFiles(['one.jpg', 'two.jpg'])
@@ -143,7 +153,7 @@ describe('AlbumPhotos', () => {
   it('numbers new photos after the ones already in the album', async () => {
     photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
 
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
     await screen.findByLabelText('Choose photos')
 
     chooseFiles(['three.jpg'])
@@ -158,7 +168,7 @@ describe('AlbumPhotos', () => {
   it('names a file that could not be uploaded', async () => {
     photosApi.storePhoto.mockRejectedValue(new Error('storage unavailable'))
 
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
     await screen.findByLabelText('Choose photos')
 
     chooseFiles(['one.jpg'])
@@ -172,7 +182,7 @@ describe('AlbumPhotos', () => {
   })
 
   it('clears the upload list on request', async () => {
-    render(<AlbumPhotos album={album} />)
+    renderPhotos()
     await screen.findByLabelText('Choose photos')
 
     chooseFiles(['one.jpg'])
@@ -181,5 +191,73 @@ describe('AlbumPhotos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear this list' }))
 
     expect(screen.queryByText('Added 1 of 1.')).not.toBeInTheDocument()
+  })
+
+  describe('choosing a cover', () => {
+    it('makes the first photo the cover of an album that has none', async () => {
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+
+      await waitFor(() => expect(onCoverChosen).toHaveBeenCalledWith('photo-0'))
+    })
+
+    it('picks the first by position, not the first to finish uploading', async () => {
+      // Uploads run four at a time and settle out of order, so the photo that
+      // returns first is not necessarily the one at the front of the album.
+      photosApi.storePhoto.mockImplementation(async ({ sortOrder }: { sortOrder: number }) => {
+        await new Promise((resolve) => setTimeout(resolve, sortOrder === 0 ? 20 : 0))
+        return photo(sortOrder)
+      })
+
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg', 'two.jpg'])
+
+      await waitFor(() => expect(onCoverChosen).toHaveBeenCalledWith('photo-0'))
+    })
+
+    it('leaves an album that already has a cover alone', async () => {
+      // A cover is a default for an empty album, not a rule that the newest
+      // batch wins; otherwise every upload would overwrite a chosen cover.
+      photosApi.listPhotos.mockResolvedValue([photo(0)])
+
+      renderPhotos({ coverPhotoId: 'photo-0' })
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['two.jpg'])
+      await screen.findByText('Added 1 of 1.')
+
+      expect(onCoverChosen).not.toHaveBeenCalled()
+    })
+
+    it('asks for no cover when every upload failed', async () => {
+      photosApi.storePhoto.mockRejectedValue(new Error('storage unavailable'))
+
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+      await screen.findByRole('alert', {}, { timeout: 5000 })
+
+      expect(onCoverChosen).not.toHaveBeenCalled()
+    })
+
+    it('keeps the photos when the cover cannot be saved', async () => {
+      // The upload succeeded. A failed cover is a cosmetic loss and must not
+      // read as though the photographs had not arrived.
+      onCoverChosen.mockRejectedValue(new Error('permission denied for column cover_photo_id'))
+
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+
+      expect(await screen.findByText('Added 1 of 1.')).toBeInTheDocument()
+      await waitFor(() => expect(onCoverChosen).toHaveBeenCalled())
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 })

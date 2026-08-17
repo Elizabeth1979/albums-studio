@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAlbum, renameAlbum, slugify, updateAlbumDetails } from './albums'
+import {
+  createAlbum,
+  listAlbums,
+  renameAlbum,
+  setAlbumCover,
+  slugify,
+  updateAlbumDetails,
+} from './albums'
 
 const { auth, from } = vi.hoisted(() => ({
   auth: { getClaims: vi.fn() },
@@ -14,6 +21,7 @@ const ROW = {
   slug: 'summer-by-the-lake',
   layout: 'masonry',
   description: null,
+  cover_photo_id: null,
   created_at: '2026-08-16T10:00:00Z',
 }
 
@@ -163,6 +171,57 @@ describe('updateAlbumDetails', () => {
     await updateAlbumDetails('album-1', { layout: 'grid', description: 'Both' })
 
     expect(update).toHaveBeenCalledWith({ layout: 'grid', description: 'Both' })
+  })
+})
+
+describe('setAlbumCover', () => {
+  it('points the album at the chosen photo', async () => {
+    const update = updateBuilder({ ...ROW, cover_photo_id: 'photo-7' })
+
+    const album = await setAlbumCover('album-1', 'photo-7')
+
+    expect(update).toHaveBeenCalledWith({ cover_photo_id: 'photo-7' })
+    expect(album.coverPhotoId).toBe('photo-7')
+  })
+
+  it('reports a cover the database refused', async () => {
+    // The composite foreign key rejects a photo from another album or owner.
+    const update = vi.fn(() => ({
+      eq: () => ({
+        select: () => ({
+          single: () =>
+            Promise.resolve({
+              data: null,
+              error: { message: 'violates foreign key constraint' },
+            }),
+        }),
+      }),
+    }))
+    from.mockReturnValue({ update })
+
+    await expect(setAlbumCover('album-1', 'someone-elses-photo')).rejects.toThrow(
+      'violates foreign key constraint',
+    )
+  })
+})
+
+describe('listAlbums', () => {
+  it('carries the cover through, so the library can show one', async () => {
+    // The column is easy to drop from the select list by accident, and nothing
+    // else fails when it is: covers just quietly stop appearing.
+    from.mockReturnValue({
+      select: (columns: string) => {
+        expect(columns).toContain('cover_photo_id')
+        return {
+          order: () =>
+            Promise.resolve({ data: [{ ...ROW, cover_photo_id: 'photo-7' }], error: null }),
+        }
+      },
+    })
+
+    const albums = await listAlbums()
+
+    expect(albums[0].coverPhotoId).toBe('photo-7')
   })
 })
 

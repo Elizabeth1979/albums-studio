@@ -13,6 +13,7 @@ type AlbumPageProps = {
   onChangeLayout: (layout: AlbumLayout) => Promise<void>
   onChangeDescription: (description: string) => Promise<void>
   onDelete: () => Promise<void>
+  onCoverChosen: (photoId: string) => Promise<void>
 }
 
 export function AlbumPage({
@@ -24,6 +25,7 @@ export function AlbumPage({
   onChangeLayout,
   onChangeDescription,
   onDelete,
+  onCoverChosen,
 }: AlbumPageProps) {
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(album.title)
@@ -201,7 +203,7 @@ export function AlbumPage({
 
         {error && <p className="form-message error" role="alert">{error}</p>}
 
-        <AlbumPhotos album={album} />
+        <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
 
         <section className="danger-zone" aria-labelledby="danger-title">
           <h2 id="danger-title">Delete album</h2>

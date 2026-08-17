@@ -2,6 +2,9 @@ import { type Page, expect, test } from '@playwright/test'
 import { sampleFile } from './support/sample-image'
 import { type StubOptions, albumRecord, stubSupabase } from './support/supabase-stub'
 
+/** The `<img>` the stub serves for a signed URL is a single pixel. */
+const STUB_PIXEL_WIDTH = 1
+
 async function openAlbum(page: Page, options: StubOptions = {}) {
   const calls = await stubSupabase(page, { albums: [albumRecord()], ...options })
 
@@ -159,6 +162,53 @@ test.describe('uploading photos', () => {
     })
 
     expect(calls.objects()).toHaveLength(0)
+  })
+
+  test('puts the first photo on the album card in the library', async ({ page }) => {
+    // The reason an owner uploads at all: the library stops being a list of
+    // titles. Nothing here is faked past the insert — the cover is written,
+    // read back by id, signed, and fetched by the browser.
+    const calls = await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile())
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    await page.getByRole('button', { name: '← All albums' }).click()
+
+    const cover = page.locator('.album-card img.album-cover')
+    await expect(cover).toHaveCount(1)
+    await expect(cover).toHaveJSProperty('naturalWidth', STUB_PIXEL_WIDTH)
+
+    expect(calls.albums()[0].cover_photo_id).toBe('photo-1')
+  })
+
+  test('keeps a cover the album already had', async ({ page }) => {
+    // Uploading more photos must not silently reassign a cover: once an owner
+    // can choose one, this is the behaviour that protects the choice.
+    const calls = await openAlbum(page, {
+      albums: [albumRecord({ cover_photo_id: 'photo-chosen' })],
+    })
+
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile())
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    expect(calls.albums()[0].cover_photo_id).toBe('photo-chosen')
+    expect(
+      calls.all.some((call) => call.method === 'PATCH' && call.path.endsWith('/albums')),
+    ).toBe(false)
+  })
+
+  test('leaves an empty album with no cover on its card', async ({ page }) => {
+    await stubSupabase(page, { albums: [albumRecord()] })
+
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page.getByRole('button', { name: /Summer by the lake/ })).toBeVisible()
+    await expect(page.locator('.album-card img.album-cover')).toHaveCount(0)
+    await expect(page.locator('.album-card .album-cover.empty')).toHaveCount(1)
   })
 
   test('clears the upload list on request', async ({ page }) => {
