@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { type Page, expect, test } from '@playwright/test'
+import { sampleFile } from './support/sample-image'
 import { albumRecord, recoveryUrl, stubSupabase } from './support/supabase-stub'
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
@@ -111,6 +112,36 @@ test.describe('accessibility', () => {
     await page.getByRole('button', { name: /Summer by the lake/ }).click()
     await page.getByRole('button', { name: 'Delete album' }).click()
     await expect(page.getByRole('button', { name: 'Yes, delete this album' })).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
+  test('album page with photos in it', async ({ page }) => {
+    await signIn(page)
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByLabel('Choose photos').setInputFiles([
+      sampleFile('one.png'),
+      sampleFile('two.png'),
+    ])
+    await expect(page.getByText('Added 2 of 2.')).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
+  test('album page reporting a failed upload', async ({ page }) => {
+    await stubSupabase(page, {
+      albums: [albumRecord()],
+      photoWrite: { status: 403, body: { message: 'permission denied for table photos' } },
+    })
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
+    await expect(page.getByRole('alert')).toContainText('could not be added', {
+      timeout: 15000,
+    })
 
     await expectNoViolations(page)
   })

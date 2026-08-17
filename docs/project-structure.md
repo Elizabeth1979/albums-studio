@@ -1,7 +1,7 @@
 # Albums Studio project structure
 
 This is the living visual map of the project. Green nodes exist now; blue nodes are planned
-by the roadmap. Authentication and album shells exist; photo upload, AI, and trusted server
+by the roadmap. Authentication, album shells, and photo upload exist; AI and trusted server
 functions remain planned.
 
 ## Frontend and backend architecture
@@ -17,14 +17,15 @@ flowchart LR
         AuthUI["Email auth, reset, protected library"]:::current
         Router["Client routing<br/>/ and /albums/:slug"]:::current
         AlbumUI["Album shells<br/>create, rename, layout, describe, delete"]:::current
-        PhotoUI["Photo grid and editors"]:::planned
+        PhotoUI["Photo gallery"]:::current
+        TextUI["Captions, story notes, alt text"]:::planned
         Studio["AI Story Studio"]:::planned
-        Local["Local image processing<br/>resize, thumbnail, pHash, sharpness"]:::planned
-        Upload["Upload queue"]:::planned
+        Local["Local image processing<br/>resize, thumbnail, pHash, sharpness"]:::current
+        Upload["Upload queue<br/>4 concurrent, retry"]:::current
 
         App --> AuthUI
         App --> Router --> AlbumUI
-        AlbumUI --> PhotoUI
+        AlbumUI --> PhotoUI --> TextUI
         App --> Studio
         PhotoUI --> Local --> Upload
     end

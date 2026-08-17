@@ -72,6 +72,17 @@ export function albumRecord(overrides: Partial<AlbumRecord> = {}): AlbumRecord {
   }
 }
 
+export type PhotoRecord = {
+  id: string
+  storage_path: string
+  thumbnail_path: string | null
+  width: number | null
+  height: number | null
+  caption: string | null
+  alt: string | null
+  sort_order: number
+}
+
 export type StubOptions = {
   /** Status and body returned by the password grant, for failure cases. */
   passwordGrant?: { status: number; body: object }
@@ -81,6 +92,10 @@ export type StubOptions = {
   albumWrite?: { status: number; body: object }
   /** Status and body returned by the magic-link and reset endpoints. */
   emailSend?: { status: number; body: object }
+  /** Status and body returned by writes to `photos`, for failure cases. */
+  photoWrite?: { status: number; body: object }
+  /** Status and body returned by Storage uploads, for failure cases. */
+  storageUpload?: { status: number; body: object }
 }
 
 export type AuthCalls = {
@@ -89,6 +104,10 @@ export type AuthCalls = {
   find: (path: string) => { method: string; path: string; body: unknown } | undefined
   /** Current contents of the fake `albums` table. */
   albums: () => AlbumRecord[]
+  /** Current contents of the fake `photos` table. */
+  photos: () => PhotoRecord[]
+  /** Object keys written to the fake Storage bucket. */
+  objects: () => string[]
 }
 
 /** PostgREST filters arrive as `id=eq.<value>`. */
@@ -114,7 +133,10 @@ function parseBody(request: Request): unknown {
 export async function stubSupabase(page: Page, options: StubOptions = {}): Promise<AuthCalls> {
   const calls: AuthCalls['all'] = []
   let albums: AlbumRecord[] = [...(options.albums ?? [])]
+  let photos: PhotoRecord[] = []
+  let objects: string[] = []
   let created = 0
+  let photosCreated = 0
 
   await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
     const request = route.request()
@@ -129,6 +151,84 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
 
     // A `.single()` call asks PostgREST for a bare object instead of an array.
     const wantsObject = (request.headers()['accept'] ?? '').includes('vnd.pgrst.object')
+
+    // Storage: uploads write an object, and the sign endpoint hands back a URL
+    // the browser can actually fetch. Signed URLs point back at this stub so the
+    // <img> resolves rather than dangling.
+    if (path.startsWith('/storage/v1/object/sign/')) {
+      const body = parseBody(request) as { paths?: string[]; expiresIn?: number }
+      // The client prefixes its storage base onto whatever `signedURL` holds,
+      // so this has to be relative to /storage/v1 rather than absolute.
+      return json(
+        (body.paths ?? []).map((signedPath) => ({
+          path: signedPath,
+          signedURL: `/object/signed/${signedPath}`,
+        })),
+      )
+    }
+
+    if (path.startsWith('/storage/v1/object/signed/')) {
+      // A one-pixel PNG so the browser has real bytes to decode.
+      return route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        body: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+      })
+    }
+
+    if (path.startsWith('/storage/v1/object/photos/')) {
+      if (options.storageUpload) {
+        return json(options.storageUpload.body, options.storageUpload.status)
+      }
+
+      const key = path.replace('/storage/v1/object/photos/', '')
+
+      if (method === 'POST' || method === 'PUT') {
+        objects = [...objects, key]
+        return json({ Key: `photos/${key}` })
+      }
+
+      if (method === 'DELETE') {
+        objects = objects.filter((existing) => existing !== key)
+        return json({})
+      }
+    }
+
+    if (path.endsWith('/storage/v1/object/photos') && method === 'DELETE') {
+      const body = parseBody(request) as { prefixes?: string[] }
+      objects = objects.filter((existing) => !(body.prefixes ?? []).includes(existing))
+      return json({})
+    }
+
+    if (path.endsWith('/rest/v1/photos')) {
+      if (method !== 'GET' && options.photoWrite) {
+        return json(options.photoWrite.body, options.photoWrite.status)
+      }
+
+      if (method === 'GET') {
+        return json(photos)
+      }
+
+      if (method === 'POST') {
+        const body = parseBody(request) as Record<string, unknown>
+        photosCreated += 1
+        const row: PhotoRecord = {
+          id: `photo-${photosCreated}`,
+          storage_path: String(body.storage_path ?? ''),
+          thumbnail_path: (body.thumbnail_path as string | null) ?? null,
+          width: (body.width as number | null) ?? null,
+          height: (body.height as number | null) ?? null,
+          caption: null,
+          alt: null,
+          sort_order: (body.sort_order as number) ?? 0,
+        }
+        photos = [...photos, row]
+        return json(wantsObject ? row : [row], 201)
+      }
+    }
 
     if (path.endsWith('/rest/v1/albums')) {
       if (method !== 'GET' && options.albumWrite) {
@@ -209,5 +309,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     all: calls,
     find: (path: string) => calls.find((call) => call.path.endsWith(path)),
     albums: () => albums,
+    photos: () => photos,
+    objects: () => objects,
   }
 }

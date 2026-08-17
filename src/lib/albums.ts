@@ -1,3 +1,4 @@
+import { currentOwnerId } from './session'
 import { supabase } from './supabase'
 
 export const ALBUM_LAYOUTS = ['masonry', 'grid'] as const
@@ -59,16 +60,6 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, '')
 
   return slug || 'album'
-}
-
-async function currentOwnerId(): Promise<string> {
-  const { data, error } = await supabase.auth.getClaims()
-
-  if (error || typeof data?.claims.sub !== 'string') {
-    throw new Error('Your session has expired. Sign in again.')
-  }
-
-  return data.claims.sub
 }
 
 export async function listAlbums(): Promise<Album[]> {

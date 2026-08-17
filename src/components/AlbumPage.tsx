@@ -1,8 +1,8 @@
 import { type FormEvent, useState } from 'react'
 import { ALBUM_LAYOUTS, type Album, type AlbumLayout, layoutLabel } from '../lib/albums'
 import type { Identity } from '../lib/identity'
+import { AlbumPhotos } from './AlbumPhotos'
 import { AppHeader } from './AppHeader'
-import { LayoutPreview } from './LayoutPreview'
 
 type AlbumPageProps = {
   identity: Identity
@@ -201,16 +201,7 @@ export function AlbumPage({
 
         {error && <p className="form-message error" role="alert">{error}</p>}
 
-        <section className="album-canvas" aria-labelledby="album-empty-title">
-          <LayoutPreview layout={album.layout} />
-          <div className="album-empty-copy">
-            <h2 id="album-empty-title">No photos yet</h2>
-            <p>
-              This is how a {layoutLabel(album.layout).toLowerCase()} album will arrange your
-              photographs. Uploading comes next.
-            </p>
-          </div>
-        </section>
+        <AlbumPhotos album={album} />
 
         <section className="danger-zone" aria-labelledby="danger-title">
           <h2 id="danger-title">Delete album</h2>
