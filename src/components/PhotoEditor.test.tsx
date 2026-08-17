@@ -44,6 +44,8 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
       onAddStory={vi.fn().mockResolvedValue(undefined)}
       onEditStory={vi.fn().mockResolvedValue(undefined)}
       onDeleteStory={vi.fn().mockResolvedValue(undefined)}
+      isCover={false}
+      onUseAsCover={vi.fn().mockResolvedValue(undefined)}
       onClose={vi.fn()}
       {...props}
     />,
@@ -130,6 +132,43 @@ describe('captions and alt text', () => {
 
     expect(container.querySelector('.photo-editor-preview')).toBeInTheDocument()
     expect(screen.queryAllByRole('img')).toHaveLength(0)
+  })
+})
+
+describe('choosing the album cover', () => {
+  it('offers a photo that is not the cover', async () => {
+    const onUseAsCover = vi.fn().mockResolvedValue(undefined)
+    renderEditor({ onUseAsCover })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use as album cover' }))
+
+    await waitFor(() => expect(onUseAsCover).toHaveBeenCalled())
+  })
+
+  it('says so instead when this photo is already the cover', async () => {
+    // A button that reassigns the cover to the photo that already holds it does
+    // nothing, so it should not be there to press.
+    renderEditor({ isCover: true })
+
+    expect(screen.getByText('Album cover')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Use as album cover' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('reports a refused cover rather than doing nothing visible', async () => {
+    // The cover chosen automatically for a new album fails quietly, because
+    // nobody asked for it. This one was asked for.
+    const onUseAsCover = vi
+      .fn()
+      .mockRejectedValue(new Error('violates foreign key constraint'))
+    renderEditor({ onUseAsCover })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use as album cover' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'violates foreign key constraint',
+    )
   })
 })
 

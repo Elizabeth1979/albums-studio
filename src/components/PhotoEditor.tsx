@@ -19,6 +19,9 @@ type PhotoEditorProps = {
     patch: { body?: string; visibility?: TextVisibility },
   ) => Promise<void>
   onDeleteStory: (id: string) => Promise<void>
+  /** Whether this photograph is the one on the album's card in the library. */
+  isCover: boolean
+  onUseAsCover: () => Promise<void>
   onClose: () => void
 }
 
@@ -31,6 +34,8 @@ export function PhotoEditor({
   onAddStory,
   onEditStory,
   onDeleteStory,
+  isCover,
+  onUseAsCover,
   onClose,
 }: PhotoEditorProps) {
   const [caption, setCaption] = useState(photo.caption ?? '')
@@ -39,6 +44,26 @@ export function PhotoEditor({
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [settingCover, setSettingCover] = useState(false)
+  const [coverError, setCoverError] = useState<string | null>(null)
+
+  async function handleUseAsCover() {
+    setSettingCover(true)
+    setCoverError(null)
+
+    try {
+      await onUseAsCover()
+    } catch (caughtError) {
+      // Unlike the cover chosen automatically for a new album, this one was
+      // asked for. Failing quietly would leave the owner tapping a button that
+      // appears to do nothing.
+      setCoverError(
+        caughtError instanceof Error ? caughtError.message : 'Could not set the cover.',
+      )
+    } finally {
+      setSettingCover(false)
+    }
+  }
 
   // No effect resyncs these from the photo. Choosing a different photograph
   // remounts this component (AlbumPhotos keys it by photo id), so the initial
@@ -74,15 +99,39 @@ export function PhotoEditor({
       </div>
 
       <div className="photo-editor-body">
-        {thumbnail && (
-          <img
-            className="photo-editor-preview"
-            src={thumbnail}
-            // Whatever the owner has written is already on screen beside this,
-            // and until they write something there is nothing truthful to say.
-            alt=""
-          />
-        )}
+        <div className="photo-editor-aside">
+          {thumbnail && (
+            <img
+              className="photo-editor-preview"
+              src={thumbnail}
+              // Whatever the owner has written is already on screen beside this,
+              // and until they write something there is nothing truthful to say.
+              alt=""
+            />
+          )}
+
+          {isCover ? (
+            <p className="cover-state">
+              <span className="visibility-badge">Album cover</span>
+              <em>Shown on this album in your library.</em>
+            </p>
+          ) : (
+            <button
+              className="secondary-button use-as-cover"
+              type="button"
+              disabled={settingCover}
+              onClick={handleUseAsCover}
+            >
+              {settingCover ? 'Setting…' : 'Use as album cover'}
+            </button>
+          )}
+
+          {coverError && (
+            <p className="form-message error" role="alert">
+              {coverError}
+            </p>
+          )}
+        </div>
 
         <form className="photo-editor-form" onSubmit={handleSubmit}>
           <label htmlFor="photo-caption">

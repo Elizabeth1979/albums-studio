@@ -156,6 +156,76 @@ test.describe('writing about a photo', () => {
     await expect(page.locator('.photo-written')).toHaveCount(1)
   })
 
+  test('changes the album cover, and the library card follows', async ({ page }) => {
+    // The first upload takes the cover by default. This is the owner overruling
+    // that, which is the whole point of the control.
+    const calls = await stubSupabase(page, { albums: [albumRecord()] })
+
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+
+    await page
+      .getByLabel('Choose photos')
+      .setInputFiles([sampleFile('one.png'), sampleFile('two.png')])
+    await expect(page.getByText('Added 2 of 2.')).toBeVisible()
+
+    // Photo 1 took the cover automatically.
+    await expect(page.getByRole('button', { name: /^Edit photo 1 .*album cover/ })).toBeVisible()
+
+    await page.getByRole('button', { name: /^Edit photo 2/ }).click()
+    await page.getByRole('button', { name: 'Use as album cover' }).click()
+
+    await expect(page.getByRole('button', { name: /^Edit photo 2 .*album cover/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Edit photo 1$/ })).toBeVisible()
+
+    // Derived, not assumed: rows are numbered as uploads land and four run at
+    // once, so the second photo in the album is not reliably the second row.
+    const second = calls.photos().find((photo) => photo.sort_order === 1)
+    expect(calls.albums()[0].cover_photo_id).toBe(second?.id)
+
+    // And the library shows the photo that was chosen, not the first one.
+    await page.getByRole('button', { name: '← All albums' }).click()
+
+    const cover = page.locator('.album-card img.album-cover')
+    await expect(cover).toHaveCount(1)
+    await expect(cover).toHaveJSProperty('naturalWidth', 1)
+  })
+
+  test('does not offer to re-cover the photo that already is', async ({ page }) => {
+    await openPhoto(page)
+
+    await expect(page.getByText('Album cover', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Use as album cover' })).toBeHidden()
+  })
+
+  test('reports a refused cover change', async ({ page }) => {
+    const calls = await stubSupabase(page, {
+      albums: [albumRecord()],
+      albumWrite: { status: 403, body: { message: 'violates foreign key constraint' } },
+    })
+
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    // The automatic cover was refused too, and stayed silent — that one was not
+    // asked for. This one is.
+    expect(calls.albums()[0].cover_photo_id).toBeNull()
+
+    await page.getByRole('button', { name: /^Edit photo 1/ }).click()
+    await page.getByRole('button', { name: 'Use as album cover' }).click()
+
+    await expect(page.getByRole('alert')).toContainText('violates foreign key constraint')
+  })
+
   test('writes in the page typeface, not the browser default', async ({ page }) => {
     // A textarea defaults to monospace, and the reset only covered button and
     // input. Every earlier textarea had worked around it one rule at a time, so

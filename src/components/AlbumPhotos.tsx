@@ -266,6 +266,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               photos={photos}
               thumbnails={thumbnails}
               storyCounts={storyCounts}
+              coverPhotoId={album.coverPhotoId}
               selectedId={selectedId}
               onSelect={(photoId) =>
                 setSelectedId((current) => (current === photoId ? null : photoId))
@@ -289,6 +290,8 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 onAddStory={(input) => handleAddStory(selected.id, input)}
                 onEditStory={handleEditStory}
                 onDeleteStory={handleDeleteStory}
+                isCover={album.coverPhotoId === selected.id}
+                onUseAsCover={() => onCoverChosen(selected.id)}
                 onClose={() => setSelectedId(null)}
               />
             )}
