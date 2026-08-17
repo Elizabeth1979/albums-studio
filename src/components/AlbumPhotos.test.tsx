@@ -370,6 +370,44 @@ describe('AlbumPhotos', () => {
     })
   })
 
+  describe('choosing the album cover', () => {
+    /** `name` is matched loosely: a cover's button carries a suffix. */
+    async function openEditorFor(name: RegExp, overrides: Partial<Album> = {}) {
+      photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
+      photosApi.signedUrls.mockResolvedValue(new Map())
+
+      renderPhotos(overrides)
+      fireEvent.click(await screen.findByRole('button', { name }))
+    }
+
+    it('sets the chosen photo as the cover', async () => {
+      await openEditorFor(/^Edit photo 2/)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Use as album cover' }))
+
+      await waitFor(() => expect(onCoverChosen).toHaveBeenCalledWith('photo-1'))
+    })
+
+    it('marks the cover in the gallery', async () => {
+      // Otherwise the only way to find out which photo the library shows is to
+      // open each one in turn.
+      await openEditorFor(/^Edit photo 1/, { coverPhotoId: 'photo-0' })
+
+      expect(
+        screen.getByRole('button', { name: 'Edit photo 1 (album cover)' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit photo 2' })).toBeInTheDocument()
+    })
+
+    it('does not offer to re-cover the photo that already is', async () => {
+      await openEditorFor(/^Edit photo 1/, { coverPhotoId: 'photo-0' })
+
+      expect(
+        screen.queryByRole('button', { name: 'Use as album cover' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
   describe('the image processor', () => {
     it('is not built until there is a photo to process', () => {
       // It was built in an effect, and a file chosen before that effect ran was

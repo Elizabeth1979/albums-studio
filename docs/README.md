@@ -31,7 +31,8 @@ AI cost.
   returns a caption only when it is marked visible, and `anon` holds a named column list on
   `photos` that excludes `caption`. Story notes have no anon grant at all.
 - Album cards in the library show a cover photo. The first photo into an album with no cover
-  becomes one; an album that already has a cover keeps it.
+  becomes one, and the owner can choose a different photo from its editor. An album that
+  already has a cover keeps it, so an upload never overrules a choice.
 - The `photos` bucket is private and owner-namespaced. Shared delivery will use short-lived
   signed URLs from trusted server code.
 - Authentication covers password sign-in, magic links, and password reset. Password inputs

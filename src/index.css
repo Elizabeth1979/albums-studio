@@ -1307,13 +1307,56 @@ textarea:focus-visible {
   gap: 1.3rem;
 }
 
-.photo-editor-preview {
+.photo-editor-aside {
+  display: grid;
+  gap: 0.7rem;
   flex: 0 0 11rem;
+  justify-items: start;
+}
+
+.photo-editor-preview {
   width: 11rem;
   aspect-ratio: 4 / 3;
   border-radius: 0.6rem;
   object-fit: cover;
   background: #efe8dd;
+}
+
+.use-as-cover {
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+.cover-state {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  /* The badge is a label, not a bar: it should be as wide as its own words. */
+  justify-items: start;
+}
+
+.cover-state em {
+  color: #6f675c;
+  font-size: 0.74rem;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+/* Marks the photo the library card uses. Sits opposite the written mark so the
+   two never land on top of each other. */
+.photo-cover-mark {
+  position: absolute;
+  left: 0.4rem;
+  bottom: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  color: #fffdf9;
+  background: rgb(153 97 48 / 92%);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  text-transform: uppercase;
 }
 
 .photo-editor-form {
@@ -1516,7 +1559,15 @@ textarea:focus-visible {
      subject of the screen; on a phone the fields matter more. */
   .photo-editor-preview {
     width: 7rem;
-    margin-bottom: 0.9rem;
+  }
+
+  .photo-editor-aside {
+    margin-bottom: 1rem;
+  }
+
+  /* Full width would make this the loudest control on a phone, which it is not. */
+  .use-as-cover {
+    width: auto;
   }
 }
 
