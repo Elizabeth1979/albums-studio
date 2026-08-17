@@ -46,6 +46,24 @@ test.describe('uploading photos', () => {
     expect(Number(body.sharpness)).toBeGreaterThan(0)
   })
 
+  test('shrinks a photo larger than the ceiling, keeping its shape', async ({ page }) => {
+    // Every photo off a real camera takes this branch; the small sample used by
+    // the other cases already fits and never exercises it.
+    const calls = await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('wide.png', 2400, 400))
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    const insert = calls.all.find(
+      (call) => call.method === 'POST' && call.path.endsWith('/rest/v1/photos'),
+    )
+    const body = insert?.body as Record<string, unknown>
+
+    // 2400x400 capped at 2000 on the longest edge.
+    expect(body.width).toBe(2000)
+    expect(body.height).toBe(333)
+  })
+
   test('uploads a full image and a thumbnail under the owner prefix', async ({ page }) => {
     const calls = await openAlbum(page)
 
