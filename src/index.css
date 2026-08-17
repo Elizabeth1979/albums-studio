@@ -1251,9 +1251,35 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
+/*
+ * Two rings, not one. A single coloured border sits directly on the photograph,
+ * so how visible it is depends on what the photograph happens to contain — the
+ * brand brown used before fell to 1:1 against a wall its own colour.
+ *
+ * Cream against the app's ink is 14:1, and whichever of the pair the photo
+ * resembles, the other one stands out from it: sweeping every grey, the better
+ * ring never drops below 3.8:1. That is the guarantee a single ring cannot give.
+ */
 .photo-open.selected {
-  outline: 3px solid #996130;
-  outline-offset: -3px;
+  box-shadow:
+    inset 0 0 0 4px #fffdf9,
+    inset 0 0 0 8px #2d2924;
+}
+
+/* Selection is not signalled by colour alone: the tile says what it is. */
+.photo-editing-mark {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.35rem;
+  color: #fffdf9;
+  background: #2d2924;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  text-transform: uppercase;
 }
 
 /* A quiet mark that this photo already has words on it, so an owner can see at
