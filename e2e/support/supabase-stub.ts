@@ -57,6 +57,7 @@ export type AlbumRecord = {
   slug: string
   layout: string
   description: string | null
+  cover_photo_id: string | null
   created_at: string
 }
 
@@ -67,6 +68,7 @@ export function albumRecord(overrides: Partial<AlbumRecord> = {}): AlbumRecord {
     slug: 'summer-by-the-lake',
     layout: 'masonry',
     description: null,
+    cover_photo_id: null,
     created_at: '2026-08-16T10:00:00Z',
     ...overrides,
   }
@@ -74,6 +76,7 @@ export function albumRecord(overrides: Partial<AlbumRecord> = {}): AlbumRecord {
 
 export type PhotoRecord = {
   id: string
+  album_id: string
   storage_path: string
   thumbnail_path: string | null
   width: number | null
@@ -113,6 +116,18 @@ export type AuthCalls = {
 /** PostgREST filters arrive as `id=eq.<value>`. */
 function eqFilter(url: URL, column: string): string | null {
   return url.searchParams.get(column)?.replace(/^eq\./, '') ?? null
+}
+
+/** A set filter arrives as `id=in.(a,b)`; quoting only appears for odd values. */
+function inFilter(url: URL, column: string): string[] | null {
+  const raw = url.searchParams.get(column)
+  if (!raw?.startsWith('in.')) return null
+
+  return raw
+    .slice('in.('.length, -1)
+    .split(',')
+    .map((value) => value.replace(/^"|"$/g, ''))
+    .filter(Boolean)
 }
 
 function parseBody(request: Request): unknown {
@@ -209,7 +224,19 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       }
 
       if (method === 'GET') {
-        return json(photos)
+        // The album screen asks by album; the library asks for a scattered set
+        // of cover ids. Honouring both keeps a test that expects one photo from
+        // silently passing on the whole table.
+        const albumId = eqFilter(url, 'album_id')
+        const ids = inFilter(url, 'id')
+
+        return json(
+          photos.filter(
+            (row) =>
+              (albumId === null || row.album_id === albumId) &&
+              (ids === null || ids.includes(row.id)),
+          ),
+        )
       }
 
       if (method === 'POST') {
@@ -217,6 +244,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
         photosCreated += 1
         const row: PhotoRecord = {
           id: `photo-${photosCreated}`,
+          album_id: String(body.album_id ?? ''),
           storage_path: String(body.storage_path ?? ''),
           thumbnail_path: (body.thumbnail_path as string | null) ?? null,
           width: (body.width as number | null) ?? null,

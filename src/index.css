@@ -704,7 +704,10 @@ input:focus-visible {
 
 .album-open {
   display: grid;
-  gap: 1.4rem;
+  /* The cover keeps its own height and the title row takes what is left, so
+     cards in the same row line up however long their titles run. */
+  grid-template-rows: auto 1fr auto;
+  gap: 1rem;
   width: 100%;
   padding: 1.4rem;
   border: 1px solid #ded6ca;
@@ -719,6 +722,23 @@ input:focus-visible {
 .album-open:hover {
   border-color: #996130;
   transform: translateY(-2px);
+}
+
+.album-cover {
+  display: block;
+  width: 100%;
+  /* A fixed ratio rather than the photograph's own: the cards are a scannable
+     index, and a column of covers with different heights reads as clutter. */
+  aspect-ratio: 4 / 3;
+  border-radius: 0.6rem;
+  object-fit: cover;
+  background: #efe8dd;
+}
+
+.album-cover.empty {
+  border: 1px dashed #d8cfc1;
+  background:
+    linear-gradient(135deg, #f6f1e8 0%, #efe8dd 100%);
 }
 
 .album-title {

@@ -88,6 +88,12 @@ saying so.
 
 - Preserve user changes and avoid unrelated rewrites.
 - Do not add dependencies without a current use.
+- Set up what a user action needs on first use, not in a mount effect. An effect has not run
+  when the markup it belongs to is already on screen and tappable, and a handler that finds
+  its dependency missing tends to return quietly. This is invisible on a fast machine and
+  shows up on a slow phone or a loaded CI runner.
+- A new test that passes the first time has not been shown to test anything. Break the code
+  it covers, watch it fail, then put the code back.
 - After schema changes, verify migration history, RLS, grants, constraints, Storage policies,
   and Supabase advisors.
 - Update `docs/README.md` when adding or materially changing a document under `docs/`.

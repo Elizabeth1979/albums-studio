@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listPhotos, signedUrls, storePhoto } from './photos'
+import { listPhotos, signedUrls, storePhoto, thumbnailsByPhotoId } from './photos'
 
 const { auth, from, storage } = vi.hoisted(() => ({
   auth: { getClaims: vi.fn() },
@@ -186,6 +186,87 @@ describe('signedUrls', () => {
     createSignedUrls.mockResolvedValue({ data: null, error: { message: 'object not found' } })
 
     await expect(signedUrls(['a.jpg'])).rejects.toThrow('object not found')
+  })
+})
+
+describe('thumbnailsByPhotoId', () => {
+  /** Mirrors the `.select().in()` chain, and reports the ids it was asked for. */
+  function photosIn(rows: { id: string; thumbnail_path: string | null }[]) {
+    const inFilter = vi.fn(async (_column: string, _ids: string[]) => ({
+      data: rows,
+      error: null,
+    }))
+
+    from.mockReturnValue({ select: () => ({ in: inFilter }) })
+
+    return inFilter
+  }
+
+  it('keys signed urls by photo id rather than storage path', async () => {
+    // The library holds cover ids; it never sees a storage path, so a map keyed
+    // the other way would be unusable to it.
+    const { createSignedUrls } = bucket()
+    photosIn([
+      { id: 'photo-a', thumbnail_path: 'owner/a-thumb.jpg' },
+      { id: 'photo-b', thumbnail_path: 'owner/b-thumb.jpg' },
+    ])
+    createSignedUrls.mockResolvedValue({
+      data: [
+        { path: 'owner/a-thumb.jpg', signedUrl: 'https://signed/a' },
+        { path: 'owner/b-thumb.jpg', signedUrl: 'https://signed/b' },
+      ],
+      error: null,
+    })
+
+    const urls = await thumbnailsByPhotoId(['photo-a', 'photo-b'])
+
+    expect(urls.get('photo-a')).toBe('https://signed/a')
+    expect(urls.get('photo-b')).toBe('https://signed/b')
+  })
+
+  it('asks for the ids it was given', async () => {
+    bucket().createSignedUrls.mockResolvedValue({ data: [], error: null })
+    const inFilter = photosIn([])
+
+    await thumbnailsByPhotoId(['photo-a'])
+
+    expect(inFilter).toHaveBeenCalledWith('id', ['photo-a'])
+  })
+
+  it('touches nothing when there are no covers to look up', async () => {
+    // Every album in an empty library has a null cover; that must not become a
+    // request for the whole photo table.
+    const { createSignedUrls } = bucket()
+
+    expect((await thumbnailsByPhotoId([])).size).toBe(0)
+    expect(from).not.toHaveBeenCalled()
+    expect(createSignedUrls).not.toHaveBeenCalled()
+  })
+
+  it('leaves out a photo that has no thumbnail', async () => {
+    const { createSignedUrls } = bucket()
+    photosIn([{ id: 'photo-a', thumbnail_path: null }])
+
+    const urls = await thumbnailsByPhotoId(['photo-a'])
+
+    expect(urls.size).toBe(0)
+    expect(createSignedUrls).not.toHaveBeenCalled()
+  })
+
+  it('leaves out an id that names no readable row', async () => {
+    // A cover whose photo was deleted, or one belonging to another owner: the
+    // row simply does not come back, and the card falls back to its placeholder.
+    const { createSignedUrls } = bucket()
+    photosIn([{ id: 'photo-a', thumbnail_path: 'owner/a-thumb.jpg' }])
+    createSignedUrls.mockResolvedValue({
+      data: [{ path: 'owner/a-thumb.jpg', signedUrl: 'https://signed/a' }],
+      error: null,
+    })
+
+    const urls = await thumbnailsByPhotoId(['photo-a', 'photo-gone'])
+
+    expect(urls.has('photo-gone')).toBe(false)
+    expect(urls.size).toBe(1)
   })
 })
 

@@ -17,6 +17,7 @@ function album(overrides: Partial<Album> = {}): Album {
     slug: 'summer-by-the-lake',
     layout: 'masonry',
     description: null,
+    coverPhotoId: null,
     createdAt: '2026-08-16T10:00:00Z',
     ...overrides,
   }
@@ -33,6 +34,7 @@ function renderAlbumPage(props: Partial<ComponentProps<typeof AlbumPage>> = {}) 
       onChangeLayout={vi.fn().mockResolvedValue(undefined)}
       onChangeDescription={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
+      onCoverChosen={vi.fn().mockResolvedValue(undefined)}
       {...props}
     />,
   )

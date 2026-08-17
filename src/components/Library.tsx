@@ -7,6 +7,8 @@ type LibraryProps = {
   identity: Identity
   onSignOut: () => Promise<void>
   albums: Album[]
+  /** Signed cover thumbnails by photo id; absent while they are being minted. */
+  covers: Map<string, string>
   loading: boolean
   error: string | null
   onCreateAlbum: (input: {
@@ -33,6 +35,7 @@ export function Library({
   identity,
   onSignOut,
   albums,
+  covers,
   loading,
   error,
   onCreateAlbum,
@@ -160,13 +163,30 @@ export function Library({
               {albums.length === 1 ? '1 album' : `${albums.length} albums`}
             </h2>
             <ul className="album-list">
-              {albums.map((album) => (
+              {albums.map((album) => {
+                const cover = album.coverPhotoId ? covers.get(album.coverPhotoId) : undefined
+
+                return (
                 <li className="album-card" key={album.id}>
                   <button
                     className="album-open"
                     type="button"
                     onClick={() => onOpenAlbum(album)}
                   >
+                    {cover ? (
+                      <img
+                        className="album-cover"
+                        src={cover}
+                        // The title sits beside the picture in the same button,
+                        // so describing the cover again would make a screen
+                        // reader announce the album twice.
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span className="album-cover empty" aria-hidden="true" />
+                    )}
                     <span className="album-title">{album.title}</span>
                     <span className="album-meta">
                       <span className="layout-badge">{layoutLabel(album.layout)}</span>
@@ -174,7 +194,8 @@ export function Library({
                     </span>
                   </button>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           </section>
         )}

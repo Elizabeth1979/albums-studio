@@ -56,6 +56,40 @@ export async function listPhotos(albumId: string): Promise<Photo[]> {
   return (data ?? []).map((row) => toPhoto(row as PhotoRow))
 }
 
+/**
+ * Signed thumbnail URLs for a scattered set of photos, keyed by photo id.
+ *
+ * The library shows one photograph per album, so it holds cover ids rather than
+ * storage paths. Ids that name no readable row are simply absent from the map,
+ * which the caller already has to handle: a cover can be signed successfully and
+ * still be missing by the time the browser fetches it.
+ */
+export async function thumbnailsByPhotoId(ids: string[]): Promise<Map<string, string>> {
+  const byId = new Map<string, string>()
+  if (ids.length === 0) return byId
+
+  const { data, error } = await supabase
+    .from('photos')
+    .select('id, thumbnail_path')
+    .in('id', ids)
+
+  if (error) throw new Error(error.message)
+
+  const rows = (data ?? []) as { id: string; thumbnail_path: string | null }[]
+  const paths = rows
+    .map((row) => row.thumbnail_path)
+    .filter((path): path is string => Boolean(path))
+
+  const urls = await signedUrls(paths)
+
+  for (const row of rows) {
+    const url = row.thumbnail_path ? urls.get(row.thumbnail_path) : undefined
+    if (url) byId.set(row.id, url)
+  }
+
+  return byId
+}
+
 export type ProcessedImage = {
   full: Blob
   thumbnail: Blob

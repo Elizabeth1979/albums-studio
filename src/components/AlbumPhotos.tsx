@@ -9,13 +9,15 @@ import { PhotoUploader } from './PhotoUploader'
 
 type AlbumPhotosProps = {
   album: Album
+  /** Called with the photo that should represent the album in the library. */
+  onCoverChosen: (photoId: string) => Promise<void>
 }
 
 function describe(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
-export function AlbumPhotos({ album }: AlbumPhotosProps) {
+export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -27,9 +29,17 @@ export function AlbumPhotos({ album }: AlbumPhotosProps) {
   // worker up costs more than the first photo takes to process.
   const processorRef = useRef<ReturnType<typeof createImageProcessor> | null>(null)
 
-  useEffect(() => {
-    processorRef.current = createImageProcessor()
+  /**
+   * Built on first use rather than in an effect. Someone who taps the button the
+   * moment the screen appears can choose a file before effects have run, and a
+   * processor that is not there yet meant the upload was dropped in silence.
+   */
+  function imageProcessor() {
+    processorRef.current ??= createImageProcessor()
+    return processorRef.current
+  }
 
+  useEffect(() => {
     return () => {
       processorRef.current?.dispose()
       processorRef.current = null
@@ -81,9 +91,7 @@ export function AlbumPhotos({ album }: AlbumPhotosProps) {
   }, [album.id, refreshThumbnails])
 
   async function handleFiles(files: File[]) {
-    const processor = processorRef.current
-    if (!processor) return
-
+    const processor = imageProcessor()
     const requests = files.map((file) => ({ id: crypto.randomUUID(), file }))
 
     setItems(
@@ -115,10 +123,23 @@ export function AlbumPhotos({ album }: AlbumPhotosProps) {
 
     setBusy(false)
 
-    if (added.length > 0) {
-      await refreshThumbnails(
-        [...photos, ...added].sort((a, b) => a.sortOrder - b.sortOrder),
-      )
+    if (added.length === 0) return
+
+    const all = [...photos, ...added].sort((a, b) => a.sortOrder - b.sortOrder)
+    await refreshThumbnails(all)
+
+    // The first photograph in an album that has none becomes its cover, so the
+    // library card shows the album rather than a bare title. An album that
+    // already has a cover keeps it: this is a default, not a rule about which
+    // photo represents the album.
+    if (!album.coverPhotoId && all[0]) {
+      try {
+        await onCoverChosen(all[0].id)
+      } catch {
+        // The photos are safely stored either way, and the library falls back to
+        // the same card it has always shown. Reporting a failed cover here would
+        // read as though the upload itself had gone wrong.
+      }
     }
   }
 

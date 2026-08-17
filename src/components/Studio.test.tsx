@@ -4,19 +4,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Studio } from './Studio'
 import type { Album } from '../lib/albums'
 
-const { albumsApi } = vi.hoisted(() => ({
+const { albumsApi, photosApi, processorApi } = vi.hoisted(() => ({
   albumsApi: {
     listAlbums: vi.fn(),
     createAlbum: vi.fn(),
     renameAlbum: vi.fn(),
     updateAlbumDetails: vi.fn(),
+    setAlbumCover: vi.fn(),
     deleteAlbum: vi.fn(),
   },
+  photosApi: {
+    listPhotos: vi.fn(),
+    storePhoto: vi.fn(),
+    signedUrls: vi.fn(),
+    thumbnailsByPhotoId: vi.fn(),
+  },
+  processorApi: { process: vi.fn(), dispose: vi.fn() },
+}))
+
+// jsdom has neither Worker nor a canvas, so the real processor would fall back
+// to the main thread and then fail to decode. What a photograph becomes is
+// AlbumPhotos' subject and the end-to-end suite's; these tests are about how an
+// upload reaches the library.
+vi.mock('../lib/imaging/processor', () => ({
+  createImageProcessor: () => processorApi,
 }))
 
 vi.mock('../lib/albums', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/albums')>()),
   ...albumsApi,
+}))
+
+vi.mock('../lib/photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/photos')>()),
+  ...photosApi,
 }))
 
 function album(overrides: Partial<Album> = {}): Album {
@@ -26,6 +47,7 @@ function album(overrides: Partial<Album> = {}): Album {
     slug: 'summer-by-the-lake',
     layout: 'masonry',
     description: null,
+    coverPhotoId: null,
     createdAt: '2026-08-16T10:00:00Z',
     ...overrides,
   }
@@ -42,6 +64,17 @@ function renderStudio(initialPath = '/') {
 beforeEach(() => {
   vi.clearAllMocks()
   albumsApi.listAlbums.mockResolvedValue([])
+  photosApi.listPhotos.mockResolvedValue([])
+  photosApi.signedUrls.mockResolvedValue(new Map())
+  photosApi.thumbnailsByPhotoId.mockResolvedValue(new Map())
+  processorApi.process.mockResolvedValue({
+    full: new Blob(['full']),
+    thumbnail: new Blob(['thumb']),
+    width: 2000,
+    height: 1500,
+    phash: '0'.repeat(64),
+    sharpness: 120,
+  })
 })
 
 describe('Studio', () => {
@@ -153,6 +186,106 @@ describe('Studio', () => {
       }),
     )
     expect(await screen.findByText('A week by the water')).toBeInTheDocument()
+  })
+
+  it('signs the covers of the albums it listed and shows them', async () => {
+    albumsApi.listAlbums.mockResolvedValue([album({ coverPhotoId: 'photo-7' })])
+    photosApi.thumbnailsByPhotoId.mockResolvedValue(
+      new Map([['photo-7', 'https://signed/cover']]),
+    )
+
+    const { container } = renderStudio()
+
+    await waitFor(() =>
+      expect(container.querySelector('img.album-cover')).toHaveAttribute(
+        'src',
+        'https://signed/cover',
+      ),
+    )
+    expect(photosApi.thumbnailsByPhotoId).toHaveBeenCalledWith(['photo-7'])
+  })
+
+  it('does not ask for covers when no album has one', async () => {
+    albumsApi.listAlbums.mockResolvedValue([album()])
+
+    renderStudio()
+    await screen.findByRole('heading', { name: '1 album' })
+
+    expect(photosApi.thumbnailsByPhotoId).not.toHaveBeenCalled()
+  })
+
+  it('keeps the library usable when covers cannot be signed', async () => {
+    // Titles without pictures still work. An error banner here would be about
+    // something the owner cannot act on.
+    albumsApi.listAlbums.mockResolvedValue([album({ coverPhotoId: 'photo-7' })])
+    photosApi.thumbnailsByPhotoId.mockRejectedValue(new Error('object not found'))
+
+    renderStudio()
+
+    expect(await screen.findByText('Summer by the lake')).toBeInTheDocument()
+    await waitFor(() => expect(photosApi.thumbnailsByPhotoId).toHaveBeenCalled())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not re-sign covers when an unrelated field changes', async () => {
+    // Renaming replaces the album object. Signing is a round trip per library
+    // view, and the picture on the card did not change.
+    albumsApi.listAlbums.mockResolvedValue([album({ coverPhotoId: 'photo-7' })])
+    albumsApi.renameAlbum.mockResolvedValue(
+      album({ title: 'Lake days', coverPhotoId: 'photo-7' }),
+    )
+    photosApi.thumbnailsByPhotoId.mockResolvedValue(
+      new Map([['photo-7', 'https://signed/cover']]),
+    )
+
+    renderStudio()
+    fireEvent.click(await screen.findByRole('button', { name: /Summer by the lake/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Rename album' }))
+    fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Lake days' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save title' }))
+
+    expect(await screen.findByRole('heading', { name: 'Lake days' })).toBeInTheDocument()
+    expect(photosApi.thumbnailsByPhotoId).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a cover on the card after the album gets its first photo', async () => {
+    // The whole chain: uploading in the album writes the cover, and the library
+    // it returns to shows the picture without a page reload.
+    albumsApi.listAlbums.mockResolvedValue([album()])
+    albumsApi.setAlbumCover.mockResolvedValue(album({ coverPhotoId: 'photo-0' }))
+    photosApi.storePhoto.mockResolvedValue({
+      id: 'photo-0',
+      storagePath: 'owner/album-1/photo-0.jpg',
+      thumbnailPath: 'owner/album-1/photo-0-thumb.jpg',
+      width: 2000,
+      height: 1500,
+      caption: null,
+      alt: null,
+      sortOrder: 0,
+    })
+    photosApi.thumbnailsByPhotoId.mockResolvedValue(
+      new Map([['photo-0', 'https://signed/cover']]),
+    )
+
+    const { container } = renderStudio('/albums/summer-by-the-lake')
+
+    const input = await screen.findByLabelText('Choose photos')
+    fireEvent.change(input, {
+      target: { files: [new File(['bytes'], 'one.jpg', { type: 'image/jpeg' })] },
+    })
+
+    await waitFor(() =>
+      expect(albumsApi.setAlbumCover).toHaveBeenCalledWith('album-1', 'photo-0'),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '← All albums' }))
+
+    await waitFor(() =>
+      expect(container.querySelector('img.album-cover')).toHaveAttribute(
+        'src',
+        'https://signed/cover',
+      ),
+    )
   })
 
   it('returns to an emptied library after a delete', async () => {

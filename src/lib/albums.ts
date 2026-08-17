@@ -11,6 +11,8 @@ export type Album = {
   slug: string
   layout: AlbumLayout
   description: string | null
+  /** The photo shown on the album's card, or null while the album is empty. */
+  coverPhotoId: string | null
   createdAt: string
 }
 
@@ -20,10 +22,11 @@ type AlbumRow = {
   slug: string
   layout: AlbumLayout
   description: string | null
+  cover_photo_id: string | null
   created_at: string
 }
 
-const ALBUM_COLUMNS = 'id, title, slug, layout, description, created_at'
+const ALBUM_COLUMNS = 'id, title, slug, layout, description, cover_photo_id, created_at'
 
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = '23505'
@@ -44,6 +47,7 @@ function toAlbum(row: AlbumRow): Album {
     slug: row.slug,
     layout: row.layout,
     description: row.description,
+    coverPhotoId: row.cover_photo_id,
     createdAt: row.created_at,
   }
 }
@@ -152,6 +156,18 @@ export async function updateAlbumDetails(
   }
 
   return updateAlbum(id, columns)
+}
+
+/**
+ * Points the album's card at one of its photographs.
+ *
+ * The database enforces that the photo belongs to this album and this owner:
+ * cover_photo_id is half of a composite foreign key over
+ * (cover_photo_id, id, owner_id), so a cover borrowed from someone else's album
+ * is refused rather than quietly stored.
+ */
+export async function setAlbumCover(id: string, photoId: string): Promise<Album> {
+  return updateAlbum(id, { cover_photo_id: photoId })
 }
 
 export async function deleteAlbum(id: string): Promise<void> {
