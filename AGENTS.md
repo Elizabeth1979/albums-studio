@@ -105,8 +105,31 @@ saying so.
   its dependency missing tends to return quietly. This is invisible on a fast machine and
   shows up on a slow phone or a loaded CI runner.
 - A new test that passes the first time has not been shown to test anything. Break the code
-  it covers, watch it fail, then put the code back.
+  it covers, watch it fail, then put the code back. Break the rule that actually holds the
+  behaviour up, not one that merely looks related: a belt-and-braces fix means removing
+  either half alone still passes, and a test verified that way has been verified against
+  nothing.
+- Reset the working branch onto the default branch as the last step of a merge, not the
+  first step of the next task. Pull requests here are squash-merged, so the branch keeps a
+  commit whose content is already upstream under a different hash. Left there it becomes a
+  merge conflict on the next pull request and an unpushed-commit warning in between; both
+  happened twice before this line existed. Confirm the trees match
+  (`git rev-parse <branch>^{tree}` against the default branch) before force-pushing, so
+  "already merged" is checked rather than assumed.
+- Look at a user-facing change before calling it done, at a phone width and a desktop one.
+  Every visual fault so far — monospace fields, radios stacked away from their labels, a
+  selection ring invisible against a photograph — passed the whole suite and was found by
+  the owner on her phone. A screenshot costs one Playwright run.
+- Confirm a check actually ran for the commit being merged, and re-read its status fresh
+  rather than trusting an earlier response. Both failure modes have happened: a pull request
+  that silently got no run at all, and a cached "in progress" reported as a stalled job
+  minutes after it had passed.
 - After schema changes, verify migration history, RLS, grants, constraints, Storage policies,
-  and Supabase advisors.
+  and Supabase advisors, then run `supabase/checks/client_paths.sql`. It performs the writes
+  the client performs, as `authenticated` and `anon`, against the real schema, and rolls
+  everything back. It is the only check in the repository that touches a real database, and
+  it exists because every fault listed above passed a fully green suite. A column the client
+  starts writing belongs in it in the same change, or the next missing grant will reach the
+  deployed app exactly as the last four did.
 - Update `docs/README.md` when adding or materially changing a document under `docs/`.
 - Add a short session log only for work that changes durable decisions or project state.

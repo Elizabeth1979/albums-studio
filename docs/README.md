@@ -52,6 +52,11 @@ AI cost.
   on the project organization's team. Owner email arrives for that reason; nobody else's
   would. Custom SMTP is a prerequisite for opening signup — see roadmap open question 12b.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
+- Every automated test fakes the database: the unit suite mocks the Supabase client and the
+  end-to-end suite intercepts the network. `supabase/checks/client_paths.sql` is the
+  counterweight — it runs the client's real writes against the real schema as `authenticated`
+  and `anon`, then rolls back. Run it after any migration. It reproduces all four faults that
+  reached the deployed app past a green suite.
 - Next: Phase 5 AI Story Studio. Phases 1 to 4 are done and deployed.
 
 ## Plans
