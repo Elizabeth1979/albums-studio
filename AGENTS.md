@@ -74,6 +74,18 @@ saying so.
   confirmed against `information_schema.column_privileges` afterwards. No test catches a
   missing grant: the unit suite mocks the client and the end-to-end suite intercepts the
   network, so both pass against a schema that would refuse the write.
+- A column privilege cannot be subtracted from a table-level grant. `revoke select (col)`
+  against a role holding `grant select on table` parses, succeeds, and changes nothing. To
+  reach a subset, revoke the table grant and name the columns that remain.
+- Supabase's default privileges grant everything on every new `public` table to `anon`,
+  `authenticated` and `service_role`. A `create table` is therefore world-writable the
+  moment it exists, with only RLS in the way. Every new table needs
+  `revoke all ... from anon, authenticated` and explicit grants in the migration that
+  creates it.
+- Introducing a "hidden" state for a column means auditing every path that already reads it:
+  the column grants, and any `SECURITY DEFINER` function that selects it. A grant is
+  all-or-nothing, so text that is hidden per row has to reach readers through a function
+  that can make the decision.
 - Enforce tenant ownership in constraints as well as RLS. Do not trust a client-supplied
   `owner_id` by itself.
 - Keep privileged functions outside exposed schemas unless they are intentional public RPCs.

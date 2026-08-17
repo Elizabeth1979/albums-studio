@@ -45,18 +45,29 @@ subscription, Supabase, RLS, share links, Family Travels.
   2000px with a 400px thumbnail, hashed and scored for sharpness in a Web Worker, uploaded
   four at a time with retry, and recorded with their measurements. Album creation and the
   photo insert are both verified against the real schema.
-- ✅ **Accessibility is enforced, not asserted.** An axe-core pass over ten screens runs in
-  CI against WCAG 2.0/2.1 A and AA. It found five real contrast failures on first run.
+- ✅ **Accessibility is enforced, not asserted.** An axe-core pass over twelve screens runs
+  in CI against WCAG 2.0/2.1 A and AA. It found five real contrast failures on first run.
+- ✅ **Album cards carry a cover.** The first photo into an album with no cover becomes one;
+  an album that already has a cover keeps it.
+- ✅ **Phase 4 implemented.** Captions with a per-photo visibility choice, manual alt text
+  recorded as `alt_source = 'human'`, and story notes in a `photo_stories` table. Hidden text
+  is hidden in the database, not only on screen: `get_shared_album` withholds hidden
+  captions, `anon` no longer holds a table-wide select on `photos`, and story notes have no
+  anon grant at all. Verified by a rolled-back probe run as the real `authenticated` and
+  `anon` roles.
 
-**Next action:** Phase 4 text foundation. Captions with a visibility flag, story notes, and
-manual alt text, each needing a forward-only migration before the phase ships. Photos
-currently render with an empty `alt`, which marks them decorative; that is honest until an
-owner can write alt text, and Phase 4 is what changes it. The first AI checkpoint follows.
+**Next action:** Phase 5 AI Story Studio — the first AI checkpoint. Owners now supply the
+context it needs: captions, story notes, and alt text, each already marked with who it is
+for. Drafted alt text must respect `alt_source`; a human's wording is never overwritten by a
+suggestion.
 
-**Known schema gaps:** add forward-only migrations when their phases begin for
-`photos.caption_visibility`, `photo_stories`, `ai_drafts`, `studio_interactions`,
-`ai_suggestions`, and any face/embedding structures. Every client-written column needs its
-column grant in the same migration; two bugs today came from missing one.
+**Known schema gaps:** add forward-only migrations when their phases begin for `ai_drafts`,
+`studio_interactions`, `ai_suggestions`, and any face/embedding structures. Story notes have
+no `region`, `audio_path`, or `transcript` yet; those belong with Phase 5 voice capture.
+Every client-written column needs its column grant in the same migration, every new table
+needs `revoke all ... from anon, authenticated` because Supabase's default privileges grant
+everything, and a column privilege cannot be subtracted from a table-level grant. Four bugs
+so far have come from these three facts.
 
 ## Context
 
@@ -226,9 +237,11 @@ The UI should make the benefit clear through behavior: after a user writes usefu
 story notes, or alt text, search should become noticeably better. Do not make metadata
 entry feel like charity or compliance work; make it a practical album-management tool.
 
-**Checkpoint:** user can add/edit/remove a caption, story note, and alt text manually;
-choose whether captions/stories are visible or hidden; shared album views render visible
-captions/stories and image alt text, but do not show hidden text.
+**Checkpoint:** ✅ met, except for the half that needs Phase 6. Owners can add, edit and
+remove captions, story notes and alt text, and choose whether each is visible or hidden.
+Shared album views do not exist yet; what shipped is the guarantee they will need, which is
+that hidden text is already withheld at the database boundary rather than filtered by a page
+that does not exist.
 
 ### Phase 5 — AI Story Studio
 The first AI feature should prove the core product loop: the studio looks at selected photos

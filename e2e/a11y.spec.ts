@@ -128,6 +128,42 @@ test.describe('accessibility', () => {
     await expectNoViolations(page)
   })
 
+  test('photo editor, empty', async ({ page }) => {
+    await signIn(page)
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Edit photo 1' }).click()
+    await expect(page.getByLabel('Caption')).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
+  test('photo editor holding a story', async ({ page }) => {
+    // The written state is a different page: radio groups, a list of notes, and
+    // the delete confirmation all appear only once there is something to show.
+    await signIn(page)
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Edit photo 1' }).click()
+    await page.getByLabel('Caption').fill('Dinner on the last night')
+    await page.getByLabel('Alt text').fill('A long table set for twelve')
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText('Saved.')).toBeVisible()
+
+    await page.getByLabel('Add a story').fill('We had been walking since six.')
+    await page.getByRole('button', { name: 'Save story' }).click()
+    await expect(page.getByText('Kept to yourself')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Delete for good' })).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
   test('album page reporting a failed upload', async ({ page }) => {
     await stubSupabase(page, {
       albums: [albumRecord()],

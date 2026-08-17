@@ -6,32 +6,70 @@ type PhotoGalleryProps = {
   photos: Photo[]
   /** Signed URLs by storage path; absent while they are still being minted. */
   thumbnails: Map<string, string>
+  /** How many story notes each photo carries, by photo id. */
+  storyCounts: Map<string, number>
+  selectedId: string | null
+  onSelect: (photoId: string) => void
 }
 
-export function PhotoGallery({ layout, photos, thumbnails }: PhotoGalleryProps) {
+/**
+ * What a screen reader announces for the button around a photograph.
+ *
+ * The position is always there because it is the one thing that distinguishes
+ * two photographs with nothing written about them yet. Alt text is added when
+ * the owner has supplied it, so a list of buttons reads as a list of pictures
+ * rather than "photo 1, photo 2, photo 3".
+ */
+function tileLabel(photo: Photo, index: number): string {
+  const position = `photo ${index + 1}`
+
+  return photo.alt ? `Edit ${position}: ${photo.alt}` : `Edit ${position}`
+}
+
+export function PhotoGallery({
+  layout,
+  photos,
+  thumbnails,
+  storyCounts,
+  selectedId,
+  onSelect,
+}: PhotoGalleryProps) {
   return (
     <ul className={`photo-gallery layout-${layout}`}>
-      {photos.map((photo) => {
+      {photos.map((photo, index) => {
         const source = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
+        const stories = storyCounts.get(photo.id) ?? 0
+        const written = Boolean(photo.caption) || Boolean(photo.alt) || stories > 0
 
         return (
           <li className="photo-tile" key={photo.id}>
-            {source ? (
-              <img
-                src={source}
-                // Alt text is Phase 4's subject. Until an owner has written any,
-                // an empty alt is correct: it marks the image as decorative to a
-                // screen reader rather than reading out a filename that carries
-                // no meaning.
-                alt={photo.alt ?? ''}
-                width={photo.width ?? undefined}
-                height={photo.height ?? undefined}
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <span className="photo-placeholder" aria-hidden="true" />
-            )}
+            <button
+              className={selectedId === photo.id ? 'photo-open selected' : 'photo-open'}
+              type="button"
+              aria-expanded={selectedId === photo.id}
+              onClick={() => onSelect(photo.id)}
+            >
+              {source ? (
+                <img
+                  src={source}
+                  // The button carries the description; repeating it on the
+                  // image would make a screen reader read the photo twice.
+                  alt=""
+                  width={photo.width ?? undefined}
+                  height={photo.height ?? undefined}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span className="photo-placeholder" aria-hidden="true" />
+              )}
+              <span className="visually-hidden">{tileLabel(photo, index)}</span>
+              {written && (
+                <span className="photo-written" aria-hidden="true" title="Has written context">
+                  ✎
+                </span>
+              )}
+            </button>
           </li>
         )
       })}

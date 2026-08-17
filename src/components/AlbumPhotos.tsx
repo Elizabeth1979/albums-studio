@@ -1,9 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Album } from '../lib/albums'
 import { createImageProcessor } from '../lib/imaging/processor'
-import { type Photo, listPhotos, signedUrls, storePhoto } from '../lib/photos'
+import {
+  type Photo,
+  type TextVisibility,
+  listPhotos,
+  signedUrls,
+  storePhoto,
+  updatePhotoText,
+} from '../lib/photos'
+import {
+  type Story,
+  createStory,
+  deleteStory,
+  listStories,
+  updateStory,
+} from '../lib/stories'
 import { type UploadItem, runUploads } from '../lib/uploads'
 import { LayoutPreview } from './LayoutPreview'
+import { PhotoEditor } from './PhotoEditor'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -24,6 +39,8 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<UploadItem[]>([])
   const [busy, setBusy] = useState(false)
+  const [stories, setStories] = useState<Story[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // One worker for the life of the screen rather than one per batch: spinning a
   // worker up costs more than the first photo takes to process.
@@ -90,6 +107,34 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     }
   }, [album.id, refreshThumbnails])
 
+  // Story notes load on their own, keyed on which photos are on screen. They are
+  // the secondary half of this screen: making the pictures wait on them would
+  // hold an album shut over text that is not shown until a photo is chosen, and
+  // a failure to read them is not a reason to say the album could not open.
+  const photoIds = photos.map((photo) => photo.id).join(',')
+
+  useEffect(() => {
+    let active = true
+    const ids = photoIds ? photoIds.split(',') : []
+
+    if (ids.length === 0) {
+      setStories([])
+      return
+    }
+
+    listStories(ids)
+      .then((loaded) => {
+        if (active) setStories(loaded)
+      })
+      .catch(() => {
+        if (active) setStories([])
+      })
+
+    return () => {
+      active = false
+    }
+  }, [photoIds])
+
   async function handleFiles(files: File[]) {
     const processor = imageProcessor()
     const requests = files.map((file) => ({ id: crypto.randomUUID(), file }))
@@ -143,6 +188,48 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     }
   }
 
+  function replacePhoto(updated: Photo) {
+    setPhotos((current) =>
+      current.map((photo) => (photo.id === updated.id ? updated : photo)),
+    )
+  }
+
+  async function handleSaveText(
+    photoId: string,
+    patch: { caption?: string; captionVisibility?: TextVisibility; alt?: string },
+  ) {
+    replacePhoto(await updatePhotoText(photoId, patch))
+  }
+
+  async function handleAddStory(
+    photoId: string,
+    input: { body: string; visibility: TextVisibility },
+  ) {
+    const story = await createStory({ photoId, ...input })
+    setStories((current) => [...current, story])
+  }
+
+  async function handleEditStory(
+    id: string,
+    patch: { body?: string; visibility?: TextVisibility },
+  ) {
+    const story = await updateStory(id, patch)
+    setStories((current) => current.map((existing) => (existing.id === id ? story : existing)))
+  }
+
+  async function handleDeleteStory(id: string) {
+    await deleteStory(id)
+    setStories((current) => current.filter((story) => story.id !== id))
+  }
+
+  const selectedIndex = photos.findIndex((photo) => photo.id === selectedId)
+  const selected = selectedIndex === -1 ? null : photos[selectedIndex]
+
+  const storyCounts = new Map<string, number>()
+  for (const story of stories) {
+    storyCounts.set(story.photoId, (storyCounts.get(story.photoId) ?? 0) + 1)
+  }
+
   return (
     <>
       <PhotoUploader
@@ -173,7 +260,38 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
             <h2 className="visually-hidden" id="album-photos-title">
               {photos.length === 1 ? '1 photo' : `${photos.length} photos`}
             </h2>
-            <PhotoGallery layout={album.layout} photos={photos} thumbnails={thumbnails} />
+            <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
+            <PhotoGallery
+              layout={album.layout}
+              photos={photos}
+              thumbnails={thumbnails}
+              storyCounts={storyCounts}
+              selectedId={selectedId}
+              onSelect={(photoId) =>
+                setSelectedId((current) => (current === photoId ? null : photoId))
+              }
+            />
+            {selected && (
+              <PhotoEditor
+                // Remounting per photo is deliberate: the editor holds a draft,
+                // and carrying one photo's half-typed caption to the next would
+                // be a good way to save it to the wrong picture.
+                key={selected.id}
+                photo={selected}
+                position={selectedIndex + 1}
+                thumbnail={
+                  selected.thumbnailPath
+                    ? thumbnails.get(selected.thumbnailPath)
+                    : undefined
+                }
+                stories={stories.filter((story) => story.photoId === selected.id)}
+                onSave={(patch) => handleSaveText(selected.id, patch)}
+                onAddStory={(input) => handleAddStory(selected.id, input)}
+                onEditStory={handleEditStory}
+                onDeleteStory={handleDeleteStory}
+                onClose={() => setSelectedId(null)}
+              />
+            )}
           </>
         )}
       </section>
