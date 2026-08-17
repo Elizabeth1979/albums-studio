@@ -1,4 +1,5 @@
 import { type ChangeEvent, type DragEvent, useId, useRef, useState } from 'react'
+import { UNIVERSAL_FORMATS } from '../lib/imaging/formats'
 import type { UploadItem } from '../lib/uploads'
 
 type PhotoUploaderProps = {
@@ -58,6 +59,12 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
       >
+        {/* `accept="image/*"` is load-bearing, not decoration. It is what makes
+            iOS convert a HEIC photo to JPEG as it hands the file over, which is
+            why iPhone owners never meet the HEIC problem. Do not narrow it to a
+            list, and in particular do not add `image/heic`: Safari 17 reads
+            that as permission to convert *into* HEIC, which breaks the very
+            case the attribute is here to handle. */}
         <input
           ref={inputRef}
           id={inputId}
@@ -72,7 +79,10 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
         </label>
         <p className="drop-hint">
           Photos are resized in your browser before they are uploaded, so only the
-          smaller copy leaves your phone.
+          smaller copy leaves your device.
+        </p>
+        <p className="drop-formats">
+          {UNIVERSAL_FORMATS} work everywhere. iPhone photos convert as you add them.
         </p>
       </div>
 
@@ -100,7 +110,7 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
                 ? '1 photo could not be added.'
                 : `${failed.length} photos could not be added.`}{' '}
               {failed.every((item) => item.permanent)
-                ? 'This browser cannot read that format.'
+                ? 'Retrying will not help; see the reason above.'
                 : 'Choosing them again will try once more.'}
             </p>
           )}

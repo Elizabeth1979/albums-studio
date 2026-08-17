@@ -1,5 +1,12 @@
-import { type ProcessedImage, UnreadableImageError, processImage } from './process'
+import { type ProcessedImage, processImage } from './process'
 import type { ProcessRequest, ProcessResponse } from './worker'
+
+class RelayedUnreadableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnreadableImageError'
+  }
+}
 
 export type ImageProcessor = {
   process: (file: File, fileName: string) => Promise<ProcessedImage>
@@ -52,9 +59,11 @@ export function createImageProcessor(): ImageProcessor {
       return
     }
 
+    // The worker already phrased this for the file it saw; re-deriving a name
+    // from the text would only risk losing it.
     waiting.reject(
       response.unreadable
-        ? new UnreadableImageError(response.message.split(' could not be read')[0])
+        ? new RelayedUnreadableError(response.message)
         : new Error(response.message),
     )
   })
