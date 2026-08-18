@@ -78,6 +78,11 @@ Deno.serve(async (request) => {
 
   if (album.error) return json({ error: album.error.message }, 500)
 
+  // Checked as seriously as the album's own error. Dropping this silently would
+  // serve an album whose published story notes had vanished, which misrepresents
+  // what the owner chose to publish rather than merely losing a detail.
+  if (stories.error) return json({ error: stories.error.message }, 500)
+
   const rows = (album.data ?? []) as SharedRow[]
   if (rows.length === 0) return json({ error: 'not found' }, 404)
 
