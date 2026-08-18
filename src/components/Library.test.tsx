@@ -18,6 +18,16 @@ function album(overrides: Partial<Album> = {}): Album {
   }
 }
 
+/**
+ * Opens the create-album form, which is behind a button now: the library's own
+ * albums come first on the page, and the form pushed them off a phone screen.
+ */
+function startAlbum() {
+  fireEvent.click(
+    screen.getByRole('button', { name: /New album|Start your first album/ }),
+  )
+}
+
 function renderLibrary(props: Partial<ComponentProps<typeof Library>> = {}) {
   return render(
     <Library
@@ -113,6 +123,7 @@ describe('Library', () => {
     const onCreateAlbum = vi.fn().mockResolvedValue(undefined)
 
     renderLibrary({ onCreateAlbum })
+    startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
@@ -129,6 +140,7 @@ describe('Library', () => {
     const onCreateAlbum = vi.fn().mockResolvedValue(undefined)
 
     renderLibrary({ onCreateAlbum })
+    startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'School trip' } })
     fireEvent.click(screen.getByRole('radio', { name: 'Grid' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
@@ -146,6 +158,7 @@ describe('Library', () => {
     const onCreateAlbum = vi.fn().mockResolvedValue(undefined)
 
     renderLibrary({ onCreateAlbum })
+    startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Eilat' } })
     fireEvent.change(screen.getByLabelText(/^Description/), {
       target: { value: 'Red sea, October' },
@@ -161,14 +174,41 @@ describe('Library', () => {
     )
   })
 
-  it('clears the form after a successful creation', async () => {
+  it('says the album was added, rather than leaving the page looking unchanged', async () => {
+    // The form closes and the page does not move, so on a phone the new row can
+    // be below the fold. Without this the only feedback is a field going blank.
     renderLibrary()
+    startAlbum()
+    fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
+
+    const said = await screen.findByRole('status')
+    expect(said).toHaveTextContent('Added Wedding to your library.')
+  })
+
+  it('puts the form away once the album exists', async () => {
+    renderLibrary()
+    startAlbum()
+    fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Create album' })).not.toBeInTheDocument(),
+    )
+  })
+
+  it('carries nothing over into the next album', async () => {
+    renderLibrary()
+    startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
     fireEvent.change(screen.getByLabelText(/^Description/), { target: { value: 'Notes' } })
     fireEvent.click(screen.getByRole('radio', { name: 'Grid' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
-    await waitFor(() => expect(screen.getByLabelText('Album title')).toHaveValue(''))
+    await screen.findByRole('status')
+    startAlbum()
+
+    expect(screen.getByLabelText('Album title')).toHaveValue('')
     expect(screen.getByLabelText(/^Description/)).toHaveValue('')
     expect(screen.getByRole('radio', { name: 'Masonry' })).toBeChecked()
   })
@@ -177,6 +217,7 @@ describe('Library', () => {
     const onCreateAlbum = vi.fn()
 
     renderLibrary({ onCreateAlbum })
+    startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: '   ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
@@ -188,6 +229,7 @@ describe('Library', () => {
     const onCreateAlbum = vi.fn().mockRejectedValue(new Error('Network unreachable'))
 
     renderLibrary({ onCreateAlbum })
+    startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
