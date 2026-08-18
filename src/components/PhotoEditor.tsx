@@ -22,6 +22,10 @@ type PhotoEditorProps = {
   /** Whether this photograph is the one on the album's card in the library. */
   isCover: boolean
   onUseAsCover: () => Promise<void>
+  /** Absent at the ends of the album, where there is nowhere to move. */
+  onMoveEarlier: (() => Promise<void>) | null
+  onMoveLater: (() => Promise<void>) | null
+  onDelete: () => Promise<void>
   onClose: () => void
 }
 
@@ -36,6 +40,9 @@ export function PhotoEditor({
   onDeleteStory,
   isCover,
   onUseAsCover,
+  onMoveEarlier,
+  onMoveLater,
+  onDelete,
   onClose,
 }: PhotoEditorProps) {
   const [caption, setCaption] = useState(photo.caption ?? '')
@@ -46,6 +53,24 @@ export function PhotoEditor({
   const [error, setError] = useState<string | null>(null)
   const [settingCover, setSettingCover] = useState(false)
   const [coverError, setCoverError] = useState<string | null>(null)
+  const [moving, setMoving] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [placeError, setPlaceError] = useState<string | null>(null)
+
+  async function move(action: () => Promise<void>) {
+    setMoving(true)
+    setPlaceError(null)
+
+    try {
+      await action()
+    } catch (caughtError) {
+      setPlaceError(
+        caughtError instanceof Error ? caughtError.message : 'Could not move the photo.',
+      )
+    } finally {
+      setMoving(false)
+    }
+  }
 
   async function handleUseAsCover() {
     setSettingCover(true)
@@ -129,6 +154,34 @@ export function PhotoEditor({
           {coverError && (
             <p className="form-message error" role="alert">
               {coverError}
+            </p>
+          )}
+
+          {/* Buttons rather than dragging. A drag is awkward on a phone and
+              genuinely hard to make work with a keyboard or a screen reader;
+              two buttons work the same way for everyone. */}
+          <div className="photo-place" role="group" aria-label="Position in the album">
+            <button
+              className="text-button"
+              type="button"
+              disabled={moving || !onMoveEarlier}
+              onClick={() => onMoveEarlier && move(onMoveEarlier)}
+            >
+              ← Move earlier
+            </button>
+            <button
+              className="text-button"
+              type="button"
+              disabled={moving || !onMoveLater}
+              onClick={() => onMoveLater && move(onMoveLater)}
+            >
+              Move later →
+            </button>
+          </div>
+
+          {placeError && (
+            <p className="form-message error" role="alert">
+              {placeError}
             </p>
           )}
         </div>
@@ -221,6 +274,44 @@ export function PhotoEditor({
         onEdit={onEditStory}
         onDelete={onDeleteStory}
       />
+
+      <section className="photo-danger" aria-labelledby="remove-photo-title">
+        <h4 id="remove-photo-title">Remove this photo</h4>
+        {confirmingDelete ? (
+          <>
+            <p className="field-hint">
+              The photograph and everything written about it go for good. Nothing here is
+              recoverable afterwards.
+            </p>
+            <div className="story-actions">
+              <button
+                className="danger-button"
+                type="button"
+                disabled={moving}
+                onClick={() => move(onDelete)}
+              >
+                Yes, remove it
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                disabled={moving}
+                onClick={() => setConfirmingDelete(false)}
+              >
+                Keep it
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+          >
+            Remove photo
+          </button>
+        )}
+      </section>
     </section>
   )
 }

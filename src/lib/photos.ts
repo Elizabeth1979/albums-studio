@@ -150,10 +150,57 @@ export async function listPhotos(albumId: string): Promise<Photo[]> {
     .select(PHOTO_COLUMNS)
     .eq('album_id', albumId)
     .order('sort_order', { ascending: true })
+    // Two photos can briefly share a sort order: a reorder swaps two rows in
+    // two statements, and something can read between them. Without a tiebreak
+    // the album would shuffle on refresh rather than merely being mid-move.
+    .order('id', { ascending: true })
 
   if (error) throw new Error(error.message)
 
   return (data ?? []).map((row) => toPhoto(row as PhotoRow))
+}
+
+/**
+ * Deletes one photograph and the bytes behind it.
+ *
+ * Same order as deleting an album, for the same reason: the row goes first, so
+ * a refusal leaves the photo intact rather than showing a broken image.
+ */
+export async function deletePhoto(photo: Photo): Promise<void> {
+  const paths = photo.thumbnailPath
+    ? [photo.storagePath, photo.thumbnailPath]
+    : [photo.storagePath]
+
+  const { error } = await supabase.from('photos').delete().eq('id', photo.id)
+
+  if (error) throw new Error(error.message)
+
+  await removePhotoObjects(paths)
+}
+
+/**
+ * Swaps two photographs' positions.
+ *
+ * Only the pair moves, so a hundred-photo album costs two statements rather
+ * than a hundred. They are not one transaction — PostgREST has no way to make
+ * them one — so a failure between them leaves both rows on the same sort order.
+ * That is why `listPhotos` breaks ties: the worst case is a pair that did not
+ * move, never an album that reshuffles itself.
+ */
+export async function swapPhotoOrder(a: Photo, b: Photo): Promise<void> {
+  const first = await supabase
+    .from('photos')
+    .update({ sort_order: b.sortOrder })
+    .eq('id', a.id)
+
+  if (first.error) throw new Error(first.error.message)
+
+  const second = await supabase
+    .from('photos')
+    .update({ sort_order: a.sortOrder })
+    .eq('id', b.id)
+
+  if (second.error) throw new Error(second.error.message)
 }
 
 /**

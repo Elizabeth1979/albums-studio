@@ -46,6 +46,9 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
       onDeleteStory={vi.fn().mockResolvedValue(undefined)}
       isCover={false}
       onUseAsCover={vi.fn().mockResolvedValue(undefined)}
+      onMoveEarlier={vi.fn().mockResolvedValue(undefined)}
+      onMoveLater={vi.fn().mockResolvedValue(undefined)}
+      onDelete={vi.fn().mockResolvedValue(undefined)}
       onClose={vi.fn()}
       {...props}
     />,
@@ -169,6 +172,85 @@ describe('choosing the album cover', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'violates foreign key constraint',
     )
+  })
+})
+
+describe('where a photo sits, and removing it', () => {
+  it('moves a photo earlier', async () => {
+    const onMoveEarlier = vi.fn().mockResolvedValue(undefined)
+    renderEditor({ onMoveEarlier })
+
+    fireEvent.click(screen.getByRole('button', { name: '← Move earlier' }))
+
+    await waitFor(() => expect(onMoveEarlier).toHaveBeenCalled())
+  })
+
+  it('moves a photo later', async () => {
+    const onMoveLater = vi.fn().mockResolvedValue(undefined)
+    renderEditor({ onMoveLater })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move later →' }))
+
+    await waitFor(() => expect(onMoveLater).toHaveBeenCalled())
+  })
+
+  it('disables the direction that has nowhere to go', async () => {
+    // Kept on screen rather than removed, so the row does not reflow as the
+    // owner steps from the first photo to the second.
+    renderEditor({ onMoveEarlier: null })
+
+    expect(screen.getByRole('button', { name: '← Move earlier' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move later →' })).toBeEnabled()
+  })
+
+  it('reports a refused move', async () => {
+    const onMoveLater = vi.fn().mockRejectedValue(new Error('permission denied'))
+    renderEditor({ onMoveLater })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move later →' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('permission denied')
+  })
+
+  it('asks before removing a photograph', async () => {
+    // A product invariant: photos are never deleted without confirmation.
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    renderEditor({ onDelete })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+    expect(onDelete).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, remove it' }))
+    await waitFor(() => expect(onDelete).toHaveBeenCalled())
+  })
+
+  it('says what will be lost with it', async () => {
+    renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+
+    expect(screen.getByText(/everything written about it go for good/)).toBeInTheDocument()
+  })
+
+  it('lets the owner back out', async () => {
+    const onDelete = vi.fn()
+    renderEditor({ onDelete })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+    expect(screen.queryByRole('button', { name: 'Yes, remove it' })).not.toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+  })
+
+  it('reports a refused removal', async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error('permission denied for table photos'))
+    renderEditor({ onDelete })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, remove it' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('permission denied')
   })
 })
 

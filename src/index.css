@@ -1496,6 +1496,43 @@ textarea:focus-visible {
   font-style: normal;
 }
 
+.photo-place {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  padding-top: 0.2rem;
+}
+
+.photo-place .text-button {
+  padding: 0.25rem 0;
+  color: #6f675c;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.photo-place .text-button:disabled {
+  /* At an end of the album there is nowhere to go; the control stays visible
+     so the row does not reflow as the owner steps through photos. */
+  color: #b4aa9c;
+  cursor: default;
+}
+
+.photo-danger {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid #e7dfd3;
+}
+
+.photo-danger h4 {
+  margin: 0 0 0.4rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+}
+
+.photo-danger .field-hint {
+  margin: 0 0 0.8rem;
+}
+
 /* Story notes -------------------------------------------------------------- */
 
 .story-notes {

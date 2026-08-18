@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  type Photo,
+  deletePhoto,
   listPhotos,
   signedUrls,
   storePhoto,
+  swapPhotoOrder,
   thumbnailsByPhotoId,
   updatePhotoText,
 } from './photos'
@@ -378,15 +381,169 @@ describe('thumbnailsByPhotoId', () => {
 })
 
 describe('listPhotos', () => {
-  it('asks for one album in sort order', async () => {
-    const order = vi.fn().mockResolvedValue({ data: [ROW], error: null })
-    const eq = vi.fn(() => ({ order }))
+  /** Mirrors `.select().eq().order().order()`, capturing what it was ordered by. */
+  function listing(rows: unknown[] = [ROW]) {
+    const ordered: unknown[][] = []
+    const result = { data: rows, error: null }
+
+    const chain: { order: ReturnType<typeof vi.fn> } = {
+      order: vi.fn((...args: unknown[]) => {
+        ordered.push(args)
+        return Object.assign(Promise.resolve(result), chain)
+      }),
+    }
+
+    const eq = vi.fn(() => chain)
     from.mockReturnValue({ select: () => ({ eq }) })
+
+    return { eq, ordered }
+  }
+
+  it('asks for one album in sort order', async () => {
+    const { eq, ordered } = listing()
 
     const photos = await listPhotos('album-1')
 
     expect(eq).toHaveBeenCalledWith('album_id', 'album-1')
-    expect(order).toHaveBeenCalledWith('sort_order', { ascending: true })
+    expect(ordered[0]).toEqual(['sort_order', { ascending: true }])
     expect(photos[0]).toMatchObject({ id: 'photo-1', sortOrder: 0 })
+  })
+
+  it('breaks ties so the album cannot shuffle itself', async () => {
+    // A reorder swaps two rows in two statements. Read in between, both hold
+    // the same sort order, and without a second key the order would be whatever
+    // the database felt like — different on every refresh.
+    const { ordered } = listing()
+
+    await listPhotos('album-1')
+
+    expect(ordered).toHaveLength(2)
+    expect(ordered[1]).toEqual(['id', { ascending: true }])
+  })
+})
+
+describe('deletePhoto', () => {
+  function photo(overrides: Partial<Photo> = {}): Photo {
+    return {
+      id: 'photo-1',
+      storagePath: 'owner/a/1.jpg',
+      thumbnailPath: 'owner/a/1-thumb.jpg',
+      width: 2000,
+      height: 1500,
+      caption: null,
+      captionVisibility: 'hidden',
+      alt: null,
+      sortOrder: 0,
+      ...overrides,
+    }
+  }
+
+  function deletion(failure?: string) {
+    const order: string[] = []
+    const remove = vi.fn(async (_paths: string[]) => {
+      order.push('remove objects')
+      return { error: null }
+    })
+    const eq = vi.fn(async () => {
+      order.push('delete row')
+      return { error: failure ? { message: failure } : null }
+    })
+
+    from.mockReturnValue({ delete: () => ({ eq }) })
+    storage.from.mockReturnValue({ remove })
+
+    return { remove, eq, order }
+  }
+
+  it('removes the photograph and both of its objects', async () => {
+    const { remove } = deletion()
+
+    await deletePhoto(photo())
+
+    expect(remove).toHaveBeenCalledWith(['owner/a/1.jpg', 'owner/a/1-thumb.jpg'])
+  })
+
+  it('deletes the row before the bytes', async () => {
+    // A refused delete must leave the photo intact, not a row pointing at
+    // objects that are already gone.
+    const { order } = deletion()
+
+    await deletePhoto(photo())
+
+    expect(order).toEqual(['delete row', 'remove objects'])
+  })
+
+  it('keeps the bytes when the row could not be deleted', async () => {
+    const { remove } = deletion('permission denied for table photos')
+
+    await expect(deletePhoto(photo())).rejects.toThrow('permission denied')
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('copes with a photo that has no thumbnail', async () => {
+    const { remove } = deletion()
+
+    await deletePhoto(photo({ thumbnailPath: null }))
+
+    expect(remove).toHaveBeenCalledWith(['owner/a/1.jpg'])
+  })
+})
+
+describe('swapPhotoOrder', () => {
+  function swapping(failOn?: 1 | 2) {
+    const patches: { id: string; sort_order: number }[] = []
+    let call = 0
+
+    const update = vi.fn((patch: { sort_order: number }) => ({
+      eq: (_column: string, id: string) => {
+        call += 1
+        patches.push({ id, sort_order: patch.sort_order })
+
+        return Promise.resolve({
+          error: call === failOn ? { message: 'permission denied for column sort_order' } : null,
+        })
+      },
+    }))
+
+    from.mockReturnValue({ update })
+
+    return { patches }
+  }
+
+  const a = { id: 'photo-a', sortOrder: 0 } as Photo
+  const b = { id: 'photo-b', sortOrder: 1 } as Photo
+
+  it('gives each photo the other one’s position', async () => {
+    const { patches } = swapping()
+
+    await swapPhotoOrder(a, b)
+
+    expect(patches).toEqual([
+      { id: 'photo-a', sort_order: 1 },
+      { id: 'photo-b', sort_order: 0 },
+    ])
+  })
+
+  it('touches only the pair, whatever the album holds', async () => {
+    // The alternative is renumbering every photo on every move, which turns a
+    // hundred-photo album into a hundred statements.
+    const { patches } = swapping()
+
+    await swapPhotoOrder(a, b)
+
+    expect(patches).toHaveLength(2)
+  })
+
+  it('reports a refused move rather than half-applying it silently', async () => {
+    swapping(2)
+
+    await expect(swapPhotoOrder(a, b)).rejects.toThrow('permission denied')
+  })
+
+  it('does not attempt the second write when the first is refused', async () => {
+    const { patches } = swapping(1)
+
+    await expect(swapPhotoOrder(a, b)).rejects.toThrow('permission denied')
+    expect(patches).toHaveLength(1)
   })
 })

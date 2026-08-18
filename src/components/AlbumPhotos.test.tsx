@@ -10,6 +10,8 @@ const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted
     storePhoto: vi.fn(),
     signedUrls: vi.fn(),
     updatePhotoText: vi.fn(),
+    deletePhoto: vi.fn(),
+    swapPhotoOrder: vi.fn(),
   },
   processorApi: { process: vi.fn(), dispose: vi.fn() },
   createImageProcessor: vi.fn(),
@@ -454,6 +456,114 @@ describe('AlbumPhotos', () => {
       expect(
         screen.queryByRole('button', { name: 'Use as album cover' }),
       ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('reordering and removing photos', () => {
+    async function openThree(name: RegExp, overrides: Partial<Album> = {}) {
+      photosApi.listPhotos.mockResolvedValue([photo(0), photo(1), photo(2)])
+      photosApi.signedUrls.mockResolvedValue(new Map())
+      photosApi.swapPhotoOrder.mockResolvedValue(undefined)
+      photosApi.deletePhoto.mockResolvedValue(undefined)
+
+      renderPhotos(overrides)
+      fireEvent.click(await screen.findByRole('button', { name }))
+    }
+
+    it('swaps the chosen photo with the one before it', async () => {
+      await openThree(/^Edit photo 2/)
+
+      fireEvent.click(screen.getByRole('button', { name: '← Move earlier' }))
+
+      await waitFor(() =>
+        expect(photosApi.swapPhotoOrder).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'photo-1' }),
+          expect.objectContaining({ id: 'photo-0' }),
+        ),
+      )
+    })
+
+    it('reorders the gallery without reloading the album', async () => {
+      await openThree(/^Edit photo 2/)
+
+      fireEvent.click(screen.getByRole('button', { name: '← Move earlier' }))
+
+      // photo-1 now sits first, so it is the tile named "photo 1".
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /^Edit photo 1/ })).toHaveAttribute(
+          'aria-expanded',
+          'true',
+        ),
+      )
+      expect(photosApi.listPhotos).toHaveBeenCalledTimes(1)
+    })
+
+    it('offers no way off either end of the album', async () => {
+      await openThree(/^Edit photo 1/)
+
+      expect(screen.getByRole('button', { name: '← Move earlier' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Move later →' })).toBeEnabled()
+    })
+
+    it('removes a photo and closes the editor', async () => {
+      await openThree(/^Edit photo 2/)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, remove it' }))
+
+      await waitFor(() =>
+        expect(photosApi.deletePhoto).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'photo-1' }),
+        ),
+      )
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('heading', { name: 'What do you want to remember?' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(screen.queryByRole('button', { name: /^Edit photo 3/ })).not.toBeInTheDocument()
+    })
+
+    it('hands the cover to another photo when the cover one is removed', async () => {
+      // The foreign key nulls the album's cover when its photo goes, which would
+      // leave a full album showing an empty card in the library.
+      await openThree(/^Edit photo 1/, { coverPhotoId: 'photo-0' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, remove it' }))
+
+      await waitFor(() => expect(onCoverChosen).toHaveBeenCalledWith('photo-1'))
+    })
+
+    it('leaves the cover alone when a different photo is removed', async () => {
+      await openThree(/^Edit photo 2/, { coverPhotoId: 'photo-0' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, remove it' }))
+
+      await waitFor(() => expect(photosApi.deletePhoto).toHaveBeenCalled())
+      expect(onCoverChosen).not.toHaveBeenCalled()
+    })
+
+    it('takes the removed photo’s stories with it', async () => {
+      storiesApi.listStories.mockResolvedValue([
+        {
+          id: 'story-1',
+          photoId: 'photo-1',
+          body: 'Belongs to the second photo.',
+          visibility: 'hidden',
+          createdAt: '2026-08-17T10:00:00Z',
+        },
+      ])
+      await openThree(/^Edit photo 2/)
+      await screen.findByText('Belongs to the second photo.')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, remove it' }))
+
+      await waitFor(() =>
+        expect(screen.queryByText('Belongs to the second photo.')).not.toBeInTheDocument(),
+      )
     })
   })
 
