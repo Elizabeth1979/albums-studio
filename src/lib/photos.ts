@@ -58,6 +58,47 @@ function toPhoto(row: PhotoRow): Photo {
   }
 }
 
+/**
+ * The stored objects belonging to a set of photos.
+ *
+ * Storage has no foreign keys to the database, so deleting rows leaves their
+ * bytes behind. Anything that removes photos has to collect these first, while
+ * the rows still exist to be asked.
+ */
+export async function photoObjectPaths(albumId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('photos')
+    .select('storage_path, thumbnail_path')
+    .eq('album_id', albumId)
+
+  if (error) throw new Error(error.message)
+
+  return (data ?? []).flatMap((row) => {
+    const photo = row as { storage_path: string; thumbnail_path: string | null }
+
+    return photo.thumbnail_path ? [photo.storage_path, photo.thumbnail_path] : [photo.storage_path]
+  })
+}
+
+/**
+ * Removes stored bytes. Never throws.
+ *
+ * Callers reach here after the rows are already gone, so there is nothing left
+ * to undo and nothing useful to tell the owner: the album they asked to delete
+ * is deleted. A failure here leaves unreferenced objects, which is exactly the
+ * state this function exists to prevent — `supabase/checks/orphaned_objects.sql`
+ * is how they are found afterwards.
+ */
+export async function removePhotoObjects(paths: string[]): Promise<void> {
+  if (paths.length === 0) return
+
+  try {
+    await supabase.storage.from(PHOTO_BUCKET).remove(paths)
+  } catch {
+    // Deliberately swallowed; see above.
+  }
+}
+
 /** Empty text is stored as null, so "never written" and "cleared" read alike. */
 function trimmedOrNull(value: string): string | null {
   return value.trim() || null

@@ -267,6 +267,51 @@ test.describe('uploading photos', () => {
     await expect(page.locator('.album-card .album-cover.empty')).toHaveCount(1)
   })
 
+  test('deleting an album takes the photographs with it', async ({ page }) => {
+    // "Removes the album shell. Photos it holds go with it." said the
+    // confirmation, while every file stayed in the bucket for good. Rows
+    // cascade; bytes do not, and only this test walks the whole path.
+    const calls = await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles([
+      sampleFile('one.png'),
+      sampleFile('two.png'),
+    ])
+    await expect(page.getByText('Added 2 of 2.')).toBeVisible()
+    expect(calls.objects()).toHaveLength(4)
+
+    await page.getByRole('button', { name: 'Delete album' }).click()
+    await page.getByRole('button', { name: 'Yes, delete this album' }).click()
+
+    await expect(page.getByRole('heading', { name: 'No albums yet' })).toBeVisible()
+    expect(calls.albums()).toHaveLength(0)
+    expect(calls.objects()).toHaveLength(0)
+  })
+
+  test('keeps the photographs when the album could not be deleted', async ({ page }) => {
+    // Removing bytes before the rows would leave an album of broken images.
+    const calls = await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible()
+
+    await page.route('**/rest/v1/albums?id=eq.*', async (route) =>
+      route.request().method() === 'DELETE'
+        ? route.fulfill({
+            status: 403,
+            contentType: 'application/json',
+            body: JSON.stringify({ message: 'permission denied for table albums' }),
+          })
+        : route.fallback(),
+    )
+
+    await page.getByRole('button', { name: 'Delete album' }).click()
+    await page.getByRole('button', { name: 'Yes, delete this album' }).click()
+
+    await expect(page.getByRole('alert')).toContainText('permission denied')
+    expect(calls.objects()).toHaveLength(2)
+  })
+
   test('clears the upload list on request', async ({ page }) => {
     await openAlbum(page)
 

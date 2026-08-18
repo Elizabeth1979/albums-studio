@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createAlbum,
+  deleteAlbum,
   listAlbums,
   renameAlbum,
   setAlbumCover,
@@ -8,12 +9,15 @@ import {
   updateAlbumDetails,
 } from './albums'
 
-const { auth, from } = vi.hoisted(() => ({
+const { auth, from, storage } = vi.hoisted(() => ({
   auth: { getClaims: vi.fn() },
   from: vi.fn(),
+  storage: { from: vi.fn() },
 }))
 
-vi.mock('./supabase', () => ({ supabase: { auth, from } }))
+// Deleting an album now reaches Storage as well as the tables, through the
+// helpers in ./photos, which share this client.
+vi.mock('./supabase', () => ({ supabase: { auth, from, storage } }))
 
 const ROW = {
   id: 'album-1',
@@ -222,6 +226,107 @@ describe('listAlbums', () => {
     const albums = await listAlbums()
 
     expect(albums[0].coverPhotoId).toBe('photo-7')
+  })
+})
+
+describe('deleteAlbum', () => {
+  type Row = { storage_path: string; thumbnail_path: string | null }
+
+  /**
+   * Wires both tables and the bucket, and records the order things happened in.
+   * The order is the whole point: bytes must go after the rows, never before.
+   */
+  function deletion(rows: Row[], failures: { onDelete?: string; onRemove?: string } = {}) {
+    const order: string[] = []
+
+    const remove = vi.fn(async (_paths: string[]) => {
+      order.push('remove objects')
+      if (failures.onRemove) throw new Error(failures.onRemove)
+      return { error: null }
+    })
+
+    const eq = vi.fn(async () => {
+      order.push('delete rows')
+      return { error: failures.onDelete ? { message: failures.onDelete } : null }
+    })
+
+    from.mockImplementation((table: string) =>
+      table === 'photos'
+        ? {
+            select: () => ({
+              eq: () => {
+                order.push('read paths')
+                return Promise.resolve({ data: rows, error: null })
+              },
+            }),
+          }
+        : { delete: () => ({ eq }) },
+    )
+    storage.from.mockReturnValue({ remove })
+
+    return { remove, order }
+  }
+
+  const ROWS: Row[] = [
+    { storage_path: 'owner/a/1.jpg', thumbnail_path: 'owner/a/1-thumb.jpg' },
+    { storage_path: 'owner/a/2.jpg', thumbnail_path: 'owner/a/2-thumb.jpg' },
+  ]
+
+  it('removes the stored bytes, not only the rows', async () => {
+    // The rows cascade on their own; Storage has no foreign keys, so without
+    // this the photographs stay in the bucket for good and the confirmation
+    // that said otherwise was a lie.
+    const { remove } = deletion(ROWS)
+
+    await deleteAlbum('album-1')
+
+    expect(remove).toHaveBeenCalledWith([
+      'owner/a/1.jpg',
+      'owner/a/1-thumb.jpg',
+      'owner/a/2.jpg',
+      'owner/a/2-thumb.jpg',
+    ])
+  })
+
+  it('reads the paths before the rows go, and deletes bytes after', async () => {
+    // Reversing the last two would, when the row delete fails, leave an album
+    // whose every photo is a broken image — worse than the leak being fixed.
+    const { order } = deletion(ROWS)
+
+    await deleteAlbum('album-1')
+
+    expect(order).toEqual(['read paths', 'delete rows', 'remove objects'])
+  })
+
+  it('destroys nothing when the album could not be deleted', async () => {
+    const { remove } = deletion(ROWS, { onDelete: 'permission denied for table albums' })
+
+    await expect(deleteAlbum('album-1')).rejects.toThrow('permission denied')
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('still reports success when the bytes could not be removed', async () => {
+    // The album is gone. Telling the owner the delete failed would be false,
+    // and there is nothing they could do about it anyway.
+    deletion(ROWS, { onRemove: 'storage unavailable' })
+
+    await expect(deleteAlbum('album-1')).resolves.toBeUndefined()
+  })
+
+  it('asks Storage for nothing when the album held no photos', async () => {
+    const { remove } = deletion([])
+
+    await deleteAlbum('album-1')
+
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('copes with a photo that never got a thumbnail', async () => {
+    const { remove } = deletion([{ storage_path: 'owner/a/1.jpg', thumbnail_path: null }])
+
+    await deleteAlbum('album-1')
+
+    expect(remove).toHaveBeenCalledWith(['owner/a/1.jpg'])
   })
 })
 

@@ -91,6 +91,10 @@ saying so.
 - Keep privileged functions outside exposed schemas unless they are intentional public RPCs.
 - Keep share tokens in the private schema. Public album rows and ordinary client queries must
   never expose bearer credentials.
+- Storage has no foreign keys to the database. Deleting rows never deletes bytes, so anything
+  that removes photographs has to collect their paths first and remove the objects itself.
+  Rows go before bytes: the reverse leaves an album of broken images when the row delete
+  fails, which is worse than the leak.
 - Keep the `photos` bucket private. Store paths, not permanent URLs; issue short-lived signed
   URLs from trusted server code after reauthorizing every request. Database paths must begin
   with the owner's UUID and match the Storage object namespace.

@@ -33,6 +33,10 @@ AI cost.
 - Album cards in the library show a cover photo. The first photo into an album with no cover
   becomes one, and the owner can choose a different photo from its editor. An album that
   already has a cover keeps it, so an upload never overrules a choice.
+- Deleting an album removes its stored objects as well as its rows. Storage holds no foreign
+  keys, so nothing does this by itself: paths are collected while the rows exist, the rows go
+  next, and the bytes last, so a failed delete can never strand an album full of broken
+  images. `supabase/checks/orphaned_objects.sql` finds anything that still slips through.
 - The `photos` bucket is private and owner-namespaced. Shared delivery will use short-lived
   signed URLs from trusted server code.
 - Authentication covers password sign-in, magic links, and password reset. Password inputs
