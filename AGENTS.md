@@ -89,6 +89,15 @@ saying so.
 - Enforce tenant ownership in constraints as well as RLS. Do not trust a client-supplied
   `owner_id` by itself.
 - Keep privileged functions outside exposed schemas unless they are intentional public RPCs.
+- In a SQL-language function, a column reference beats a parameter of the same name. A
+  filter written `where t.token = token` compiles to `t.token = t.token` and matches every
+  row. This made the share token decorative for months, in a function that had been read
+  twice without anyone noticing. Name parameters so they cannot collide with a column, and
+  test a lookup function by asking it for something that does not exist — a filter that is
+  not filtering only shows up when the answer should have been empty.
+- Supabase's default privileges grant `execute` on every new function to `anon` as well, so
+  `revoke all ... from public` leaves it callable by a signed-out visitor. Revoke from
+  `anon` by name.
 - Keep share tokens in the private schema. Public album rows and ordinary client queries must
   never expose bearer credentials.
 - Storage has no foreign keys to the database. Deleting rows never deletes bytes, so anything
@@ -124,10 +133,14 @@ saying so.
   Every visual fault so far — monospace fields, radios stacked away from their labels, a
   selection ring invisible against a photograph — passed the whole suite and was found by
   the owner on her phone. A screenshot costs one Playwright run.
-- Confirm a check actually ran for the commit being merged, and re-read its status fresh
-  rather than trusting an earlier response. Both failure modes have happened: a pull request
-  that silently got no run at all, and a cached "in progress" reported as a stalled job
-  minutes after it had passed.
+- Confirm a check actually ran for the commit being merged. A pull request can silently get
+  no run at all, which is the failure worth catching.
+- Do not judge how long a run is taking from the clock. GitHub's API has reported a job as
+  `in progress`, and 404ed its logs, for thirteen minutes after it finished — on every
+  endpoint, so re-reading does not help. Twice this was narrated as a stalled job that had
+  in fact passed in eighty seconds. The step timestamps from `list_workflow_jobs` are the
+  authority: `completed_at` minus `started_at` is the real duration. Until a run reports a
+  conclusion, the only honest thing to say is that it has not reported yet.
 - After schema changes, verify migration history, RLS, grants, constraints, Storage policies,
   and Supabase advisors, then run `supabase/checks/client_paths.sql`. It performs the writes
   the client performs, as `authenticated` and `anon`, against the real schema, and rolls

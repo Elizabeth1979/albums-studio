@@ -36,6 +36,7 @@ declare
   token uuid;
   seen text;
   seen_id uuid;
+  seen_count int;
 begin
   ---------------------------------------------------------------------------
   -- Setup, as a privileged role.
@@ -230,6 +231,39 @@ begin
   else
     log := log || E'\n  FAIL  a published caption did not reach a share link'; fails := fails + 1;
   end if;
+
+  ---------------------------------------------------------------------------
+  -- Share links. The token is the only credential a visitor has, so the thing
+  -- worth checking is that it is actually checked.
+  ---------------------------------------------------------------------------
+  log := log || E'\n\nshare links';
+
+  begin
+    select count(*) into seen_count from public.get_shared_album(gen_random_uuid());
+    if seen_count = 0 then
+      log := log || E'\n  ok    a random uuid opens nothing';
+    else
+      -- This was true for months: a column reference beat the parameter of the
+      -- same name, so the filter compiled to `t.token = t.token`.
+      log := log || E'\n  FAIL  a random uuid opened a shared album'; fails := fails + 1;
+    end if;
+  exception when others then
+    log := log || E'\n  FAIL  get_shared_album -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  select count(*) into seen_count from public.get_shared_album_stories(gen_random_uuid());
+  if seen_count = 0 then
+    log := log || E'\n  ok    a random uuid reads no story notes';
+  else
+    log := log || E'\n  FAIL  a random uuid read story notes'; fails := fails + 1;
+  end if;
+
+  begin
+    perform public.album_share_token(album_a);
+    log := log || E'\n  FAIL  a visitor could ask for a share token'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a visitor cannot ask for a share token';
+  end;
 
   ---------------------------------------------------------------------------
   -- Deletes, which are the owner's alone.
