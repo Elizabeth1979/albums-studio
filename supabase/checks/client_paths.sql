@@ -234,6 +234,16 @@ begin
     log := log || E'\n  FAIL  a published caption did not reach a share link'; fails := fails + 1;
   end if;
 
+  -- The album a visitor is shown should be arranged the way its owner arranged
+  -- it. This column was missing from the function's result for a while, and the
+  -- shared page silently fell back to one column.
+  select layout into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = 'masonry' then
+    log := log || E'\n  ok    the layout the owner chose reaches a share link';
+  else
+    log := log || format(E'\n  FAIL  layout reached a share link as %L', seen); fails := fails + 1;
+  end if;
+
   ---------------------------------------------------------------------------
   -- Share links. The token is the only credential a visitor has, so the thing
   -- worth checking is that it is actually checked.

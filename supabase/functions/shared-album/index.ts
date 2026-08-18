@@ -37,6 +37,7 @@ type SharedRow = {
   album_id: string
   title: string
   description: string | null
+  layout: string
   photo_id: string | null
   storage_path: string | null
   thumbnail_path: string | null
@@ -88,13 +89,16 @@ Deno.serve(async (request) => {
 
   const photos = rows.filter((row) => row.photo_id && row.thumbnail_path)
 
-  const signed = photos.length
-    ? await supabase.storage
-        .from('photos')
-        .createSignedUrls(
-          photos.map((row) => row.thumbnail_path as string),
-          SIGNED_URL_TTL_SECONDS,
-        )
+  // Both sizes, not just the thumbnail. A thumbnail is 400px on its longest
+  // edge, and a phone asked to fill its width with one upscales it about three
+  // times — which is what a visitor saw. The browser picks from the pair, so a
+  // small screen still need not pull two megapixels it cannot use.
+  const paths = photos.flatMap((row) =>
+    [row.thumbnail_path, row.storage_path].filter((path): path is string => Boolean(path)),
+  )
+
+  const signed = paths.length
+    ? await supabase.storage.from('photos').createSignedUrls(paths, SIGNED_URL_TTL_SECONDS)
     : { data: [], error: null }
 
   if (signed.error) return json({ error: signed.error.message }, 500)
@@ -110,13 +114,20 @@ Deno.serve(async (request) => {
   }
 
   return json({
-    album: { title: rows[0].title, description: rows[0].description },
+    album: {
+      title: rows[0].title,
+      description: rows[0].description,
+      // Anything unrecognised reads as masonry, which keeps each photograph's
+      // own proportions and so cannot crop one on the visitor's behalf.
+      layout: rows[0].layout === 'grid' ? 'grid' : 'masonry',
+    },
     photos: photos.map((row) => ({
       id: row.photo_id,
       caption: row.caption,
       alt: row.alt,
       sortOrder: row.sort_order,
       thumbnailUrl: urls.get(row.thumbnail_path as string) ?? null,
+      fullUrl: urls.get(row.storage_path as string) ?? null,
       stories: told.get(row.photo_id as string) ?? [],
     })),
   })

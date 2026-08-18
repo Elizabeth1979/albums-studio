@@ -188,7 +188,11 @@ test.describe('accessibility', () => {
     await stubSupabase(page, {
       shared: {
         'good-token': {
-          album: { title: 'Summer by the lake', description: 'A week by the water' },
+          album: {
+            title: 'Summer by the lake',
+            description: 'A week by the water',
+            layout: 'masonry' as const,
+          },
           photos: [
             {
               id: 'photo-1',
@@ -196,6 +200,7 @@ test.describe('accessibility', () => {
               alt: 'A long table set for twelve',
               sortOrder: 0,
               thumbnailUrl: '/pixel.png',
+              fullUrl: '/pixel.png',
               stories: ['We had been walking since six.'],
             },
           ],
