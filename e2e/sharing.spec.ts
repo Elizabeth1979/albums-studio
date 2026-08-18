@@ -78,6 +78,24 @@ test.describe('opening a shared album as a visitor', () => {
     },
   }
 
+  const TWO_PHOTOS = {
+    'good-token': {
+      album: SHARED['good-token'].album,
+      photos: [
+        SHARED['good-token'].photos[0],
+        {
+          id: 'photo-2',
+          caption: null,
+          alt: 'The lake at dawn',
+          sortOrder: 1,
+          thumbnailUrl: '/shared-pixel.png',
+          fullUrl: '/shared-full.png',
+          stories: [],
+        },
+      ],
+    },
+  }
+
   test('needs no account at all', async ({ page }) => {
     // The whole point. A visitor arriving cold must never meet a sign-in form.
     await stubSupabase(page, { shared: SHARED })
@@ -100,13 +118,96 @@ test.describe('opening a shared album as a visitor', () => {
   })
 
   test('offers a visitor nothing to change', async ({ page }) => {
+    // Opening a photograph is a button, so the test is about editing rather
+    // than about buttons: nothing here writes anything.
     await stubSupabase(page, { shared: SHARED })
 
     await page.goto('/shared/good-token')
     await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
 
-    expect(await page.getByRole('button').count()).toBe(0)
     expect(await page.getByRole('textbox').count()).toBe(0)
+    for (const name of ['Edit', 'Delete', 'Save', 'Rename', 'Choose photos', 'Sign out']) {
+      await expect(page.getByRole('button', { name: new RegExp(name) })).toHaveCount(0)
+    }
+  })
+
+  test('opens a photograph to fill the screen', async ({ page }) => {
+    await stubSupabase(page, { shared: TWO_PHOTOS })
+
+    await page.goto('/shared/good-token')
+    await page.getByRole('button', { name: 'A long table set for twelve' }).click()
+
+    const lightbox = page.getByRole('dialog')
+    await expect(lightbox).toBeVisible()
+    await expect(lightbox.getByRole('img')).toHaveAttribute('src', '/shared-full.png')
+    await expect(lightbox).toContainText('1 of 2')
+  })
+
+  test('shows what the owner wrote beside the open photograph', async ({ page }) => {
+    await stubSupabase(page, { shared: TWO_PHOTOS })
+
+    await page.goto('/shared/good-token')
+    await page.getByRole('button', { name: 'A long table set for twelve' }).click()
+
+    const lightbox = page.getByRole('dialog')
+    await expect(lightbox).toContainText('Dinner on the last night')
+    await expect(lightbox).toContainText('We had been walking since six.')
+  })
+
+  test('steps between photographs, and wraps at the end', async ({ page }) => {
+    await stubSupabase(page, { shared: TWO_PHOTOS })
+
+    await page.goto('/shared/good-token')
+    await page.getByRole('button', { name: 'A long table set for twelve' }).click()
+
+    const lightbox = page.getByRole('dialog')
+    await lightbox.getByRole('button', { name: /Next/ }).click()
+    await expect(lightbox).toContainText('2 of 2')
+
+    // Wrapping matters most on a phone, where the arrows are small and a dead
+    // one at the end is a trap.
+    await lightbox.getByRole('button', { name: /Next/ }).click()
+    await expect(lightbox).toContainText('1 of 2')
+
+    await lightbox.getByRole('button', { name: /Previous/ }).click()
+    await expect(lightbox).toContainText('2 of 2')
+  })
+
+  test('steps with the arrow keys too', async ({ page }) => {
+    await stubSupabase(page, { shared: TWO_PHOTOS })
+
+    await page.goto('/shared/good-token')
+    await page.getByRole('button', { name: 'A long table set for twelve' }).click()
+
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('dialog')).toContainText('2 of 2')
+
+    await page.keyboard.press('ArrowLeft')
+    await expect(page.getByRole('dialog')).toContainText('1 of 2')
+  })
+
+  test('closes on Escape and gives focus back to the photograph', async ({ page }) => {
+    await stubSupabase(page, { shared: TWO_PHOTOS })
+
+    await page.goto('/shared/good-token')
+    const opener = page.getByRole('button', { name: 'A long table set for twelve' })
+    await opener.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    await page.keyboard.press('Escape')
+
+    await expect(page.getByRole('dialog')).toBeHidden()
+    await expect(opener).toBeFocused()
+  })
+
+  test('closes on the close button', async ({ page }) => {
+    await stubSupabase(page, { shared: TWO_PHOTOS })
+
+    await page.goto('/shared/good-token')
+    await page.getByRole('button', { name: 'A long table set for twelve' }).click()
+    await page.getByRole('button', { name: 'Close' }).click()
+
+    await expect(page.getByRole('dialog')).toBeHidden()
   })
 
   test('shows the full photograph, not the thumbnail stretched', async ({ page }) => {

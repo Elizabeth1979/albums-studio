@@ -214,6 +214,48 @@ test.describe('accessibility', () => {
     await expectNoViolations(page)
   })
 
+  test('a photograph opened to fill the screen', async ({ page }) => {
+    // A modal is where accessibility usually goes wrong: the name, the focus
+    // trap, and the contrast of controls drawn on a dark backdrop.
+    await stubSupabase(page, {
+      shared: {
+        'good-token': {
+          album: {
+            title: 'Summer by the lake',
+            description: 'A week by the water',
+            layout: 'masonry' as const,
+          },
+          photos: [
+            {
+              id: 'photo-1',
+              caption: 'Dinner on the last night',
+              alt: 'A long table set for twelve',
+              sortOrder: 0,
+              thumbnailUrl: '/pixel.png',
+              fullUrl: '/pixel.png',
+              stories: ['We had been walking since six.'],
+            },
+            {
+              id: 'photo-2',
+              caption: null,
+              alt: 'The lake at dawn',
+              sortOrder: 1,
+              thumbnailUrl: '/pixel.png',
+              fullUrl: '/pixel.png',
+              stories: [],
+            },
+          ],
+        },
+      },
+    })
+
+    await page.goto('/shared/good-token')
+    await page.getByRole('button', { name: 'A long table set for twelve' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
   test('a share link that no longer works', async ({ page }) => {
     await stubSupabase(page, { shared: {} })
 

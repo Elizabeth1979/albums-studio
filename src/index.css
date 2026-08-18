@@ -1578,6 +1578,136 @@ textarea:focus-visible {
   object-fit: cover;
 }
 
+/* The whole tile is the control, so it carries no button chrome of its own. */
+.shared-photo-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.7rem;
+  background: none;
+  cursor: zoom-in;
+}
+
+.shared-photo-open:focus-visible {
+  outline: 3px solid #8d5526;
+  outline-offset: 3px;
+}
+
+.shared-photo-open img {
+  transition: opacity 140ms ease;
+}
+
+.shared-photo-open:hover img {
+  opacity: 0.88;
+}
+
+.lightbox {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  /* Opaque on the dialog itself, not only on ::backdrop. A backdrop is not part
+     of the element's background, so light text over `none` is measured against
+     the page behind it — which fails contrast, and would genuinely be unreadable
+     anywhere the backdrop did not paint. */
+  background: #181512;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lightbox::backdrop {
+  background: #181512;
+}
+
+.lightbox-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(100% - 2rem, 68rem);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+  color: #f4efe8;
+}
+
+.lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lightbox-position {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #cdc3b6;
+}
+
+.lightbox-close,
+.lightbox-step {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #6b6157;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4efe8;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.lightbox-close:hover,
+.lightbox-step:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.lightbox-close:focus-visible,
+.lightbox-step:focus-visible {
+  outline: 3px solid #e2b483;
+  outline-offset: 2px;
+}
+
+.lightbox-image {
+  display: block;
+  /* Bounded rather than stretched, so the element is the size of the
+     photograph: a portrait shot keeps its shape instead of sitting in a wide
+     transparent box, and none of it is ever cropped away. */
+  max-width: 100%;
+  max-height: 70dvh;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+}
+
+.lightbox-words {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 44rem;
+}
+
+.lightbox-caption {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.lightbox-story {
+  margin: 0;
+  color: #d3c9bc;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.lightbox-steps {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: auto;
+}
+
 .shared-caption {
   max-width: 44rem;
   margin: 1rem 0 0;

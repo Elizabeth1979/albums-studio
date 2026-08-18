@@ -64,8 +64,12 @@ describe('a visitor with no account', () => {
     render(<SharedAlbum token="the-token" />)
     await screen.findByRole('heading', { name: 'Summer by the lake' })
 
-    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    // Opening a photograph is a button, so this is about editing rather than
+    // about buttons: nothing a visitor can reach writes anything.
     expect(screen.queryAllByRole('textbox')).toHaveLength(0)
+    for (const name of [/Edit/, /Delete/, /Save/, /Rename/, /Sign out/]) {
+      expect(screen.queryAllByRole('button', { name })).toHaveLength(0)
+    }
   })
 
   it('asks the Edge Function, not the database', async () => {
