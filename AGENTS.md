@@ -89,6 +89,15 @@ saying so.
 - Enforce tenant ownership in constraints as well as RLS. Do not trust a client-supplied
   `owner_id` by itself.
 - Keep privileged functions outside exposed schemas unless they are intentional public RPCs.
+- In a SQL-language function, a column reference beats a parameter of the same name. A
+  filter written `where t.token = token` compiles to `t.token = t.token` and matches every
+  row. This made the share token decorative for months, in a function that had been read
+  twice without anyone noticing. Name parameters so they cannot collide with a column, and
+  test a lookup function by asking it for something that does not exist — a filter that is
+  not filtering only shows up when the answer should have been empty.
+- Supabase's default privileges grant `execute` on every new function to `anon` as well, so
+  `revoke all ... from public` leaves it callable by a signed-out visitor. Revoke from
+  `anon` by name.
 - Keep share tokens in the private schema. Public album rows and ordinary client queries must
   never expose bearer credentials.
 - Storage has no foreign keys to the database. Deleting rows never deletes bytes, so anything

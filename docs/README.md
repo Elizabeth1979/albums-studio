@@ -62,6 +62,11 @@ AI cost.
 - Auth mail still comes from Supabase's built-in sender, which delivers only to addresses
   on the project organization's team. Owner email arrives for that reason; nobody else's
   would. Custom SMTP is a prerequisite for opening signup — see roadmap open question 12b.
+- Share links are token-gated in the database: `get_shared_album` and
+  `get_shared_album_stories` serve an album only for its own token and only while its
+  visibility is `link` or `public`, and hidden captions and unpublished stories never leave.
+  The owner reads or rotates the token through `album_share_token` /
+  `rotate_album_share_token`; rotation retires every link handed out.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
 - Every automated test fakes the database: the unit suite mocks the Supabase client and the
   end-to-end suite intercepts the network. `supabase/checks/client_paths.sql` is the
