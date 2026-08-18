@@ -1,3 +1,4 @@
+import { photoObjectPaths, removePhotoObjects } from './photos'
 import { currentOwnerId } from './session'
 import { supabase } from './supabase'
 
@@ -170,8 +171,26 @@ export async function setAlbumCover(id: string, photoId: string): Promise<Album>
   return updateAlbum(id, { cover_photo_id: photoId })
 }
 
+/**
+ * Deletes an album, and the photographs' bytes with it.
+ *
+ * The photo rows cascade away on their own, but Storage holds no foreign keys,
+ * so the objects would stay in the bucket for good — invisible to the owner,
+ * paid for indefinitely, and flatly contradicting the confirmation that said
+ * the photos go too.
+ *
+ * The order is deliberate. Paths are collected while the rows still exist, the
+ * rows go next, and only then the bytes. Removing bytes first would, if the row
+ * delete then failed, leave an album whose photographs are all broken images —
+ * strictly worse than the leak. This way the failure case is the behaviour we
+ * already had, and the success case is the one we want.
+ */
 export async function deleteAlbum(id: string): Promise<void> {
+  const paths = await photoObjectPaths(id)
+
   const { error } = await supabase.from('albums').delete().eq('id', id)
 
   if (error) throw new Error(error.message)
+
+  await removePhotoObjects(paths)
 }
