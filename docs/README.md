@@ -33,6 +33,13 @@ AI cost.
 - Album cards in the library show a cover photo. The first photo into an album with no cover
   becomes one, and the owner can choose a different photo from its editor. An album that
   already has a cover keeps it, so an upload never overrules a choice.
+- A photo can be removed on its own, after a confirmation, and its bytes go with it. If it
+  was the album's cover, the next photo takes over: the foreign key nulls the cover when its
+  photo goes, which would otherwise leave a full album showing an empty card.
+- Photos can be reordered with Move earlier / Move later rather than dragging, which works
+  the same for touch, keyboard and screen readers. A move swaps one pair, so the cost does
+  not grow with the album; `listPhotos` breaks ties on id so a half-applied swap cannot make
+  the album reshuffle itself.
 - Deleting an album removes its stored objects as well as its rows. Storage holds no foreign
   keys, so nothing does this by itself: paths are collected while the rows exist, the rows go
   next, and the bytes last, so a failed delete can never strand an album full of broken

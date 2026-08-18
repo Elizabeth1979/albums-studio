@@ -321,6 +321,16 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
         return json(wantsObject ? row : [row], 201)
       }
 
+      if (method === 'DELETE') {
+        const id = eqFilter(url, 'id')
+        photos = photos.filter((row) => row.id !== id)
+        // The real schema cascades photo_stories through the composite foreign
+        // key. Without this the stub would keep stories whose photo is gone and
+        // quietly disagree with the database about what deleting means.
+        stories = stories.filter((row) => row.photo_id !== id)
+        return route.fulfill({ status: 204, body: '' })
+      }
+
       if (method === 'PATCH') {
         if (options.photoUpdate) {
           return json(options.photoUpdate.body, options.photoUpdate.status)

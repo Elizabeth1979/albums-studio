@@ -4,9 +4,11 @@ import { createImageProcessor } from '../lib/imaging/processor'
 import {
   type Photo,
   type TextVisibility,
+  deletePhoto,
   listPhotos,
   signedUrls,
   storePhoto,
+  swapPhotoOrder,
   updatePhotoText,
 } from '../lib/photos'
 import {
@@ -223,6 +225,44 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     setStories((current) => current.filter((story) => story.id !== id))
   }
 
+  async function handleSwap(index: number, other: number) {
+    const [a, b] = [photos[index], photos[other]]
+
+    await swapPhotoOrder(a, b)
+
+    setPhotos((current) => {
+      const moved = current.map((photo) =>
+        photo.id === a.id
+          ? { ...photo, sortOrder: b.sortOrder }
+          : photo.id === b.id
+            ? { ...photo, sortOrder: a.sortOrder }
+            : photo,
+      )
+
+      return [...moved].sort((one, two) => one.sortOrder - two.sortOrder)
+    })
+  }
+
+  async function handleDeletePhoto(photo: Photo) {
+    await deletePhoto(photo)
+
+    const left = photos.filter((existing) => existing.id !== photo.id)
+    setPhotos(left)
+    setStories((current) => current.filter((story) => story.photoId !== photo.id))
+    setSelectedId(null)
+
+    // The foreign key nulls the album's cover when its photo goes, which would
+    // leave a full album showing an empty card. Hand the job to the next photo
+    // rather than making the owner notice and fix it.
+    if (album.coverPhotoId === photo.id && left[0]) {
+      try {
+        await onCoverChosen(left[0].id)
+      } catch {
+        // The photo is gone either way; the card falls back to its placeholder.
+      }
+    }
+  }
+
   const selectedIndex = photos.findIndex((photo) => photo.id === selectedId)
   const selected = selectedIndex === -1 ? null : photos[selectedIndex]
 
@@ -293,6 +333,15 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 onDeleteStory={handleDeleteStory}
                 isCover={album.coverPhotoId === selected.id}
                 onUseAsCover={() => onCoverChosen(selected.id)}
+                onMoveEarlier={
+                  selectedIndex > 0 ? () => handleSwap(selectedIndex, selectedIndex - 1) : null
+                }
+                onMoveLater={
+                  selectedIndex < photos.length - 1
+                    ? () => handleSwap(selectedIndex, selectedIndex + 1)
+                    : null
+                }
+                onDelete={() => handleDeletePhoto(selected)}
                 onClose={() => setSelectedId(null)}
               />
             )}

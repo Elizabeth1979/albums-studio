@@ -226,6 +226,60 @@ test.describe('writing about a photo', () => {
     await expect(page.getByRole('alert')).toContainText('violates foreign key constraint')
   })
 
+  test('reorders photos, and the order survives a reload', async ({ page }) => {
+    const calls = await stubSupabase(page, { albums: [albumRecord()] })
+
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+
+    await page
+      .getByLabel('Choose photos')
+      .setInputFiles([sampleFile('one.png'), sampleFile('two.png')])
+    await expect(page.getByText('Added 2 of 2.')).toBeVisible()
+
+    const second = calls.photos().find((photo) => photo.sort_order === 1)
+
+    await page.getByRole('button', { name: /^Edit photo 2/ }).click()
+    await page.getByRole('button', { name: '← Move earlier' }).click()
+
+    // The photo that was second now holds position zero in the stored rows.
+    await expect
+      .poll(() => calls.photos().find((photo) => photo.id === second?.id)?.sort_order)
+      .toBe(0)
+
+    await page.reload()
+    await page.getByRole('button', { name: /^Edit photo 1/ }).click()
+    await expect(page.getByRole('button', { name: '← Move earlier' })).toBeDisabled()
+  })
+
+  test('removes a photo, its bytes, and its stories', async ({ page }) => {
+    const calls = await openPhoto(page)
+
+    await page.getByLabel('Add a story').fill('A long day.')
+    await page.getByRole('button', { name: 'Save story' }).click()
+    await expect(savedStories(page)).toHaveText(['A long day.'])
+    expect(calls.objects()).toHaveLength(2)
+
+    await page.getByRole('button', { name: 'Remove photo' }).click()
+    await page.getByRole('button', { name: 'Yes, remove it' }).click()
+
+    await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
+    expect(calls.photos()).toHaveLength(0)
+    expect(calls.objects()).toHaveLength(0)
+  })
+
+  test('never removes a photo on a single click', async ({ page }) => {
+    const calls = await openPhoto(page)
+
+    await page.getByRole('button', { name: 'Remove photo' }).click()
+
+    expect(calls.photos()).toHaveLength(1)
+    await expect(page.getByRole('button', { name: 'Yes, remove it' })).toBeVisible()
+  })
+
   test('writes in the page typeface, not the browser default', async ({ page }) => {
     // A textarea defaults to monospace, and the reset only covered button and
     // input. Every earlier textarea had worked around it one rule at a time, so
