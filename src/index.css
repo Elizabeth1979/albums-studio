@@ -1453,6 +1453,17 @@ textarea:focus-visible {
   background: #e5f0e6;
 }
 
+.library-actions {
+  display: flex;
+  margin: 0.4rem 0 0;
+}
+
+.new-album-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .visibility-choice {
   display: grid;
   gap: 0.5rem;

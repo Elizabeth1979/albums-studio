@@ -46,6 +46,16 @@ export function Library({
   const [layout, setLayout] = useState<AlbumLayout>('masonry')
   const [creating, setCreating] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  // Closed by default: the albums are what this page is for, and an always-open
+  // form pushed them past the bottom of a phone screen.
+  const [composing, setComposing] = useState(false)
+  const [created, setCreated] = useState<string | null>(null)
+
+  function startComposing() {
+    setFormError(null)
+    setCreated(null)
+    setComposing(true)
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -60,9 +70,11 @@ export function Library({
 
     try {
       await onCreateAlbum({ title, layout, description })
+      setCreated(title.trim())
       setTitle('')
       setDescription('')
       setLayout('masonry')
+      setComposing(false)
     } catch (caughtError) {
       setFormError(
         caughtError instanceof Error ? caughtError.message : 'Could not create the album.',
@@ -86,6 +98,26 @@ export function Library({
           <span className="phase-badge">Albums ready</span>
         </div>
 
+        {created && (
+          // Announced rather than only drawn: the form closes and the page
+          // scrolls nowhere, so without this the only sign anything happened is
+          // a new row further down that a phone may not have on screen.
+          <p className="form-message success" role="status">
+            Added <strong>{created}</strong> to your library.
+          </p>
+        )}
+
+        {!composing ? (
+          // An empty library carries its own invitation, and two buttons that
+          // do the same thing on one screen is clutter rather than choice.
+          !loading && albums.length === 0 ? null : (
+            <div className="library-actions">
+              <button className="primary-button" type="button" onClick={startComposing}>
+                New album
+              </button>
+            </div>
+          )
+        ) : (
         <section className="new-album" aria-labelledby="new-album-title">
           <h2 id="new-album-title">Start an album</h2>
           <form className="new-album-form" onSubmit={handleSubmit}>
@@ -99,6 +131,7 @@ export function Library({
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={120}
                 placeholder="Summer by the lake"
+                autoFocus
                 required
               />
             </label>
@@ -132,13 +165,24 @@ export function Library({
               ))}
             </fieldset>
 
-            <button className="primary-button" type="submit" disabled={creating}>
-              {creating ? 'Creating…' : 'Create album'}
-            </button>
+            <div className="new-album-actions">
+              <button className="primary-button" type="submit" disabled={creating}>
+                {creating ? 'Creating…' : 'Create album'}
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                disabled={creating}
+                onClick={() => setComposing(false)}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
 
           {formError && <p className="form-message error" role="alert">{formError}</p>}
         </section>
+        )}
 
         {error && <p className="form-message error" role="alert">{error}</p>}
 
@@ -153,9 +197,10 @@ export function Library({
             </div>
             <p className="eyebrow">A quiet beginning</p>
             <h2 id="empty-title">No albums yet</h2>
-            <p>
-              Name your first album above and choose how it should look. Photos come next.
-            </p>
+            <p>Name it, choose how it should look, and photos come next.</p>
+            <button className="primary-button" type="button" onClick={startComposing}>
+              Start your first album
+            </button>
           </section>
         ) : (
           <section aria-labelledby="album-list-title">

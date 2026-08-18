@@ -110,10 +110,12 @@ describe('Studio', () => {
     renderStudio()
     await screen.findByRole('heading', { name: 'No albums yet' })
 
+    fireEvent.click(screen.getByRole('button', { name: 'Start your first album' }))
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
-    expect(await screen.findByText('Wedding')).toBeInTheDocument()
+    // The card, not the confirmation message, which now also names the album.
+    expect(await screen.findByRole('button', { name: /Wedding/ })).toBeInTheDocument()
   })
 
   it('opens an album and comes back', async () => {

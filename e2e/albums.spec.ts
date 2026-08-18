@@ -18,12 +18,13 @@ test.describe('albums', () => {
     await signIn(page)
 
     await expect(page.getByRole('heading', { name: 'No albums yet' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create album' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start your first album' })).toBeVisible()
   })
 
   test('creates a masonry album and lists it', async ({ page }) => {
     const calls = await signIn(page)
 
+    await page.getByRole('button', { name: 'Start your first album' }).click()
     await page.getByLabel('Album title').fill('Summer by the lake')
     await page.getByRole('button', { name: 'Create album' }).click()
 
@@ -43,6 +44,7 @@ test.describe('albums', () => {
   test('creates a grid album when grid is chosen', async ({ page }) => {
     const calls = await signIn(page)
 
+    await page.getByRole('button', { name: 'Start your first album' }).click()
     await page.getByLabel('Album title').fill('School trip')
     await page.getByRole('radio', { name: 'Grid' }).check()
     await page.getByRole('button', { name: 'Create album' }).click()
@@ -60,6 +62,7 @@ test.describe('albums', () => {
       albumWrite: { status: 403, body: { message: 'permission denied for table albums' } },
     })
 
+    await page.getByRole('button', { name: 'Start your first album' }).click()
     await page.getByLabel('Album title').fill('Summer by the lake')
     await page.getByRole('button', { name: 'Create album' }).click()
 
