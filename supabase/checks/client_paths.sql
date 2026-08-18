@@ -34,6 +34,8 @@ declare
   photo_a uuid;
   story_a uuid;
   token uuid;
+  old_token uuid;
+  new_token uuid;
   seen text;
   seen_id uuid;
   seen_count int;
@@ -264,6 +266,96 @@ begin
   exception when insufficient_privilege then
     log := log || E'\n  ok    a visitor cannot ask for a share token';
   end;
+
+  ---------------------------------------------------------------------------
+  -- Rotation is the revoke button. A link that outlives being replaced is the
+  -- whole feature failing quietly: the owner is told the old one is dead.
+  ---------------------------------------------------------------------------
+  log := log || E'\n\nrotation, and the ways a link should die';
+
+  reset role;
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', alice, 'role', 'authenticated')::text, true);
+
+  old_token := public.album_share_token(album_a);
+
+  if public.album_share_token(album_a) = old_token then
+    log := log || E'\n  ok    asking twice returns the same token, not a new one';
+  else
+    log := log || E'\n  FAIL  asking twice minted a different token'; fails := fails + 1;
+  end if;
+
+  begin
+    perform set_config('request.jwt.claims',
+      json_build_object('sub', bob, 'role', 'authenticated')::text, true);
+    if public.rotate_album_share_token(album_a) is null then
+      log := log || E'\n  ok    another owner cannot rotate her token';
+    else
+      log := log || E'\n  FAIL  another owner rotated her token'; fails := fails + 1;
+    end if;
+  exception when others then
+    log := log || E'\n  ok    another owner cannot rotate her token';
+  end;
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', alice, 'role', 'authenticated')::text, true);
+  new_token := public.rotate_album_share_token(album_a);
+
+  if new_token is distinct from old_token then
+    log := log || E'\n  ok    rotating mints a different token';
+  else
+    log := log || E'\n  FAIL  rotating returned the same token'; fails := fails + 1;
+  end if;
+
+  set local role anon;
+  perform set_config('request.jwt.claims', null, true);
+
+  select count(*) into seen_count from public.get_shared_album(old_token);
+  if seen_count = 0 then
+    log := log || E'\n  ok    the replaced link opens nothing';
+  else
+    log := log || E'\n  FAIL  the replaced link still opens the album'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.get_shared_album_stories(old_token);
+  if seen_count = 0 then
+    log := log || E'\n  ok    the replaced link reads no story notes either';
+  else
+    log := log || E'\n  FAIL  the replaced link still reads story notes'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.get_shared_album(new_token);
+  if seen_count = 1 then
+    log := log || E'\n  ok    the new link works';
+  else
+    log := log || E'\n  FAIL  the new link does not work'; fails := fails + 1;
+  end if;
+
+  -- Turning sharing off has to revoke as thoroughly as rotating does, or the
+  -- switch labelled "nobody else can open it" is decoration.
+  reset role;
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', alice, 'role', 'authenticated')::text, true);
+  update public.albums set visibility = 'private' where id = album_a;
+
+  set local role anon;
+  perform set_config('request.jwt.claims', null, true);
+
+  select count(*) into seen_count from public.get_shared_album(new_token);
+  if seen_count = 0 then
+    log := log || E'\n  ok    a live token opens nothing once the album is private again';
+  else
+    log := log || E'\n  FAIL  a private album still opened with a live token'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.get_shared_album_stories(new_token);
+  if seen_count = 0 then
+    log := log || E'\n  ok    and reads no story notes either';
+  else
+    log := log || E'\n  FAIL  a private album still gave up story notes'; fails := fails + 1;
+  end if;
 
   ---------------------------------------------------------------------------
   -- Deletes, which are the owner's alone.

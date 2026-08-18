@@ -48,12 +48,25 @@ configured and versioned in `supabase/migrations/`; its minimal schema contains 
 `albums`, `photos`, and `ai_usage`. Later-phase structures will be added only when
 implemented.
 
-Phases 1 to 3 are implemented and automatically verified. Password sign-in, magic links,
-and password reset are supported; signup does not require email confirmation. A real
+Phases 1 to 4 and 6 are implemented and automatically verified. Password sign-in, magic
+links, and password reset are supported; signup does not require email confirmation. A real
 sign-in and password-reset pass has been confirmed against production. A magic-link request
 made seconds after a reset email was refused by Supabase's per-address email throttle, so
 successful magic-link delivery is still unconfirmed; the app now explains that refusal
-rather than repeating it. Phase 4 adds captions, story notes, and manual alt text.
+rather than repeating it. Phase 4 adds captions, story notes, and manual alt text, each
+publishable or kept private. Phase 6 adds share links: an album set to `link` can be opened
+by someone with no account, through an Edge Function that signs thumbnails on their behalf,
+and replacing the link revokes the previous one.
+
+Phase 6 ships two of its three visibilities. `private` and `link` are in the interface;
+`public` exists in the database enum and in `get_shared_album`, but nothing offers it yet.
+
+Sharing was built before Phase 5 deliberately, so that the hidden/published distinction
+Phase 4 introduced had somewhere real to prove itself before AI began generating text.
+
+What no automated suite here can cover is checked by `supabase/checks/client_paths.sql`,
+which runs the client's own writes against the real schema as the real roles and reports
+without keeping anything. It last ran clean at 29 checks.
 
 Production: [albums-studio.vercel.app](https://albums-studio.vercel.app)
 

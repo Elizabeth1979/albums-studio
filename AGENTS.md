@@ -65,6 +65,10 @@ saying so.
 - Before applying a migration, confirm the hosted project is `ACTIVE_HEALTHY`. Verify the
   recorded migration and run security and performance advisors afterward.
 - Never edit an applied migration; add a forward-only migration.
+- `apply_migration` stamps its own version at apply time, which will not match the one in
+  the repository filename. Rename the file to the version the database recorded — compare
+  `list_migrations` against `supabase/migrations/` after applying. Left alone, the two
+  disagree and `supabase db push` sees an applied migration as pending.
 - A `SELECT` policy is what filters `RETURNING`, and PostgREST makes every insert an
   `INSERT ... RETURNING`. A select policy that looks the row up through a `STABLE` function
   cannot see a row the same statement is creating, so it silently blocks inserts. Test
