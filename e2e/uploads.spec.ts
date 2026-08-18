@@ -171,7 +171,13 @@ test.describe('uploading photos', () => {
     await expect(page.locator('.upload-detail')).toContainText('0 bytes')
   })
 
-  test('gives up on an empty file immediately rather than retrying', async ({ page }) => {
+  test('reads again, then stops rather than queueing the whole job three times', async ({
+    page,
+  }) => {
+    // The read itself retries, because a cloud-backed photo is fetched at the
+    // moment it is read and the first attempt can lose that race. Once the read
+    // has given up, putting the entire job back through the queue only buys the
+    // same answer three times over.
     await openAlbum(page)
 
     const started = Date.now()
@@ -180,11 +186,12 @@ test.describe('uploading photos', () => {
       mimeType: 'image/jpeg',
       buffer: Buffer.alloc(0),
     })
-    await expect(page.getByRole('alert')).toContainText('Retrying will not help', {
+    await expect(page.getByRole('alert')).toContainText('See the reason next to each one', {
       timeout: 15000,
     })
 
-    // Three attempts with backoff would take well over a second.
+    // The read's own retries cost 400ms + 1200ms. Three queue attempts on top
+    // would be roughly 6s, so this bound is what tells the two apart.
     expect(Date.now() - started).toBeLessThan(4000)
   })
 

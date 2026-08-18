@@ -4,6 +4,7 @@ import {
   THUMBNAIL_SIZE,
   detailOf,
   fitWithin,
+  READ_RETRY_DELAYS_MS,
   isPermanentFailure,
   processImage,
 } from './process'
@@ -79,37 +80,48 @@ describe('reading a file that yields nothing', () => {
     return new File([new Uint8Array(bytes)], name, { type: 'image/jpeg' })
   }
 
+  /**
+   * Runs a read that is expected to fail, without waiting out the retry delays.
+   * Fake timers keep the suite fast; the retry itself is the subject below.
+   */
+  async function failing(source: File): Promise<Error> {
+    vi.useFakeTimers()
+    const settled = processImage(source, 'photo.jpg').then(
+      () => new Error('processImage resolved, but this test expects it to fail'),
+      (caught: Error) => caught,
+    )
+    await vi.runAllTimersAsync()
+    vi.useRealTimers()
+    return settled
+  }
+
   it('does not blame the format when the file is empty', async () => {
     // An Android picker can hand over a cloud-only photo as an empty File. The
     // photograph is fine; it simply is not on the device.
     vi.stubGlobal('createImageBitmap', decoder)
 
-    await expect(processImage(file(0), 'photo.jpg')).rejects.toThrow(/could not be read from your device/)
+    expect((await failing(file(0))).message).toMatch(/could not be read from your device/)
     expect(decoder).not.toHaveBeenCalled()
   })
 
   it('says what to do about it', async () => {
     vi.stubGlobal('createImageBitmap', decoder)
 
-    await expect(processImage(file(0), 'photo.jpg')).rejects.toThrow(/open it once in your gallery/)
+    expect((await failing(file(0))).message).toMatch(/open it once in your gallery/)
   })
 
   it('records how many bytes arrived', async () => {
     vi.stubGlobal('createImageBitmap', decoder)
 
-    const error = await processImage(file(0), 'photo.jpg').catch((caught) => caught)
-
-    expect(detailOf(error)).toContain('0 bytes')
+    expect(detailOf(await failing(file(0)))).toContain('0 bytes')
   })
 
-  it('is not worth retrying', async () => {
-    // Three attempts at a file the device will not hand over is three times the
-    // wait for the same answer.
+  it('is not worth the queue retrying, once the read itself has given up', async () => {
+    // The read already tried more than once. Putting the whole job through the
+    // queue again is three more waits for the same answer.
     vi.stubGlobal('createImageBitmap', decoder)
 
-    const error = await processImage(file(0), 'photo.jpg').catch((caught) => caught)
-
-    expect(isPermanentFailure(error)).toBe(true)
+    expect(isPermanentFailure(await failing(file(0)))).toBe(true)
   })
 
   it('reports a file the device refuses to read at all', async () => {
@@ -119,10 +131,60 @@ describe('reading a file that yields nothing', () => {
       arrayBuffer: () => Promise.reject(new DOMException('Could not read', 'NotReadableError')),
     } as unknown as File
 
-    const error = await processImage(unreadable, 'photo.jpg').catch((caught) => caught)
+    const error = await failing(unreadable)
 
     expect(error.message).toMatch(/could not be read from your device/)
     expect(detailOf(error)).toContain('NotReadableError')
+  })
+
+  it('reads again when the first attempt fails, and uses what arrives', async () => {
+    // A photograph that lives in the cloud is fetched by its owning app at the
+    // moment it is read, and the first attempt can fail while that download is
+    // still running. This is the case an owner was told to fix by hand.
+    vi.stubGlobal('createImageBitmap', decoder)
+    decoder.mockResolvedValue({ width: 100, height: 80, close: vi.fn() })
+
+    const arrayBuffer = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException('Could not read', 'NotReadableError'))
+      .mockResolvedValue(new Uint8Array(64).buffer)
+    const source = { type: 'image/jpeg', arrayBuffer } as unknown as File
+
+    // Asserted at the read's own boundary: jsdom has no OffscreenCanvas, so
+    // what follows a successful read cannot run here. Reaching the decoder is
+    // exactly what "the bytes arrived" means.
+    await failing(source)
+
+    expect(arrayBuffer).toHaveBeenCalledTimes(2)
+    expect(decoder).toHaveBeenCalledOnce()
+  })
+
+  it('reads again when the first attempt hands over nothing at all', async () => {
+    // The empty-File symptom of the same thing: the picker answers, the bytes
+    // are not there yet.
+    vi.stubGlobal('createImageBitmap', decoder)
+    decoder.mockResolvedValue({ width: 100, height: 80, close: vi.fn() })
+
+    const arrayBuffer = vi
+      .fn()
+      .mockResolvedValueOnce(new ArrayBuffer(0))
+      .mockResolvedValue(new Uint8Array(64).buffer)
+    const source = { type: 'image/jpeg', arrayBuffer } as unknown as File
+
+    await failing(source)
+
+    expect(arrayBuffer).toHaveBeenCalledTimes(2)
+    expect(decoder).toHaveBeenCalledOnce()
+  })
+
+  it('gives up rather than reading for ever', async () => {
+    vi.stubGlobal('createImageBitmap', decoder)
+    const arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(0))
+    const source = { type: 'image/jpeg', arrayBuffer } as unknown as File
+
+    await failing(source)
+
+    expect(arrayBuffer).toHaveBeenCalledTimes(READ_RETRY_DELAYS_MS.length + 1)
   })
 })
 

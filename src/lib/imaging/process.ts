@@ -86,26 +86,49 @@ function describe(error: unknown): string {
 }
 
 /**
+ * Waits before reading again, so a download has a chance to finish.
+ *
+ * Exported only so the tests need not spend real seconds proving the retry.
+ */
+export const READ_RETRY_DELAYS_MS = [400, 1200]
+
+function pause(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
  * Turns the chosen file into bytes this device definitely holds.
  *
  * Reading up front separates two failures that used to look identical: bytes
  * that could not be fetched at all, and bytes that could not be decoded. Only
  * the second is anything to do with the image format.
+ *
+ * It reads more than once. On Android a photograph that lives in the cloud is
+ * fetched by its owning app at the moment it is read, and the first attempt can
+ * fail — with NotReadableError, or with zero bytes — while that download is
+ * still running. Asking again a moment later is the same remedy the error
+ * message asks the owner to perform by hand, so it is worth trying first.
  */
 async function readBytes(file: File | Blob, fileName: string): Promise<Blob> {
-  let bytes: ArrayBuffer
+  let detail = ''
 
-  try {
-    bytes = await file.arrayBuffer()
-  } catch (error) {
-    throw new UnreadableFileError(fileName, describe(error))
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const bytes = await file.arrayBuffer()
+
+      if (bytes.byteLength > 0) return new Blob([bytes], { type: file.type })
+
+      detail = 'the file was empty (0 bytes)'
+    } catch (error) {
+      detail = describe(error)
+    }
+
+    if (attempt >= READ_RETRY_DELAYS_MS.length) break
+
+    await pause(READ_RETRY_DELAYS_MS[attempt])
   }
 
-  if (bytes.byteLength === 0) {
-    throw new UnreadableFileError(fileName, 'the file was empty (0 bytes)')
-  }
-
-  return new Blob([bytes], { type: file.type })
+  throw new UnreadableFileError(fileName, detail)
 }
 
 /**
