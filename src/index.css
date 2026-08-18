@@ -721,17 +721,47 @@ textarea:focus-visible {
 .album-main {
   width: min(100% - 2.5rem, 78rem);
   margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 4.5rem) 0 4rem;
+  padding: clamp(1.5rem, 4vw, 3rem) 0 4rem;
 }
 
 .back-link {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.9rem;
+}
+
+/* Title and rename on one line, so the album's name and the way to change it
+   are not two separate rows of a screen that has photographs to get to. */
+.album-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+}
+
+.album-description {
+  margin: 0.5rem 0 0;
+  color: #57514a;
+  font-size: 0.96rem;
+  line-height: 1.6;
+}
+
+/* The layout control and its hint side by side; the hint is a caption for the
+   switch, not a paragraph in its own right. */
+.album-layout-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.album-layout-row .layout-hint {
+  margin: 0;
+  font-size: 0.88rem;
 }
 
 .album-heading h1 {
-  margin: 0 0 0.6rem;
+  margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  font-size: clamp(2rem, 5vw, 3.4rem);
   font-weight: 400;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -773,7 +803,7 @@ textarea:focus-visible {
 }
 
 .album-controls {
-  margin-top: 2.5rem;
+  margin-top: 1.4rem;
 }
 
 .album-controls h2,
@@ -1600,6 +1630,31 @@ textarea:focus-visible {
 
 .shared-photo-open:hover img {
   opacity: 0.88;
+}
+
+/* The photo editor, over the album. Same mechanics as the lightbox; lighter
+   chrome, because this one is a workspace rather than a viewer. */
+.editor-sheet {
+  width: min(100vw - 1.5rem, 54rem);
+  max-width: calc(100vw - 1.5rem);
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid #ddd4c6;
+  border-radius: 0.9rem;
+  background: #fffdf9;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.editor-sheet::backdrop {
+  background: rgba(24, 21, 18, 0.55);
+}
+
+.editor-sheet .photo-editor {
+  margin: 0;
+  border: 0;
+  border-radius: 0.9rem;
 }
 
 .lightbox {

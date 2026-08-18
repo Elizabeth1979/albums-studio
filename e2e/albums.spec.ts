@@ -180,7 +180,7 @@ test.describe('albums', () => {
       'aria-pressed',
       'true',
     )
-    await expect(page.getByText(/Grid crops to equal tiles/)).toBeVisible()
+    await expect(page.getByText(/Equal tiles/)).toBeVisible()
 
     const patch = calls.all.find((call) => call.method === 'PATCH')
     expect(patch?.body).toEqual({ layout: 'grid' })
