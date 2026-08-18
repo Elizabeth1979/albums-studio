@@ -76,8 +76,20 @@ export async function loadSharedAlbum(token: string): Promise<SharedAlbum> {
   }
 
   if (!response.ok) {
+    // The status goes in the message on purpose. A visitor cannot act on it,
+    // but they can read it out or photograph it, and without it a report of
+    // "it did not work" cannot be told apart from a rotated link, a cold
+    // function, or an outage.
+    throw new Error(`This album could not be loaded (${response.status}).`)
+  }
+
+  const body = (await response.json()) as SharedAlbum
+
+  // A 200 carrying something other than an album means the two sides disagree
+  // about the shape, which is worth saying rather than rendering blankly.
+  if (!body || typeof body !== 'object' || !body.album) {
     throw new Error('This album could not be loaded.')
   }
 
-  return (await response.json()) as SharedAlbum
+  return body
 }
