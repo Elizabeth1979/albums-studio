@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
+import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import { type SharedAlbum as Shared, loadSharedAlbum } from '../lib/sharing'
 
 type SharedAlbumProps = { token: string }
+
+// Both layouts are three columns on a wide screen and two on a narrow one, so
+// a tile occupies roughly a third of the page, then half of it.
+const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
 
 /**
  * An album as a visitor sees it.
@@ -67,12 +72,22 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
       {album.photos.length === 0 ? (
         <p className="library-status">This album has no photographs yet.</p>
       ) : (
-        <ul className="shared-photos">
+        <ul className={`shared-photos layout-${album.album.layout}`}>
           {album.photos.map((photo) => (
             <li className="shared-photo" key={photo.id}>
-              {photo.thumbnailUrl && (
+              {(photo.fullUrl ?? photo.thumbnailUrl) && (
                 <img
-                  src={photo.thumbnailUrl}
+                  // The full image is what a phone at full width actually needs;
+                  // the thumbnail is offered alongside it so a small screen can
+                  // take the cheap one. Falling back keeps an album readable if
+                  // only one of the two could be signed.
+                  src={photo.fullUrl ?? (photo.thumbnailUrl as string)}
+                  srcSet={
+                    photo.fullUrl && photo.thumbnailUrl
+                      ? `${photo.thumbnailUrl} ${THUMBNAIL_SIZE}w, ${photo.fullUrl} ${FULL_SIZE}w`
+                      : undefined
+                  }
+                  sizes={TILE_SIZES}
                   // The owner's own words when they wrote them. An empty alt is
                   // correct otherwise: it marks the image decorative rather than
                   // reading out something invented.

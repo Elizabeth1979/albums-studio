@@ -44,11 +44,16 @@ export type SharedPhoto = {
   alt: string | null
   sortOrder: number | null
   thumbnailUrl: string | null
+  fullUrl: string | null
   stories: string[]
 }
 
 export type SharedAlbum = {
-  album: { title: string; description: string | null }
+  album: {
+    title: string
+    description: string | null
+    layout: 'masonry' | 'grid'
+  }
   photos: SharedPhoto[]
 }
 

@@ -59,7 +59,11 @@ test.describe('sharing an album', () => {
 test.describe('opening a shared album as a visitor', () => {
   const SHARED = {
     'good-token': {
-      album: { title: 'Summer by the lake', description: 'A week by the water' },
+      album: {
+        title: 'Summer by the lake',
+        description: 'A week by the water',
+        layout: 'masonry' as const,
+      },
       photos: [
         {
           id: 'photo-1',
@@ -67,6 +71,7 @@ test.describe('opening a shared album as a visitor', () => {
           alt: 'A long table set for twelve',
           sortOrder: 0,
           thumbnailUrl: '/shared-pixel.png',
+          fullUrl: '/shared-full.png',
           stories: ['We had been walking since six.'],
         },
       ],
@@ -102,6 +107,54 @@ test.describe('opening a shared album as a visitor', () => {
 
     expect(await page.getByRole('button').count()).toBe(0)
     expect(await page.getByRole('textbox').count()).toBe(0)
+  })
+
+  test('shows the full photograph, not the thumbnail stretched', async ({ page }) => {
+    // A thumbnail is 400px on its longest edge. A phone filling its width with
+    // one upscales it about three times, which is what a visitor reported: the
+    // album loaded, and every photograph in it was soft.
+    await stubSupabase(page, { shared: SHARED })
+
+    await page.goto('/shared/good-token')
+
+    const image = page.getByRole('img', { name: 'A long table set for twelve' })
+    await expect(image).toHaveAttribute('src', '/shared-full.png')
+    await expect(image).toHaveAttribute('srcset', /shared-full\.png 2000w/)
+    await expect(image).toHaveAttribute('srcset', /shared-pixel\.png 400w/)
+  })
+
+  test('lays the album out the way its owner chose', async ({ page }) => {
+    // The owner picks masonry or grid for their own gallery. A visitor was
+    // shown a single column regardless, which is not the album that was shared.
+    await stubSupabase(page, {
+      shared: {
+        'good-token': {
+          ...SHARED['good-token'],
+          album: { ...SHARED['good-token'].album, layout: 'grid' as const },
+        },
+      },
+    })
+
+    await page.goto('/shared/good-token')
+    await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
+
+    await expect(page.locator('ul.shared-photos')).toHaveClass(/layout-grid/)
+  })
+
+  test('still shows a photograph when only the thumbnail could be signed', async ({ page }) => {
+    await stubSupabase(page, {
+      shared: {
+        'good-token': {
+          ...SHARED['good-token'],
+          photos: [{ ...SHARED['good-token'].photos[0], fullUrl: null }],
+        },
+      },
+    })
+
+    await page.goto('/shared/good-token')
+
+    const image = page.getByRole('img', { name: 'A long table set for twelve' })
+    await expect(image).toHaveAttribute('src', '/shared-pixel.png')
   })
 
   test('says the same thing for a wrong link as a withdrawn one', async ({ page }) => {

@@ -1587,11 +1587,29 @@ textarea:focus-visible {
 }
 
 .shared-photos {
-  display: grid;
-  gap: 3rem;
   margin: 3rem 0 0;
   padding: 0;
   list-style: none;
+}
+
+/* The layout the owner chose, shown to the person they sent the link to.
+   Masonry keeps each photograph's proportions; grid crops to equal tiles. */
+.shared-photos.layout-masonry {
+  columns: 3;
+  column-gap: 1.6rem;
+}
+
+.shared-photos.layout-masonry .shared-photo {
+  margin-bottom: 2.4rem;
+  /* A caption belongs to the photograph above it, so the pair must not be
+     split across a column boundary. */
+  break-inside: avoid;
+}
+
+.shared-photos.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.4rem 1.6rem;
 }
 
 .shared-photo img {
@@ -1600,6 +1618,11 @@ textarea:focus-visible {
   height: auto;
   border-radius: 0.7rem;
   background: #efe8dd;
+}
+
+.shared-photos.layout-grid .shared-photo img {
+  aspect-ratio: 1;
+  object-fit: cover;
 }
 
 .shared-caption {
@@ -1760,11 +1783,13 @@ textarea:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .photo-gallery.layout-masonry {
+  .photo-gallery.layout-masonry,
+  .shared-photos.layout-masonry {
     columns: 2;
   }
 
-  .photo-gallery.layout-grid {
+  .photo-gallery.layout-grid,
+  .shared-photos.layout-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 

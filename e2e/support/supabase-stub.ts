@@ -101,13 +101,14 @@ export type StoryRecord = {
 
 /** What the Edge Function would return for a share link. */
 export type SharedResponse = {
-  album: { title: string; description: string | null }
+  album: { title: string; description: string | null; layout: 'masonry' | 'grid' }
   photos: {
     id: string
     caption: string | null
     alt: string | null
     sortOrder: number | null
     thumbnailUrl: string | null
+    fullUrl: string | null
     stories: string[]
   }[]
 }
