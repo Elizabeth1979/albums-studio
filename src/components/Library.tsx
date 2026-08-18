@@ -95,7 +95,6 @@ export function Library({
             <h1>Your albums</h1>
             <p>Every story starts with a few photographs and the context only you know.</p>
           </div>
-          <span className="phase-badge">Albums ready</span>
         </div>
 
         {created && (
@@ -244,30 +243,6 @@ export function Library({
             </ul>
           </section>
         )}
-
-        <section className="trust-row" aria-label="Product principles">
-          <article>
-            <span aria-hidden="true">01</span>
-            <div>
-              <h2>Private first</h2>
-              <p>Nothing is shared until you explicitly choose it.</p>
-            </div>
-          </article>
-          <article>
-            <span aria-hidden="true">02</span>
-            <div>
-              <h2>Human approved</h2>
-              <p>AI can draft and suggest; you make the final call.</p>
-            </div>
-          </article>
-          <article>
-            <span aria-hidden="true">03</span>
-            <div>
-              <h2>Built for memory</h2>
-              <p>Captions, stories, and accessible text stay editable.</p>
-            </div>
-          </article>
-        </section>
       </main>
     </div>
   )

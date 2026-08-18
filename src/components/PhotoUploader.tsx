@@ -114,7 +114,10 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
                 ? '1 photo could not be added.'
                 : `${failed.length} photos could not be added.`}{' '}
               {failed.every((item) => item.permanent)
-                ? 'Retrying will not help; see the reason above.'
+                ? // Not "retrying will not help": for a photo the device would
+                  // not hand over, the reason above says to open it in the
+                  // gallery and add it again, which is precisely retrying.
+                  'See the reason next to each one.'
                 : 'Choosing them again will try once more.'}
             </p>
           )}
