@@ -62,6 +62,14 @@ AI cost.
 - Auth mail still comes from Supabase's built-in sender, which delivers only to addresses
   on the project organization's team. Owner email arrives for that reason; nobody else's
   would. Custom SMTP is a prerequisite for opening signup — see roadmap open question 12b.
+- An album can be shared with a link, from its own page: a visibility switch, the link with a
+  copy button, and a "replace this link" action that retires every copy already handed out.
+  `public` stays in the enum and is offered nowhere — a link is unguessable and revocable,
+  which `public` is not.
+- `/shared/:token` renders before the sign-in gate, so a visitor never meets a login form.
+  Images reach them through the `shared-album` Edge Function, the only place holding a key
+  that can sign a private object for someone with no session. It accepts a token and nothing
+  else, and answers identically for a wrong token, a rotated one, and a withdrawn album.
 - Share links are token-gated in the database: `get_shared_album` and
   `get_shared_album_stories` serve an album only for its own token and only while its
   visibility is `link` or `public`, and hidden captions and unpublished stories never leave.

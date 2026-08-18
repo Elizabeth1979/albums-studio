@@ -26,6 +26,7 @@ const ROW = {
   layout: 'masonry',
   description: null,
   cover_photo_id: null,
+  visibility: 'private',
   created_at: '2026-08-16T10:00:00Z',
 }
 

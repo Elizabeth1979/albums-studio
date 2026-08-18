@@ -3,11 +3,13 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import {
   type Album,
   type AlbumLayout,
+  type AlbumVisibility,
   createAlbum,
   deleteAlbum,
   listAlbums,
   renameAlbum,
   setAlbumCover,
+  setAlbumVisibility,
   updateAlbumDetails,
 } from '../lib/albums'
 import type { Identity } from '../lib/identity'
@@ -35,6 +37,7 @@ type AlbumRouteProps = {
   onChangeDescription: (album: Album, description: string) => Promise<void>
   onDelete: (album: Album) => Promise<void>
   onCoverChosen: (album: Album, photoId: string) => Promise<void>
+  onChangeVisibility: (album: Album, visibility: AlbumVisibility) => Promise<void>
 }
 
 /**
@@ -51,6 +54,7 @@ function AlbumRoute({
   onChangeDescription,
   onDelete,
   onCoverChosen,
+  onChangeVisibility,
 }: AlbumRouteProps) {
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -68,6 +72,7 @@ function AlbumRoute({
         onChangeDescription={(description) => onChangeDescription(album, description)}
         onDelete={() => onDelete(album)}
         onCoverChosen={(photoId) => onCoverChosen(album, photoId)}
+        onChangeVisibility={(visibility) => onChangeVisibility(album, visibility)}
       />
     )
   }
@@ -201,6 +206,9 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             }
             onCoverChosen={async (album, photoId) =>
               replace(await setAlbumCover(album.id, photoId))
+            }
+            onChangeVisibility={async (album, visibility) =>
+              replace(await setAlbumVisibility(album.id, visibility))
             }
             onDelete={async (album) => {
               await deleteAlbum(album.id)

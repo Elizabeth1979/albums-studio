@@ -182,6 +182,55 @@ test.describe('accessibility', () => {
     await expectNoViolations(page)
   })
 
+  test('a shared album, seen by a visitor', async ({ page }) => {
+    // The one screen a stranger ever meets, and the only one where the alt text
+    // an owner wrote is the sole description available.
+    await stubSupabase(page, {
+      shared: {
+        'good-token': {
+          album: { title: 'Summer by the lake', description: 'A week by the water' },
+          photos: [
+            {
+              id: 'photo-1',
+              caption: 'Dinner on the last night',
+              alt: 'A long table set for twelve',
+              sortOrder: 0,
+              thumbnailUrl: '/pixel.png',
+              stories: ['We had been walking since six.'],
+            },
+          ],
+        },
+      },
+    })
+
+    await page.goto('/shared/good-token')
+    await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
+  test('a share link that no longer works', async ({ page }) => {
+    await stubSupabase(page, { shared: {} })
+
+    await page.goto('/shared/withdrawn')
+    await expect(
+      page.getByRole('heading', { name: 'This album is not available.' }),
+    ).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
+  test('the sharing controls, with a link live', async ({ page }) => {
+    await signIn(page, [albumRecord({ visibility: 'link' })])
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await expect(page.getByLabel('The link', { exact: true })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Replace this link' }).click()
+    await expect(page.getByRole('button', { name: 'Replace the link' })).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
   test('unknown album address', async ({ page }) => {
     await signIn(page)
     await page.goto('/albums/never-existed')

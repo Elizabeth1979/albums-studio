@@ -4,7 +4,19 @@ import { supabase } from './supabase'
 
 export const ALBUM_LAYOUTS = ['masonry', 'grid'] as const
 
+/**
+ * Who can open an album.
+ *
+ * The database enum also holds `public`, which no interface offers and nothing
+ * sets. A link is unguessable and can be withdrawn by rotating the token;
+ * `public` needs no token at all, invites indexing, and cannot meaningfully be
+ * taken back. It stays in the schema for a phase that has a reason for it.
+ */
+export const ALBUM_VISIBILITIES = ['private', 'link'] as const
+
 export type AlbumLayout = (typeof ALBUM_LAYOUTS)[number]
+
+export type AlbumVisibility = (typeof ALBUM_VISIBILITIES)[number]
 
 export type Album = {
   id: string
@@ -14,6 +26,7 @@ export type Album = {
   description: string | null
   /** The photo shown on the album's card, or null while the album is empty. */
   coverPhotoId: string | null
+  visibility: AlbumVisibility
   createdAt: string
 }
 
@@ -24,10 +37,12 @@ type AlbumRow = {
   layout: AlbumLayout
   description: string | null
   cover_photo_id: string | null
+  visibility: AlbumVisibility
   created_at: string
 }
 
-const ALBUM_COLUMNS = 'id, title, slug, layout, description, cover_photo_id, created_at'
+const ALBUM_COLUMNS =
+  'id, title, slug, layout, description, cover_photo_id, visibility, created_at'
 
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = '23505'
@@ -49,6 +64,7 @@ function toAlbum(row: AlbumRow): Album {
     layout: row.layout,
     description: row.description,
     coverPhotoId: row.cover_photo_id,
+    visibility: row.visibility,
     createdAt: row.created_at,
   }
 }
@@ -169,6 +185,20 @@ export async function updateAlbumDetails(
  */
 export async function setAlbumCover(id: string, photoId: string): Promise<Album> {
   return updateAlbum(id, { cover_photo_id: photoId })
+}
+
+/**
+ * Opens or closes an album to people holding its link.
+ *
+ * Turning sharing off is immediate and complete: every share function checks
+ * the album's visibility on each call, so a link that worked a second ago stops
+ * working, without needing the token to change.
+ */
+export async function setAlbumVisibility(
+  id: string,
+  visibility: AlbumVisibility,
+): Promise<Album> {
+  return updateAlbum(id, { visibility })
 }
 
 /**
