@@ -34,6 +34,7 @@ const album: Album = {
   layout: 'masonry',
   description: null,
   coverPhotoId: null,
+  visibility: 'private',
   createdAt: '2026-08-16T20:27:38Z',
 }
 

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMatch } from 'react-router-dom'
 import { AuthCredentials, AuthForm } from './components/AuthForm'
 import { ResetPasswordForm } from './components/ResetPasswordForm'
+import { SharedAlbum } from './components/SharedAlbum'
 import { Studio } from './components/Studio'
 import { describeAuthError } from './lib/authErrors'
 import type { Identity } from './lib/identity'
@@ -26,6 +28,11 @@ async function getIdentity(): Promise<Identity | null> {
 
 export default function App() {
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
+  // Matched rather than routed, so this sits in front of the sign-in gate
+  // instead of inside it. A shared album belongs to someone who has no account
+  // and never will; sending them to a sign-in form would be the whole feature
+  // failing.
+  const shared = useMatch('/shared/:token')
   // A recovery link produces a real session, so identity refreshes must not
   // route past the set-a-new-password step before it is finished.
   const recovering = useRef(false)
@@ -122,6 +129,10 @@ export default function App() {
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+  }
+
+  if (shared?.params.token) {
+    return <SharedAlbum token={shared.params.token} />
   }
 
   if (authState.status === 'loading') {

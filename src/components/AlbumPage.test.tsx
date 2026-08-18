@@ -8,6 +8,8 @@ import { AlbumPage } from './AlbumPage'
 vi.mock('./AlbumPhotos', () => ({
   AlbumPhotos: () => <div data-testid="album-photos" />,
 }))
+// ShareAlbum fetches a token of its own; it has its own suite.
+vi.mock('./ShareAlbum', () => ({ ShareAlbum: () => <div data-testid="share-album" /> }))
 import type { Album } from '../lib/albums'
 
 function album(overrides: Partial<Album> = {}): Album {
@@ -18,6 +20,7 @@ function album(overrides: Partial<Album> = {}): Album {
     layout: 'masonry',
     description: null,
     coverPhotoId: null,
+    visibility: 'private',
     createdAt: '2026-08-16T10:00:00Z',
     ...overrides,
   }
@@ -35,6 +38,7 @@ function renderAlbumPage(props: Partial<ComponentProps<typeof AlbumPage>> = {}) 
       onChangeDescription={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onCoverChosen={vi.fn().mockResolvedValue(undefined)}
+      onChangeVisibility={vi.fn().mockResolvedValue(undefined)}
       {...props}
     />,
   )

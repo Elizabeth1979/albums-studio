@@ -1533,6 +1533,119 @@ textarea:focus-visible {
   margin: 0 0 0.8rem;
 }
 
+.share-link {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  justify-items: start;
+}
+
+.share-link > label {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.share-link input {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #4d4740;
+  background: #f6f3ed;
+  font-size: 0.8rem;
+  /* A link is one long unbreakable string; letting it scroll beats wrapping it
+     into something nobody can select cleanly. */
+  overflow-x: auto;
+}
+
+/* A shared album, seen by someone with no account ------------------------- */
+
+.shared-main {
+  width: min(100% - 2.5rem, 60rem);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 7vw, 5rem) 0 4rem;
+}
+
+.shared-heading h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.shared-description {
+  max-width: 44rem;
+  margin: 1.1rem 0 0;
+  color: #57514a;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.shared-photos {
+  display: grid;
+  gap: 3rem;
+  margin: 3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shared-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.7rem;
+  background: #efe8dd;
+}
+
+.shared-caption {
+  max-width: 44rem;
+  margin: 1rem 0 0;
+  color: #2e2a25;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.shared-story {
+  max-width: 44rem;
+  margin: 0.9rem 0 0;
+  color: #57514a;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.shared-empty {
+  max-width: 34rem;
+  padding: 4rem 0;
+}
+
+.shared-empty h1 {
+  margin: 0 0 1rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 400;
+}
+
+.shared-empty p {
+  color: #6f675c;
+  line-height: 1.7;
+}
+
+.shared-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ddd6cc;
+  /* 5.03:1 on the page background. The lighter grey this started as measured
+     4.04:1 — under AA, and caught by the axe sweep rather than by eye. */
+  color: #6f675c;
+  font-size: 0.78rem;
+}
+
 /* Story notes -------------------------------------------------------------- */
 
 .story-notes {

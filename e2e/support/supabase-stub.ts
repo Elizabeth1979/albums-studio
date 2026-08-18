@@ -58,6 +58,7 @@ export type AlbumRecord = {
   layout: string
   description: string | null
   cover_photo_id: string | null
+  visibility: string
   created_at: string
 }
 
@@ -69,6 +70,8 @@ export function albumRecord(overrides: Partial<AlbumRecord> = {}): AlbumRecord {
     layout: 'masonry',
     description: null,
     cover_photo_id: null,
+    // The column default. Nothing is shared until the owner says so.
+    visibility: 'private',
     created_at: '2026-08-16T10:00:00Z',
     ...overrides,
   }
@@ -96,6 +99,19 @@ export type StoryRecord = {
   created_at: string
 }
 
+/** What the Edge Function would return for a share link. */
+export type SharedResponse = {
+  album: { title: string; description: string | null }
+  photos: {
+    id: string
+    caption: string | null
+    alt: string | null
+    sortOrder: number | null
+    thumbnailUrl: string | null
+    stories: string[]
+  }[]
+}
+
 export type StubOptions = {
   /** Status and body returned by the password grant, for failure cases. */
   passwordGrant?: { status: number; body: object }
@@ -117,6 +133,11 @@ export type StubOptions = {
   storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
   storageUpload?: { status: number; body: object }
+  /**
+   * What the `shared-album` Edge Function answers, keyed by token. A token that
+   * is not listed gets the same 404 a rotated or withdrawn one would.
+   */
+  shared?: Record<string, SharedResponse>
 }
 
 export type AuthCalls = {
@@ -131,6 +152,11 @@ export type AuthCalls = {
   stories: () => StoryRecord[]
   /** Object keys written to the fake Storage bucket. */
   objects: () => string[]
+}
+
+/** PostgREST wraps a scalar RPC result as a bare value. */
+export function rpcPath(name: string): string {
+  return `/rest/v1/rpc/${name}`
 }
 
 /** PostgREST filters arrive as `id=eq.<value>`. */
@@ -174,6 +200,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
   let created = 0
   let photosCreated = 0
   let storiesCreated = 0
+  let rotations = 0
 
   await page.route(`${SUPABASE_ORIGIN}/**`, async (route) => {
     const request = route.request()
@@ -183,11 +210,23 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
 
     calls.push({ method, path, body: parseBody(request) })
 
-    const json = (body: object, status = 200) =>
+    // Scalars are allowed: an RPC returning a uuid answers with a bare JSON
+    // string, not an object.
+    const json = (body: unknown, status = 200) =>
       route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
     // A `.single()` call asks PostgREST for a bare object instead of an array.
     const wantsObject = (request.headers()['accept'] ?? '').includes('vnd.pgrst.object')
+
+    // The Edge Function that serves a visitor. It is the only path that can
+    // sign an image for someone with no session, so the viewer page has no
+    // other way in and this is where the suite has to intercept.
+    if (path === '/functions/v1/shared-album') {
+      const wanted = url.searchParams.get('token') ?? ''
+      const answer = options.shared?.[wanted]
+
+      return answer ? json(answer) : json({ error: 'not found' }, 404)
+    }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL
     // the browser can actually fetch. Signed URLs point back at this stub so the
@@ -238,6 +277,15 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       const body = parseBody(request) as { prefixes?: string[] }
       objects = objects.filter((existing) => !(body.prefixes ?? []).includes(existing))
       return json({})
+    }
+
+    if (path === '/rest/v1/rpc/album_share_token') {
+      return json('token-for-the-album')
+    }
+
+    if (path === '/rest/v1/rpc/rotate_album_share_token') {
+      rotations += 1
+      return json(`token-after-${rotations}-rotations`)
     }
 
     if (path.endsWith('/rest/v1/photo_stories')) {

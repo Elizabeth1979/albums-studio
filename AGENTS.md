@@ -107,6 +107,10 @@ saying so.
 - Keep the `photos` bucket private. Store paths, not permanent URLs; issue short-lived signed
   URLs from trusted server code after reauthorizing every request. Database paths must begin
   with the owner's UUID and match the Storage object namespace.
+- The `shared-album` Edge Function runs with `verify_jwt` off, alone among anything here.
+  Requiring a JWT would defeat a link that needs no account. It is not unauthenticated: the
+  share token is the credential and the database checks it on every call, and the function
+  accepts no album, photo or owner id from the caller.
 - Publishable keys may be used in the browser. Secret keys and AI provider keys never may.
 
 ## Working conventions
