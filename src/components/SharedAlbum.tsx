@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import { type SharedAlbum as Shared, loadSharedAlbum } from '../lib/sharing'
+import { PhotoLightbox } from './PhotoLightbox'
 
 type SharedAlbumProps = { token: string }
 
@@ -19,6 +20,7 @@ const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
 export function SharedAlbum({ token }: SharedAlbumProps) {
   const [album, setAlbum] = useState<Shared | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [openPhoto, setOpenPhoto] = useState<number | null>(null)
 
   useEffect(() => {
     let active = true
@@ -73,28 +75,40 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
         <p className="library-status">This album has no photographs yet.</p>
       ) : (
         <ul className={`shared-photos layout-${album.album.layout}`}>
-          {album.photos.map((photo) => (
+          {album.photos.map((photo, index) => (
             <li className="shared-photo" key={photo.id}>
               {(photo.fullUrl ?? photo.thumbnailUrl) && (
-                <img
-                  // The full image is what a phone at full width actually needs;
-                  // the thumbnail is offered alongside it so a small screen can
-                  // take the cheap one. Falling back keeps an album readable if
-                  // only one of the two could be signed.
-                  src={photo.fullUrl ?? (photo.thumbnailUrl as string)}
-                  srcSet={
-                    photo.fullUrl && photo.thumbnailUrl
-                      ? `${photo.thumbnailUrl} ${THUMBNAIL_SIZE}w, ${photo.fullUrl} ${FULL_SIZE}w`
-                      : undefined
+                <button
+                  className="shared-photo-open"
+                  type="button"
+                  // The button takes its name from the alt text inside it, which
+                  // keeps the description on the image where it belongs. A
+                  // photograph with none still needs a name for the control.
+                  aria-label={
+                    photo.alt ? undefined : `Photograph ${index + 1} of ${album.photos.length}`
                   }
-                  sizes={TILE_SIZES}
-                  // The owner's own words when they wrote them. An empty alt is
-                  // correct otherwise: it marks the image decorative rather than
-                  // reading out something invented.
-                  alt={photo.alt ?? ''}
-                  loading="lazy"
-                  decoding="async"
-                />
+                  onClick={() => setOpenPhoto(index)}
+                >
+                  <img
+                    // The full image is what a phone at full width actually
+                    // needs; the thumbnail is offered alongside it so a small
+                    // screen can take the cheap one. Falling back keeps an album
+                    // readable if only one of the two could be signed.
+                    src={photo.fullUrl ?? (photo.thumbnailUrl as string)}
+                    srcSet={
+                      photo.fullUrl && photo.thumbnailUrl
+                        ? `${photo.thumbnailUrl} ${THUMBNAIL_SIZE}w, ${photo.fullUrl} ${FULL_SIZE}w`
+                        : undefined
+                    }
+                    sizes={TILE_SIZES}
+                    // The owner's own words when they wrote them. An empty alt is
+                    // correct otherwise: it marks the image decorative rather
+                    // than reading out something invented.
+                    alt={photo.alt ?? ''}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </button>
               )}
               {photo.caption && <p className="shared-caption">{photo.caption}</p>}
               {photo.stories.map((story, index) => (
@@ -110,6 +124,13 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
       <footer className="shared-footer">
         <p>Shared from Albums Studio.</p>
       </footer>
+
+      <PhotoLightbox
+        photos={album.photos}
+        index={openPhoto}
+        onClose={() => setOpenPhoto(null)}
+        onGoTo={setOpenPhoto}
+      />
     </main>
   )
 }
