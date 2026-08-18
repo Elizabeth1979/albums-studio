@@ -134,7 +134,7 @@ describe('AlbumPage', () => {
     renderAlbumPage({ album: album({ layout: 'grid' }) })
 
     expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText(/Grid crops to equal tiles/)).toBeInTheDocument()
+    expect(screen.getByText(/Equal tiles/)).toBeInTheDocument()
   })
 
   it('invites a description when the album has none', () => {

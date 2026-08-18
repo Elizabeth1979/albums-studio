@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 import type { SharedPhoto } from '../lib/sharing'
+import { useModalDialog } from './useModalDialog'
 
 type PhotoLightboxProps = {
   photos: SharedPhoto[]
@@ -17,17 +18,9 @@ type PhotoLightboxProps = {
  * which are laborious and easy to get subtly wrong by hand.
  */
 export function PhotoLightbox({ photos, index, onClose, onGoTo }: PhotoLightboxProps) {
-  const dialog = useRef<HTMLDialogElement>(null)
   const open = index !== null
+  const dialog = useModalDialog(open)
   const photo = open ? photos[index] : undefined
-
-  useEffect(() => {
-    const element = dialog.current
-    if (!element) return
-
-    if (open && !element.open) element.showModal()
-    if (!open && element.open) element.close()
-  }, [open])
 
   const goBy = useCallback(
     (step: number) => {

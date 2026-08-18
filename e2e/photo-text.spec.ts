@@ -186,7 +186,10 @@ test.describe('writing about a photo', () => {
     const second = calls.photos().find((photo) => photo.sort_order === 1)
     expect(calls.albums()[0].cover_photo_id).toBe(second?.id)
 
-    // And the library shows the photo that was chosen, not the first one.
+    // And the library shows the photo that was chosen, not the first one. The
+    // editor is a modal, so it holds the page until it is closed — which is
+    // what a modal is for.
+    await page.getByRole('button', { name: 'Close' }).click()
     await page.getByRole('button', { name: '← All albums' }).click()
 
     const cover = page.locator('.album-card img.album-cover')

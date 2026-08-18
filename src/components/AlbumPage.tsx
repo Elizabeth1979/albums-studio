@@ -133,8 +133,7 @@ export function AlbumPage({
               </div>
             </form>
           ) : (
-            <div>
-              <p className="eyebrow">Album</p>
+            <div className="album-title-row">
               <h1>{album.title}</h1>
               <button className="text-button" type="button" onClick={startRenaming}>
                 Rename album
@@ -144,7 +143,7 @@ export function AlbumPage({
         </div>
 
         <section className="album-controls" aria-labelledby="description-title">
-          <h2 id="description-title">Description</h2>
+          <h2 className="visually-hidden" id="description-title">Description</h2>
           {describing ? (
             <form className="rename-form" onSubmit={handleDescription}>
               <label htmlFor="album-description">
@@ -173,19 +172,17 @@ export function AlbumPage({
               </div>
             </form>
           ) : (
-            <>
-              <p className="layout-hint">
-                {album.description || 'No description yet.'}
-              </p>
+            <p className="album-description">
+              <span>{album.description || 'No description yet.'}</span>{' '}
               <button className="text-button" type="button" onClick={startDescribing}>
                 {album.description ? 'Edit description' : 'Add a description'}
               </button>
-            </>
+            </p>
           )}
         </section>
 
-        <section className="album-controls" aria-labelledby="layout-title">
-          <h2 id="layout-title">Layout</h2>
+        <section className="album-controls album-layout-row" aria-labelledby="layout-title">
+          <h2 className="visually-hidden" id="layout-title">Layout</h2>
           <div className="layout-switch" role="group" aria-label="Album layout">
             {ALBUM_LAYOUTS.map((option) => (
               <button
@@ -205,20 +202,23 @@ export function AlbumPage({
           </div>
           <p className="layout-hint">
             {album.layout === 'masonry'
-              ? 'Masonry keeps each photo’s own proportions, so tall and wide shots sit together.'
-              : 'Grid crops to equal tiles, which stays scannable across a large batch.'}
+              ? 'Each photo keeps its own proportions.'
+              : 'Equal tiles, scannable across a large batch.'}
           </p>
         </section>
 
         {error && <p className="form-message error" role="alert">{error}</p>}
 
+        <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
+
+        {/* After the album, not before it. Sharing is what you do once the
+            photographs are in, and above them it stood between the owner and
+            the thing they came to work on. */}
         <ShareAlbum
           albumId={album.id}
           visibility={album.visibility}
           onChangeVisibility={onChangeVisibility}
         />
-
-        <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
 
         <section className="danger-zone" aria-labelledby="danger-title">
           <h2 id="danger-title">Delete album</h2>

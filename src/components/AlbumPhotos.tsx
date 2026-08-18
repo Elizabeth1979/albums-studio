@@ -21,6 +21,7 @@ import {
 import { type UploadItem, runUploads } from '../lib/uploads'
 import { LayoutPreview } from './LayoutPreview'
 import { PhotoEditor } from './PhotoEditor'
+import { useModalDialog } from './useModalDialog'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -266,6 +267,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const selectedIndex = photos.findIndex((photo) => photo.id === selectedId)
   const selected = selectedIndex === -1 ? null : photos[selectedIndex]
 
+  // Over the album rather than below it. Inline, the editor landed under a grid
+  // that can be several screens long, so choosing a photo on a phone looked
+  // like nothing had happened.
+  const editorDialog = useModalDialog(Boolean(selected))
+
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
     storyCounts.set(story.photoId, (storyCounts.get(story.photoId) ?? 0) + 1)
@@ -313,6 +319,15 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 setSelectedId((current) => (current === photoId ? null : photoId))
               }
             />
+            <dialog
+              className="editor-sheet"
+              ref={editorDialog}
+              aria-label="Photo details"
+              onClose={() => setSelectedId(null)}
+              onClick={(event) => {
+                if (event.target === editorDialog.current) setSelectedId(null)
+              }}
+            >
             {selected && (
               <PhotoEditor
                 // Remounting per photo is deliberate: the editor holds a draft,
@@ -345,6 +360,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 onClose={() => setSelectedId(null)}
               />
             )}
+            </dialog>
           </>
         )}
       </section>
