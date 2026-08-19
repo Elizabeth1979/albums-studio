@@ -89,6 +89,8 @@ export type PhotoRecord = {
   alt: string | null
   alt_source: string | null
   sort_order: number
+  phash: string | null
+  sharpness: number | null
 }
 
 export type StoryRecord = {
@@ -365,6 +367,10 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           alt: null,
           alt_source: null,
           sort_order: (body.sort_order as number) ?? 0,
+          // Whatever the browser actually computed and sent, so the grouping
+          // that runs over these is the same arithmetic production does.
+          phash: (body.phash as string | null) ?? null,
+          sharpness: (body.sharpness as number | null) ?? null,
         }
         photos = [...photos, row]
         return json(wantsObject ? row : [row], 201)

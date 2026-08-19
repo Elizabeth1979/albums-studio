@@ -21,7 +21,9 @@ import {
 import { type UploadItem, runUploads } from '../lib/uploads'
 import { LayoutPreview } from './LayoutPreview'
 import { PhotoEditor } from './PhotoEditor'
+import { SimilarPhotos } from './SimilarPhotos'
 import { useModalDialog } from './useModalDialog'
+import { groupSimilar } from '../lib/similarity'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -264,6 +266,19 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     }
   }
 
+  /**
+   * Removes a set of near-duplicates the owner picked.
+   *
+   * Sequential rather than parallel: each delete removes rows and then storage
+   * objects, and a failure partway through should leave the rest of the album
+   * alone rather than half-applied across several photographs at once.
+   */
+  async function handleRemoveSimilar(chosen: Photo[]) {
+    for (const photo of chosen) {
+      await handleDeletePhoto(photo)
+    }
+  }
+
   const selectedIndex = photos.findIndex((photo) => photo.id === selectedId)
   const selected = selectedIndex === -1 ? null : photos[selectedIndex]
 
@@ -271,6 +286,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // that can be several screens long, so choosing a photo on a phone looked
   // like nothing had happened.
   const editorDialog = useModalDialog(Boolean(selected))
+
+  // Recomputed from the photos themselves, so removing one re-groups the rest
+  // without another round trip.
+  const similarGroups = groupSimilar(photos)
 
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
@@ -319,6 +338,12 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 setSelectedId((current) => (current === photoId ? null : photoId))
               }
             />
+            <SimilarPhotos
+              groups={similarGroups}
+              thumbnails={thumbnails}
+              onRemove={handleRemoveSimilar}
+            />
+
             <dialog
               className="editor-sheet"
               ref={editorDialog}

@@ -16,6 +16,8 @@ function photo(overrides: Partial<Photo> = {}): Photo {
     captionVisibility: 'hidden',
     alt: null,
     sortOrder: 0,
+    phash: null,
+    sharpness: null,
     ...overrides,
   }
 }

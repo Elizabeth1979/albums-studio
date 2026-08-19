@@ -1632,6 +1632,112 @@ textarea:focus-visible {
   opacity: 0.88;
 }
 
+.similar {
+  margin-top: 2.4rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid #ddd4c6;
+}
+
+.similar h2 {
+  margin: 0 0 0.4rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+
+.similar-group {
+  margin-top: 1.6rem;
+}
+
+.similar-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.similar-group-heading h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #675844;
+}
+
+/* Scrolls sideways rather than shrinking: comparing two photographs is the
+   whole point, and past about four they stop being comparable at tile size. */
+.similar-row {
+  display: flex;
+  gap: 0.8rem;
+  margin: 0.7rem 0 0;
+  padding: 0 0 0.4rem;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.similar-item {
+  position: relative;
+  flex: 0 0 11rem;
+}
+
+.similar-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  background: #efe8dd;
+}
+
+.similar-choice {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  padding: 0.3rem;
+  border-radius: 0.35rem;
+  background: rgba(255, 253, 249, 0.92);
+}
+
+.similar-choice input {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: #8d5526;
+}
+
+.similar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  color: #6f675c;
+}
+
+.similar-badge {
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
+  background: #e8e0d2;
+  color: #4a4036;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .similar-item {
+    flex-basis: 8.5rem;
+  }
+
+  /* Side by side, the shortcut ran off the edge of the screen. */
+  .similar-group-heading {
+    display: grid;
+    justify-items: start;
+    gap: 0.3rem;
+  }
+}
+
 /* The photo editor, over the album. Same mechanics as the lightbox; lighter
    chrome, because this one is a workspace rather than a viewer. */
 .editor-sheet {
