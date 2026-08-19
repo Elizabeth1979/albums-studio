@@ -1632,6 +1632,12 @@ textarea:focus-visible {
   opacity: 0.88;
 }
 
+.photo-taken {
+  margin: 0.6rem 0 0;
+  color: #6f675c;
+  font-size: 0.82rem;
+}
+
 .similar {
   margin-top: 2.4rem;
   padding-top: 1.8rem;

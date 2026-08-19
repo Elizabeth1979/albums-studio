@@ -22,6 +22,25 @@ export const NEAR_DUPLICATE_DISTANCE = 10
 /** The length of the hash the processor writes, in bits. */
 const HASH_BITS = 64
 
+/**
+ * How close in time two photographs must be to count as one burst.
+ *
+ * Holding the shutter down produces frames a fraction of a second apart, and
+ * three seconds comfortably covers that without reaching the next thing someone
+ * turned around and photographed.
+ */
+export const BURST_SECONDS = 3
+
+/**
+ * How far apart two frames of one burst may look.
+ *
+ * Looser than the hash-only threshold, because that is the point: a subject who
+ * moved between frames can be twenty bits away while plainly being the same
+ * moment. The capture time is what earns the extra room -- neither signal opens
+ * this far on its own.
+ */
+export const BURST_DISTANCE = 20
+
 export type SimilarGroup = {
   /** Photographs that belong together, in album order. */
   photos: Photo[]
@@ -54,8 +73,38 @@ export function hammingDistance(a: string, b: string): number {
   return distance
 }
 
+
+/** Seconds between two capture times, or null when either is missing. */
+function secondsApart(one: Photo, two: Photo): number | null {
+  if (!one.takenAt || !two.takenAt) return null
+
+  const first = Date.parse(one.takenAt)
+  const second = Date.parse(two.takenAt)
+  if (Number.isNaN(first) || Number.isNaN(second)) return null
+
+  return Math.abs(first - second) / 1000
+}
+
 /**
- * Groups photographs that are within `distance` of one another.
+ * Whether two photographs belong in the same group.
+ *
+ * Two ways in. Looking nearly identical is enough on its own. Otherwise, being
+ * taken within a few seconds of each other buys a looser look-alike threshold,
+ * which is what catches a burst where the subject moved — frames the hash alone
+ * scores as different pictures.
+ */
+function alike(one: Photo, two: Photo, distance: number): boolean {
+  const apart = hammingDistance(one.phash as string, two.phash as string)
+  if (apart <= distance) return true
+
+  const seconds = secondsApart(one, two)
+
+  return seconds !== null && seconds <= BURST_SECONDS && apart <= BURST_DISTANCE
+}
+
+/**
+ * Groups photographs that are within `distance` of one another, or that were
+ * taken moments apart and still look broadly alike.
  *
  * Grouping is transitive: a burst where each frame differs slightly from the
  * last should arrive as one run to choose from, not as a chain of overlapping
@@ -84,7 +133,7 @@ export function groupSimilar(
 
   for (let a = 0; a < usable.length; a += 1) {
     for (let b = a + 1; b < usable.length; b += 1) {
-      if (hammingDistance(usable[a].phash as string, usable[b].phash as string) <= distance) {
+      if (alike(usable[a], usable[b], distance)) {
         parent[find(a)] = find(b)
       }
     }

@@ -1,4 +1,5 @@
 import { currentOwnerId } from './session'
+import type { ProcessedImage } from './imaging/process'
 import { supabase } from './supabase'
 
 export const PHOTO_BUCKET = 'photos'
@@ -37,6 +38,13 @@ export type Photo = {
   phash: string | null
   /** Laplacian variance. Higher is sharper; the scale is arbitrary. */
   sharpness: number | null
+  /**
+   * When the camera says it was taken: wall-clock local time, no zone.
+   *
+   * Null for a screenshot, for anything a messaging app has stripped, and for
+   * every photograph uploaded before this was read.
+   */
+  takenAt: string | null
 }
 
 type PhotoRow = {
@@ -51,10 +59,11 @@ type PhotoRow = {
   sort_order: number
   phash: string | null
   sharpness: number | null
+  taken_at: string | null
 }
 
 const PHOTO_COLUMNS =
-  'id, storage_path, thumbnail_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness'
+  'id, storage_path, thumbnail_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at'
 
 function toPhoto(row: PhotoRow): Photo {
   return {
@@ -69,6 +78,7 @@ function toPhoto(row: PhotoRow): Photo {
     sortOrder: row.sort_order,
     phash: row.phash ?? null,
     sharpness: row.sharpness ?? null,
+    takenAt: row.taken_at ?? null,
   }
 }
 
@@ -251,14 +261,13 @@ export async function thumbnailsByPhotoId(ids: string[]): Promise<Map<string, st
   return byId
 }
 
-export type ProcessedImage = {
-  full: Blob
-  thumbnail: Blob
-  width: number
-  height: number
-  phash: string
-  sharpness: number
-}
+/**
+ * Re-exported rather than restated. This was a second declaration of the
+ * processor's shape, and every field added to one had to be remembered in the
+ * other — which is how it came to be missing two of them. A type import costs
+ * nothing at runtime.
+ */
+export type { ProcessedImage }
 
 /**
  * Object keys start with the owner's uuid because both the Storage policy and
@@ -316,6 +325,7 @@ export async function storePhoto(input: {
       height: input.image.height,
       phash: input.image.phash,
       sharpness: input.image.sharpness,
+      taken_at: input.image.takenAt,
       sort_order: input.sortOrder,
     })
     .select(PHOTO_COLUMNS)

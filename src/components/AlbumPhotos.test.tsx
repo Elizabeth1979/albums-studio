@@ -59,6 +59,7 @@ function photo(index: number): Photo {
     sortOrder: index,
     phash: null,
     sharpness: null,
+    takenAt: null,
   }
 }
 
