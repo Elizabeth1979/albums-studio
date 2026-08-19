@@ -29,6 +29,26 @@ type PhotoEditorProps = {
   onClose: () => void
 }
 
+/**
+ * A capture time, in the reader's own conventions.
+ *
+ * Formatted without a time zone on purpose. EXIF records wall-clock time with
+ * no offset, so the hour written here is the hour the camera showed — applying
+ * a zone would move a photograph taken at dawn into the previous night.
+ */
+function formatTakenAt(takenAt: string): string {
+  const at = new Date(takenAt)
+  if (Number.isNaN(at.getTime())) return takenAt
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(at)
+}
+
 export function PhotoEditor({
   photo,
   position,
@@ -133,6 +153,10 @@ export function PhotoEditor({
               // and until they write something there is nothing truthful to say.
               alt=""
             />
+          )}
+
+          {photo.takenAt && (
+            <p className="photo-taken">Taken {formatTakenAt(photo.takenAt)}</p>
           )}
 
           {isCover ? (

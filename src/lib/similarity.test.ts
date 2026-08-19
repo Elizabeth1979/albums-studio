@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Photo } from './photos'
 import {
+  BURST_DISTANCE,
+  BURST_SECONDS,
   NEAR_DUPLICATE_DISTANCE,
   groupSimilar,
   hammingDistance,
@@ -24,6 +26,7 @@ function photo(overrides: Partial<Photo> & { id: string }): Photo {
     sortOrder: 0,
     phash: hash(0),
     sharpness: 100,
+    takenAt: null,
     ...overrides,
   }
 }
@@ -160,6 +163,89 @@ describe('groupSimilar', () => {
 
   it('uses a threshold of 10 by default', () => {
     expect(NEAR_DUPLICATE_DISTANCE).toBe(10)
+  })
+})
+
+describe('photographs taken moments apart', () => {
+  const moment = '2026-08-19T13:45:00'
+  const twoLater = '2026-08-19T13:45:02'
+  const aMinuteLater = '2026-08-19T13:46:00'
+
+  it('groups a burst the hash alone would call different pictures', () => {
+    // Someone moved between frames. Sixteen bits apart is past the look-alike
+    // threshold, and two seconds apart is what says it is the same moment.
+    const photos = [
+      photo({ id: 'a', phash: hash(0), takenAt: moment, sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(16), takenAt: twoLater, sortOrder: 1 }),
+    ]
+
+    expect(groupSimilar(photos)).toHaveLength(1)
+  })
+
+  it('leaves alone two different things photographed a minute apart', () => {
+    const photos = [
+      photo({ id: 'a', phash: hash(0), takenAt: moment, sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(16), takenAt: aMinuteLater, sortOrder: 1 }),
+    ]
+
+    expect(groupSimilar(photos)).toEqual([])
+  })
+
+  it('will not group two unlike photographs however close in time', () => {
+    // Turning around and photographing something else takes about a second.
+    // Time buys a looser look-alike threshold, never an unlimited one.
+    const photos = [
+      photo({ id: 'a', phash: hash(0), takenAt: moment, sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(40), takenAt: twoLater, sortOrder: 1 }),
+    ]
+
+    expect(groupSimilar(photos)).toEqual([])
+  })
+
+  it('falls back to the hash when only one photograph carries a time', () => {
+    const together = [
+      photo({ id: 'a', phash: hash(0), takenAt: moment, sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(4), takenAt: null, sortOrder: 1 }),
+    ]
+    const apart = [
+      photo({ id: 'a', phash: hash(0), takenAt: moment, sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(16), takenAt: null, sortOrder: 1 }),
+    ]
+
+    expect(groupSimilar(together)).toHaveLength(1)
+    expect(groupSimilar(apart)).toEqual([])
+  })
+
+  it('ignores a capture time that will not parse', () => {
+    const photos = [
+      photo({ id: 'a', phash: hash(0), takenAt: 'not a date', sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(16), takenAt: 'nonsense', sortOrder: 1 }),
+    ]
+
+    expect(groupSimilar(photos)).toEqual([])
+  })
+
+  it('treats the window as inclusive at its edges', () => {
+    const photos = [
+      photo({ id: 'a', phash: hash(0), takenAt: '2026-08-19T13:45:00', sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(BURST_DISTANCE), takenAt: '2026-08-19T13:45:03', sortOrder: 1 }),
+    ]
+
+    expect(BURST_SECONDS).toBe(3)
+    expect(groupSimilar(photos)).toHaveLength(1)
+  })
+
+  it('does not let an upload batch become one enormous burst', () => {
+    // Every photograph in one upload shares an upload time to within a second,
+    // which is why this reads the capture time and not created_at. Unrelated
+    // pictures taken on different days must stay apart.
+    const photos = [
+      photo({ id: 'a', phash: hash(0), takenAt: '2026-01-01T09:00:00', sortOrder: 0 }),
+      photo({ id: 'b', phash: hash(18), takenAt: '2026-05-04T17:20:00', sortOrder: 1 }),
+      photo({ id: 'c', phash: hash(36), takenAt: '2026-08-19T13:45:00', sortOrder: 2 }),
+    ]
+
+    expect(groupSimilar(photos)).toEqual([])
   })
 })
 

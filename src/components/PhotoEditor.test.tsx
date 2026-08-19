@@ -18,6 +18,7 @@ function photo(overrides: Partial<Photo> = {}): Photo {
     sortOrder: 0,
     phash: null,
     sharpness: null,
+    takenAt: null,
     ...overrides,
   }
 }
@@ -373,5 +374,35 @@ describe('story notes', () => {
 
     expect(screen.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument()
     expect(onDeleteStory).not.toHaveBeenCalled()
+  })
+})
+
+describe('when a photograph was taken', () => {
+  it('shows the capture time when the file carried one', () => {
+    renderEditor({ photo: photo({ takenAt: '2026-08-19T13:45:02' }) })
+
+    expect(screen.getByText(/^Taken /)).toBeInTheDocument()
+  })
+
+  it('says nothing at all when it did not', () => {
+    // A screenshot, or anything a messaging app stripped. An empty "Taken"
+    // line would be worse than no line.
+    renderEditor({ photo: photo({ takenAt: null }) })
+
+    expect(screen.queryByText(/^Taken /)).not.toBeInTheDocument()
+  })
+
+  it('shows the hour the camera showed, not the reader\u2019s', () => {
+    // EXIF carries no zone. Reading it as UTC and rendering it locally would
+    // move a photograph taken at dawn into the previous night.
+    renderEditor({ photo: photo({ takenAt: '2026-08-19T06:30:00' }) })
+
+    expect(screen.getByText(/06:30|6:30/)).toBeInTheDocument()
+  })
+
+  it('falls back to the raw value rather than showing "Invalid Date"', () => {
+    renderEditor({ photo: photo({ takenAt: 'not a date' }) })
+
+    expect(screen.getByText('Taken not a date')).toBeInTheDocument()
   })
 })

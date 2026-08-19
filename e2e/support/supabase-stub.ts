@@ -91,6 +91,7 @@ export type PhotoRecord = {
   sort_order: number
   phash: string | null
   sharpness: number | null
+  taken_at: string | null
 }
 
 export type StoryRecord = {
@@ -371,6 +372,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           // that runs over these is the same arithmetic production does.
           phash: (body.phash as string | null) ?? null,
           sharpness: (body.sharpness as number | null) ?? null,
+          taken_at: (body.taken_at as string | null) ?? null,
         }
         photos = [...photos, row]
         return json(wantsObject ? row : [row], 201)

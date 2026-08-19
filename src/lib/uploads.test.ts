@@ -15,6 +15,7 @@ function processed() {
     height: 1500,
     phash: '0'.repeat(64),
     sharpness: 120,
+    takenAt: null,
   }
 }
 
@@ -31,6 +32,7 @@ function photo(id: string, sortOrder: number): Photo {
     sortOrder,
     phash: null,
     sharpness: null,
+    takenAt: null,
   }
 }
 

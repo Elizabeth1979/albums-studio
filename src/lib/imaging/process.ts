@@ -1,3 +1,4 @@
+import { readTakenAt } from './exif'
 import { explainUnreadable, explainUnreadableFile } from './formats'
 import { toLuma } from './luma'
 import { perceptualHash } from './phash'
@@ -22,6 +23,14 @@ export type ProcessedImage = {
   height: number
   phash: string
   sharpness: number
+  /**
+   * When the camera says the photograph was taken, or null.
+   *
+   * Read from the file the camera wrote, because drawing to a canvas and
+   * re-encoding leaves EXIF behind — so this has to happen before any of the
+   * work below, not after.
+   */
+  takenAt: string | null
 }
 
 export class UnreadableImageError extends Error {
@@ -109,14 +118,14 @@ function pause(ms: number): Promise<void> {
  * still running. Asking again a moment later is the same remedy the error
  * message asks the owner to perform by hand, so it is worth trying first.
  */
-async function readBytes(file: File | Blob, fileName: string): Promise<Blob> {
+async function readBytes(file: File | Blob, fileName: string): Promise<ArrayBuffer> {
   let detail = ''
 
   for (let attempt = 0; ; attempt += 1) {
     try {
       const bytes = await file.arrayBuffer()
 
-      if (bytes.byteLength > 0) return new Blob([bytes], { type: file.type })
+      if (bytes.byteLength > 0) return bytes
 
       detail = 'the file was empty (0 bytes)'
     } catch (error) {
@@ -199,7 +208,11 @@ export async function processImage(file: File | Blob, fileName: string): Promise
   // read later starts working with no change here. What it cannot tell us is
   // whether the file arrived at all, which is why the bytes are read first.
   const bytes = await readBytes(file, fileName)
-  const bitmap = await decode(bytes, fileName, file.type)
+
+  // Before decoding: the canvas keeps the pixels and drops everything else.
+  const takenAt = readTakenAt(bytes)
+
+  const bitmap = await decode(new Blob([bytes], { type: file.type }), fileName, file.type)
 
   try {
     const full = fitWithin(bitmap.width, bitmap.height, FULL_SIZE)
@@ -227,6 +240,7 @@ export async function processImage(file: File | Blob, fileName: string): Promise
       height: full.height,
       phash: perceptualHash(luma, analysis.width, analysis.height),
       sharpness: laplacianVariance(luma, analysis.width, analysis.height),
+      takenAt,
     }
   } finally {
     // Decoded bitmaps hold real memory, and a phone running through five

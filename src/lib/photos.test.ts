@@ -39,6 +39,7 @@ const image = {
   height: 1500,
   phash: '1'.repeat(64),
   sharpness: 143.5,
+  takenAt: '2026-08-19T13:45:02',
 }
 
 /** Mirrors the Storage client surface `storePhoto` chains onto. */
@@ -96,6 +97,29 @@ describe('storePhoto', () => {
       }),
     )
     expect(stored.id).toBe('photo-1')
+  })
+
+  it('records when the photograph was taken', async () => {
+    // The column exists so photographs from one burst can be found together.
+    // If the capture time is dropped between the processor and the insert, the
+    // grouping simply never fires and nothing anywhere says why.
+    bucket()
+    const insert = table({ data: ROW, error: null })
+
+    await storePhoto({ albumId: 'album-1', image, sortOrder: 0 })
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ taken_at: '2026-08-19T13:45:02' }),
+    )
+  })
+
+  it('writes a null capture time rather than omitting it', async () => {
+    bucket()
+    const insert = table({ data: ROW, error: null })
+
+    await storePhoto({ albumId: 'album-1', image: { ...image, takenAt: null }, sortOrder: 0 })
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ taken_at: null }))
   })
 
   it('removes the full image when the thumbnail cannot be written', async () => {
@@ -436,6 +460,7 @@ describe('deletePhoto', () => {
       sortOrder: 0,
       phash: null,
       sharpness: null,
+      takenAt: null,
       ...overrides,
     }
   }

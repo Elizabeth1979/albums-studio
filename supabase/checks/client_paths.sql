@@ -72,10 +72,10 @@ begin
   begin
     insert into public.photos (
       album_id, owner_id, storage_path, thumbnail_path, mime,
-      width, height, phash, sharpness, sort_order
+      width, height, phash, sharpness, sort_order, taken_at
     ) values (
       album_a, alice, alice || '/a/one.jpg', alice || '/a/one-thumb.jpg', 'image/jpeg',
-      2000, 1500, repeat('1', 64)::bit(64), 143.5, 0
+      2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
     ) returning id into photo_a;
     log := log || E'\n  ok    insert photo with every column storePhoto sends';
   exception when others then
@@ -214,6 +214,15 @@ begin
     log := log || E'\n  ok    can still read alt text, which exists to be read';
   exception when insufficient_privilege then
     log := log || E'\n  FAIL  cannot read alt text'; fails := fails + 1;
+  end;
+
+  begin
+    select taken_at::text into seen from public.photos where id = photo_a;
+    log := log || E'\n  FAIL  can read capture times through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    -- A share link shows someone photographs, not a record of where their owner
+    -- was and when.
+    log := log || E'\n  ok    cannot read capture times through the Data API';
   end;
 
   select caption into seen from public.get_shared_album(token) where photo_id = photo_a;
