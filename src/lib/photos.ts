@@ -27,6 +27,16 @@ export type Photo = {
   captionVisibility: TextVisibility
   alt: string | null
   sortOrder: number
+  /**
+   * The perceptual hash, as 64 characters of '0' and '1'.
+   *
+   * Computed in the browser at upload and never sent anywhere: it exists so
+   * near-duplicates can be grouped without a model and without a round trip.
+   * Null for a photograph uploaded before the column existed.
+   */
+  phash: string | null
+  /** Laplacian variance. Higher is sharper; the scale is arbitrary. */
+  sharpness: number | null
 }
 
 type PhotoRow = {
@@ -39,10 +49,12 @@ type PhotoRow = {
   caption_visibility: TextVisibility
   alt: string | null
   sort_order: number
+  phash: string | null
+  sharpness: number | null
 }
 
 const PHOTO_COLUMNS =
-  'id, storage_path, thumbnail_path, width, height, caption, caption_visibility, alt, sort_order'
+  'id, storage_path, thumbnail_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness'
 
 function toPhoto(row: PhotoRow): Photo {
   return {
@@ -55,6 +67,8 @@ function toPhoto(row: PhotoRow): Photo {
     captionVisibility: row.caption_visibility,
     alt: row.alt,
     sortOrder: row.sort_order,
+    phash: row.phash ?? null,
+    sharpness: row.sharpness ?? null,
   }
 }
 

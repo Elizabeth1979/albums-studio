@@ -331,3 +331,44 @@ test.describe('uploading photos', () => {
     await expect(page.locator('.photo-gallery img')).toHaveCount(1)
   })
 })
+
+test.describe('reviewing photographs that look alike', () => {
+  test('groups two copies of the same picture and removes the one chosen', async ({ page }) => {
+    // The whole chain with a real hash: the browser computes it, storePhoto
+    // sends it, listPhotos reads it back, and the grouping is the same
+    // arithmetic production runs. Two copies of one image are distance zero.
+    await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles([
+      sampleFile('one.png'),
+      sampleFile('again.png'),
+    ])
+    await expect(page.getByText('Added 2 of 2.')).toBeVisible({ timeout: 15000 })
+
+    const similar = page.getByRole('region', { name: 'Similar photos' })
+    await expect(similar).toBeVisible()
+    await expect(similar).toContainText('2 alike')
+
+    // Nothing is preselected, and nothing offers to remove anything yet.
+    await expect(page.getByRole('button', { name: /Remove \d photo/ })).toHaveCount(0)
+
+    await similar.getByRole('checkbox').first().check()
+    await page.getByRole('button', { name: 'Remove 1 photo' }).click()
+
+    // Two deliberate actions, never one.
+    await expect(page.getByRole('button', { name: 'Yes, remove 1 photo' })).toBeVisible()
+    await page.getByRole('button', { name: 'Yes, remove 1 photo' }).click()
+
+    // One photograph left, so there is nothing alike any more.
+    await expect(similar).toBeHidden()
+  })
+
+  test('says nothing when an album holds no near-duplicates', async ({ page }) => {
+    await openAlbum(page)
+
+    await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
+    await expect(page.getByText('Added 1 of 1.')).toBeVisible({ timeout: 15000 })
+
+    await expect(page.getByRole('region', { name: 'Similar photos' })).toHaveCount(0)
+  })
+})

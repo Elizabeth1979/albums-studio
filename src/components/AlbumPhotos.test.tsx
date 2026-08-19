@@ -57,6 +57,8 @@ function photo(index: number): Photo {
     captionVisibility: 'hidden',
     alt: null,
     sortOrder: index,
+    phash: null,
+    sharpness: null,
   }
 }
 
