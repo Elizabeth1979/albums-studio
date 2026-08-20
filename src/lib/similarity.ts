@@ -185,3 +185,32 @@ function widestGap(photos: Photo[]): number {
 
   return widest
 }
+
+/**
+ * How one photograph's focus reads against the sharpest of its group.
+ *
+ * A Laplacian variance means nothing to the person looking at it -- 7432 is
+ * neither good nor bad, and only becomes a fact once there is something to
+ * compare it to. So the number stays out of the interface and this says where a
+ * photograph sits relative to the best of the same picture, which is the only
+ * question being asked on that screen.
+ */
+export type SharpnessReading = 'unmeasured' | 'sharpest' | 'close' | 'softer' | 'blurrier'
+
+/** Where `photo` sits against the sharpest of `group`. */
+export function compareSharpness(photo: Photo, group: SimilarGroup): SharpnessReading {
+  const best = group.suggested.sharpness
+
+  if (photo.sharpness === null || best === null || best <= 0) return 'unmeasured'
+  if (photo.id === group.suggested.id) return 'sharpest'
+
+  const share = photo.sharpness / best
+
+  // Two frames within a tenth of each other are, in practice, the same photo
+  // twice: worth saying so, because "sharpest" would otherwise imply a
+  // difference someone could see.
+  if (share >= 0.9) return 'close'
+  if (share >= 0.6) return 'softer'
+
+  return 'blurrier'
+}

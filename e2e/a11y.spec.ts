@@ -175,10 +175,10 @@ test.describe('accessibility', () => {
     ])
     await expect(page.getByText('Added 2 of 2.')).toBeVisible({ timeout: 15000 })
 
-    const similar = page.getByRole('region', { name: 'Similar photos' })
+    const similar = page.getByRole('region', { name: 'Photos that look the same' })
     await expect(similar).toBeVisible()
     await similar.getByRole('checkbox').first().check()
-    await page.getByRole('button', { name: 'Remove 1 photo' }).click()
+    await page.getByRole('button', { name: 'Remove 1 ticked photo' }).click()
     await expect(page.getByRole('button', { name: 'Yes, remove 1 photo' })).toBeVisible()
 
     await expectNoViolations(page)
