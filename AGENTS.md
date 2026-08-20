@@ -65,6 +65,10 @@ saying so.
 - Before applying a migration, confirm the hosted project is `ACTIVE_HEALTHY`. Verify the
   recorded migration and run security and performance advisors afterward.
 - Never edit an applied migration; add a forward-only migration.
+- A service worker must never cache the page itself. Only Vite's content-hashed
+  assets are safe, and their names are `name-HASH.ext`, not `name.HASH.ext` — a
+  pattern written the second way matches nothing and the cache silently does
+  nothing. Check any such pattern against the filenames in `dist/assets`.
 - `apply_migration` stamps its own version at apply time, which will not match the one in
   the repository filename. Rename the file to the version the database recorded — compare
   `list_migrations` against `supabase/migrations/` after applying. Left alone, the two
