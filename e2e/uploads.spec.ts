@@ -345,15 +345,15 @@ test.describe('reviewing photographs that look alike', () => {
     ])
     await expect(page.getByText('Added 2 of 2.')).toBeVisible({ timeout: 15000 })
 
-    const similar = page.getByRole('region', { name: 'Similar photos' })
+    const similar = page.getByRole('region', { name: 'Photos that look the same' })
     await expect(similar).toBeVisible()
-    await expect(similar).toContainText('2 alike')
+    await expect(similar).toContainText('2 of the same picture')
 
     // Nothing is preselected, and nothing offers to remove anything yet.
     await expect(page.getByRole('button', { name: /Remove \d photo/ })).toHaveCount(0)
 
     await similar.getByRole('checkbox').first().check()
-    await page.getByRole('button', { name: 'Remove 1 photo' }).click()
+    await page.getByRole('button', { name: 'Remove 1 ticked photo' }).click()
 
     // Two deliberate actions, never one.
     await expect(page.getByRole('button', { name: 'Yes, remove 1 photo' })).toBeVisible()
@@ -369,6 +369,6 @@ test.describe('reviewing photographs that look alike', () => {
     await page.getByLabel('Choose photos').setInputFiles(sampleFile('one.png'))
     await expect(page.getByText('Added 1 of 1.')).toBeVisible({ timeout: 15000 })
 
-    await expect(page.getByRole('region', { name: 'Similar photos' })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Photos that look the same' })).toHaveCount(0)
   })
 })

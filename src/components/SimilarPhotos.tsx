@@ -1,12 +1,21 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
-import type { SimilarGroup } from '../lib/similarity'
+import { compareSharpness, type SharpnessReading, type SimilarGroup } from '../lib/similarity'
 
 type SimilarPhotosProps = {
   groups: SimilarGroup[]
   /** Signed thumbnail URLs, by storage path. */
   thumbnails: Map<string, string>
   onRemove: (photos: Photo[]) => Promise<void>
+}
+
+/** What each focus reading says out loud. */
+const READING_TEXT: Record<SharpnessReading, string> = {
+  sharpest: 'Sharpest',
+  close: 'Nearly as sharp',
+  softer: 'A little softer',
+  blurrier: 'Noticeably softer',
+  unmeasured: 'Focus not measured',
 }
 
 /**
@@ -17,6 +26,11 @@ type SimilarPhotosProps = {
  * which frame someone was smiling in. So nothing is preselected, the suggestion
  * is only ever a starting point, and removing anything takes two deliberate
  * actions.
+ *
+ * The wording carries that: every tick box says "Remove" beside it rather than
+ * sitting unlabelled on the picture, and the measurement is spoken as a
+ * comparison ("nearly as sharp") instead of the raw variance, which read as a
+ * score nobody could act on.
  */
 export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
@@ -39,7 +53,7 @@ export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosPro
     })
   }
 
-  /** Marks everything in a group except the sharpest, as a starting point. */
+  /** Ticks everything in a group except the sharpest, as a starting point. */
   function markRest(group: SimilarGroup) {
     setConfirming(false)
     setError(null)
@@ -69,47 +83,38 @@ export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosPro
 
   return (
     <section className="similar" aria-labelledby="similar-title">
-      <h2 id="similar-title">Similar photos</h2>
+      <h2 id="similar-title">Photos that look the same</h2>
       <p className="layout-hint">
         {groups.length === 1
-          ? 'One set of photographs looks like the same picture.'
-          : `${groups.length} sets of photographs look like the same picture.`}{' '}
-        Nothing is removed until you choose it.
+          ? 'One set of photographs looks like the same picture taken more than once.'
+          : `${groups.length} sets of photographs look like the same picture taken more than once.`}{' '}
+        Tick the ones you do not want to keep, then remove them — nothing goes until you say
+        so. Sharpness is measured automatically and only compares how well each frame is in
+        focus, so the last word is yours.
       </p>
 
       {groups.map((group) => (
         <div className="similar-group" key={group.photos[0].id}>
           <div className="similar-group-heading">
-            <h3>{group.photos.length} alike</h3>
+            <h3>{group.photos.length} of the same picture</h3>
             <button
-              className="text-button"
+              className="text-button similar-shortcut"
               type="button"
               onClick={() => markRest(group)}
               disabled={busy}
             >
-              Mark all but the sharpest
+              Tick all but the sharpest
             </button>
           </div>
 
           <ul className="similar-row">
             {group.photos.map((photo) => {
               const url = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
-              const isSuggested = photo.id === group.suggested.id
+              const reading = compareSharpness(photo, group)
+              const isMarked = marked.has(photo.id)
 
               return (
-                <li className="similar-item" key={photo.id}>
-                  <label className="similar-choice">
-                    <input
-                      type="checkbox"
-                      checked={marked.has(photo.id)}
-                      onChange={() => toggle(photo)}
-                      disabled={busy}
-                    />
-                    <span className="visually-hidden">
-                      Remove photo {photo.sortOrder + 1}
-                    </span>
-                  </label>
-
+                <li className={`similar-item${isMarked ? ' marked' : ''}`} key={photo.id}>
                   {url ? (
                     <img className="similar-thumb" src={url} alt="" loading="lazy" />
                   ) : (
@@ -117,13 +122,25 @@ export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosPro
                   )}
 
                   <p className="similar-meta">
-                    {isSuggested && <span className="similar-badge">Sharpest</span>}
-                    <span className="similar-sharpness">
-                      {photo.sharpness === null
-                        ? 'Not measured'
-                        : `Sharpness ${Math.round(photo.sharpness)}`}
+                    <span
+                      className={reading === 'sharpest' ? 'similar-badge' : 'similar-sharpness'}
+                    >
+                      {READING_TEXT[reading]}
                     </span>
                   </p>
+
+                  <label className="similar-choice">
+                    <input
+                      type="checkbox"
+                      checked={isMarked}
+                      onChange={() => toggle(photo)}
+                      disabled={busy}
+                    />
+                    <span>
+                      Remove
+                      <span className="visually-hidden"> photo {photo.sortOrder + 1}</span>
+                    </span>
+                  </label>
                 </li>
               )
             })}
@@ -163,7 +180,9 @@ export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosPro
             type="button"
             onClick={() => setConfirming(true)}
           >
-            {chosen.length === 1 ? 'Remove 1 photo' : `Remove ${chosen.length} photos`}
+            {chosen.length === 1
+              ? 'Remove 1 ticked photo'
+              : `Remove ${chosen.length} ticked photos`}
           </button>
         ))}
     </section>

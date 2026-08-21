@@ -4,6 +4,7 @@ import {
   BURST_DISTANCE,
   BURST_SECONDS,
   NEAR_DUPLICATE_DISTANCE,
+  compareSharpness,
   groupSimilar,
   hammingDistance,
   sharpest,
@@ -262,5 +263,51 @@ describe('sharpest', () => {
     const measured = photo({ id: 'measured', sharpness: 5, sortOrder: 1 })
 
     expect(sharpest([unmeasured, measured]).id).toBe('measured')
+  })
+})
+
+describe('compareSharpness', () => {
+  /** A group of the given photographs, as groupSimilar would build it. */
+  function group(photos: Photo[]) {
+    return groupSimilar(photos)[0]
+  }
+
+  it('names the sharpest of the group', () => {
+    const soft = photo({ id: 'soft', sharpness: 1000, sortOrder: 0 })
+    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 1 })
+    const alike = group([soft, crisp])
+
+    expect(compareSharpness(crisp, alike)).toBe('sharpest')
+  })
+
+  it('calls a photograph within a tenth of the best nearly as sharp', () => {
+    const nearly = photo({ id: 'nearly', sharpness: 3700, sortOrder: 0 })
+    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 1 })
+
+    expect(compareSharpness(nearly, group([nearly, crisp]))).toBe('close')
+  })
+
+  it('separates a little softer from noticeably softer', () => {
+    const some = photo({ id: 'some', sharpness: 3000, sortOrder: 0 })
+    const much = photo({ id: 'much', sharpness: 800, sortOrder: 1 })
+    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 2 })
+    const alike = group([some, much, crisp])
+
+    expect(compareSharpness(some, alike)).toBe('softer')
+    expect(compareSharpness(much, alike)).toBe('blurrier')
+  })
+
+  it('says nothing about focus it has no reading for', () => {
+    // Both ways round: an unmeasured photograph, and a measured one in a group
+    // whose best has no reading to compare it against.
+    const unmeasured = photo({ id: 'unmeasured', sharpness: null, sortOrder: 0 })
+    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 1 })
+
+    expect(compareSharpness(unmeasured, group([unmeasured, crisp]))).toBe('unmeasured')
+
+    const alsoUnmeasured = photo({ id: 'also', sharpness: null, sortOrder: 1 })
+    const none = group([unmeasured, alsoUnmeasured])
+
+    expect(compareSharpness(unmeasured, none)).toBe('unmeasured')
   })
 })

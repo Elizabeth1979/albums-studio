@@ -1673,6 +1673,21 @@ textarea:focus-visible {
 
 /* Scrolls sideways rather than shrinking: comparing two photographs is the
    whole point, and past about four they stop being comparable at tile size. */
+/*
+ * Looks like something to press. As bare bold text it read as a caption telling
+ * the owner to do the ticking herself, which is the opposite of a shortcut.
+ */
+.similar-shortcut {
+  min-height: 2.4rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #ccc0ac;
+  border-radius: 0.4rem;
+  background: #fffdf9;
+  color: #6d3f18;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .similar-row {
   display: flex;
   gap: 0.8rem;
@@ -1684,7 +1699,14 @@ textarea:focus-visible {
 
 .similar-item {
   position: relative;
+  display: flex;
   flex: 0 0 11rem;
+  flex-direction: column;
+}
+
+/* Whatever the reading above wraps to, the tick boxes stay on one line. */
+.similar-item .similar-choice {
+  margin-top: auto;
 }
 
 .similar-thumb {
@@ -1696,21 +1718,45 @@ textarea:focus-visible {
   background: #efe8dd;
 }
 
+/*
+ * Under the picture, with its word beside it. Floated over the thumbnail and
+ * unlabelled, the same box read as "keep this one" to the owner -- exactly
+ * backwards from what ticking it does.
+ */
 .similar-choice {
-  position: absolute;
-  top: 0.4rem;
-  left: 0.4rem;
-  padding: 0.3rem;
-  border-radius: 0.35rem;
-  background: rgba(255, 253, 249, 0.92);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ddd4c6;
+  border-radius: 0.4rem;
+  background: #fffdf9;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4a4036;
+  cursor: pointer;
 }
 
 .similar-choice input {
-  display: block;
+  flex: none;
   width: 1.15rem;
   height: 1.15rem;
   margin: 0;
   accent-color: #8d5526;
+}
+
+.similar-item.marked .similar-choice {
+  border-color: #8d5526;
+  background: #f6ece1;
+  color: #6d3f18;
+}
+
+/* A marked photograph steps back, so what is leaving is visible at a glance. */
+.similar-item.marked .similar-thumb {
+  opacity: 0.45;
+  outline: 2px solid #8d5526;
+  outline-offset: 2px;
 }
 
 .similar-meta {
@@ -1729,6 +1775,10 @@ textarea:focus-visible {
   background: #e8e0d2;
   color: #4a4036;
   font-weight: 700;
+}
+
+.similar-sharpness {
+  color: #6f675c;
 }
 
 @media (max-width: 720px) {
