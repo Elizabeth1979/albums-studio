@@ -134,7 +134,10 @@ export function AlbumPage({
           )}
         </div>
 
-        <section className="album-controls" aria-labelledby="description-title">
+        {/* Part of the heading, not a control block of its own. A description
+            is what the album is about, so it belongs under the title with the
+            spacing of a subtitle rather than a section's worth of air. */}
+        <section className="album-summary" aria-labelledby="description-title">
           <h2 className="visually-hidden" id="description-title">Description</h2>
           {describing ? (
             <form className="rename-form" onSubmit={handleDescription}>

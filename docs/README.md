@@ -32,7 +32,11 @@ AI cost.
   rule further down the stylesheet quietly overriding the first, which reading either rule
   alone did not reveal.
 - Phone layout is covered by an end-to-end suite at a 412x915 viewport, including a guard on
-  field height and a check that no page scrolls sideways.
+  field height, a check that no page scrolls sideways, and a budget on how much of the first
+  screen an album page may spend before its photographs start (520px of 915). The album
+  header is one block — back link, title with Rename beside it, description as a subtitle —
+  rather than four separately spaced sections, and the Add photos heading is visually hidden
+  once an album holds photographs, since the button below it says the same words.
 - Supabase is healthy and its complete migration history is committed.
 - The minimal schema is `profiles`, `albums`, `photos`, `photo_stories`, and `ai_usage`,
   all protected by RLS and explicit Data API grants.
