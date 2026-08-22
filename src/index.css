@@ -377,16 +377,36 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
+/*
+ * A text button carried nothing but ink colour and a bold weight, so it
+ * rendered as a run of body text and read as a label rather than something you
+ * could press. Beside the album title that was worst of all: "Usa  Rename
+ * album" scanned as one phrase, and the only thing announcing a control was a
+ * cursor that a phone does not have.
+ *
+ * Colour and an underline together, never colour alone. The underline is what
+ * survives a monochrome screen and colour blindness, and it is the one
+ * convention every reader already knows. #8d5526 is the brown the shared view
+ * already focuses with: 5.5:1 on the page background, 6:1 on a card.
+ *
+ * The horizontal padding is a target rather than decoration. These are the
+ * smallest controls in the app and several of them sit inline in a sentence.
+ */
 .text-button {
-  padding: 0.5rem 0;
-  color: #3f3a34;
+  padding: 0.5rem 0.15rem;
+  color: #8d5526;
   background: transparent;
   font-size: 0.8rem;
   font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: color 150ms ease, text-decoration-thickness 150ms ease;
 }
 
 .text-button:hover:not(:disabled) {
-  color: #996130;
+  color: #6f3f19;
+  text-decoration-thickness: 2px;
 }
 
 .library-main {
@@ -1555,6 +1575,7 @@ textarea:focus-visible {
  */
 .similar-shortcut {
   min-height: 2.4rem;
+  text-decoration: none;
   padding: 0.35rem 0.7rem;
   border: 1px solid #ccc0ac;
   border-radius: 0.4rem;

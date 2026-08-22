@@ -24,6 +24,13 @@ AI cost.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
+- A secondary action written as text — Rename album, Edit description, Sign out, Cancel — is
+  brown and underlined, never bold ink alone. Colour and underline together, because colour
+  by itself fails WCAG 1.4.1 and because the album header sets these inline beside the words
+  they act on, where "Usa  Rename album" otherwise scans as one phrase. An end-to-end check
+  asserts both against the rendered page: the fault it replaces was a second `.text-button`
+  rule further down the stylesheet quietly overriding the first, which reading either rule
+  alone did not reveal.
 - Phone layout is covered by an end-to-end suite at a 412x915 viewport, including a guard on
   field height and a check that no page scrolls sideways.
 - Supabase is healthy and its complete migration history is committed.
