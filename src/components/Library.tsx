@@ -49,6 +49,15 @@ export function Library({
   const [composing, setComposing] = useState(false)
   const [created, setCreated] = useState<string | null>(null)
 
+  /**
+   * Whether the heading offers a way to start an album.
+   *
+   * Not while the form is open — it is the same action, already on screen — and
+   * not for an empty library, which carries its own invitation. Two buttons
+   * doing one thing is clutter rather than choice.
+   */
+  const offersNewAlbum = !composing && !(!loading && albums.length === 0)
+
   function startComposing() {
     setFormError(null)
     setCreated(null)
@@ -86,12 +95,23 @@ export function Library({
       <AppHeader identity={identity} onSignOut={onSignOut} />
 
       <main className="library-main">
+        {/* The heading row was always built to hold two things — it is a
+            space-between flex — but the only way to start an album sat in a
+            block of its own underneath, so the row had one child and the button
+            cost a whole line of the first screen. On a wide screen it belongs
+            beside the title, in the space the title was not using. Below 820px
+            the row stacks and it returns to its own line. */}
         <div className="library-heading">
           <div>
             <p className="eyebrow">Private library</p>
             <h1>Your albums</h1>
             <p>Every story starts with a few photographs and the context only you know.</p>
           </div>
+          {offersNewAlbum && (
+            <button className="primary-button new-album-button" type="button" onClick={startComposing}>
+              New album
+            </button>
+          )}
         </div>
 
         {created && (
@@ -103,17 +123,7 @@ export function Library({
           </p>
         )}
 
-        {!composing ? (
-          // An empty library carries its own invitation, and two buttons that
-          // do the same thing on one screen is clutter rather than choice.
-          !loading && albums.length === 0 ? null : (
-            <div className="library-actions">
-              <button className="primary-button" type="button" onClick={startComposing}>
-                New album
-              </button>
-            </div>
-          )
-        ) : (
+        {composing && (
         <section className="new-album" aria-labelledby="new-album-title">
           <h2 id="new-album-title">Start an album</h2>
           <form className="new-album-form" onSubmit={handleSubmit}>
@@ -177,7 +187,9 @@ export function Library({
             </div>
             <p className="eyebrow">A quiet beginning</p>
             <h2 id="empty-title">No albums yet</h2>
-            <p>Name it, choose how it should look, and photos come next.</p>
+            {/* "choose how it should look" outlived the masonry/grid switch it
+                described. An album is named, then filled. */}
+            <p>Name it, add photographs, and write what you remember.</p>
             <button className="primary-button" type="button" onClick={startComposing}>
               Start your first album
             </button>

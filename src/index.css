@@ -72,7 +72,7 @@ textarea:focus-visible {
 }
 
 .eyebrow {
-  margin: 0 0 0.8rem;
+  margin: 0 0 0.5rem;
   color: #996130;
   font-size: 0.7rem;
   font-weight: 800;
@@ -412,7 +412,7 @@ textarea:focus-visible {
 .library-main {
   width: min(100% - 2.5rem, 78rem);
   margin: 0 auto;
-  padding: clamp(3.5rem, 8vw, 7rem) 0 4rem;
+  padding: clamp(1.6rem, 3vw, 2.6rem) 0 4rem;
 }
 
 .library-heading {
@@ -425,23 +425,36 @@ textarea:focus-visible {
 .library-heading h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(3rem, 7vw, 5.8rem);
+  font-size: clamp(2.2rem, 4.4vw, 3.6rem);
   font-weight: 400;
-  letter-spacing: -0.06em;
-  line-height: 0.95;
+  letter-spacing: -0.055em;
+  line-height: 1;
 }
 
 .library-heading > div > p:last-child {
   max-width: 36rem;
-  margin: 1.3rem 0 0;
+  margin: 0.7rem 0 0;
   color: #746d64;
-  line-height: 1.65;
+  line-height: 1.6;
+}
+
+/* One line on a wide screen. At 36rem the lede broke after "only you", leaving
+   "know." alone under a heading row whose right half was empty. */
+.library-heading > div > p:last-child {
+  max-width: 44rem;
+}
+
+/* Sits on the heading's own line, so it carries none of the top margin a
+   primary button takes when it starts a block of its own. */
+.new-album-button {
+  flex: none;
+  margin-top: 0;
 }
 
 .empty-library {
   display: grid;
   min-height: 25rem;
-  margin-top: 4rem;
+  margin-top: 2rem;
   padding: clamp(2rem, 6vw, 5rem);
   place-content: center;
   justify-items: center;
@@ -504,6 +517,7 @@ textarea:focus-visible {
   .library-heading {
     align-items: start;
     flex-direction: column;
+    gap: 1.1rem;
   }
 
 }
@@ -1352,11 +1366,6 @@ textarea:focus-visible {
 .form-message.success {
   color: #33583c;
   background: #e5f0e6;
-}
-
-.library-actions {
-  display: flex;
-  margin: 0.4rem 0 0;
 }
 
 .new-album-actions {

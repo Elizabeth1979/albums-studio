@@ -91,6 +91,52 @@ test.describe('phone layout', () => {
     expect(first!.y).toBeLessThan(CHROME_BUDGET)
   })
 
+  test('the library starts New album beside its heading, not under it', async ({ page }) => {
+    // The heading row is a space-between flex and was always meant to hold two
+    // things, but the only way to start an album sat in a block of its own
+    // underneath, costing a whole line of the first screen. Below 820px the row
+    // stacks, so this checks the wide case where the pairing is the point.
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await stubSupabase(page, { albums: [albumRecord()] })
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('heading', { name: '1 album' })).toBeVisible()
+
+    const heading = await page.locator('.library-heading h1').boundingBox()
+    const button = await page.getByRole('button', { name: 'New album' }).boundingBox()
+    expect(heading).not.toBeNull()
+    expect(button).not.toBeNull()
+
+    // To the right of the title, and overlapping it vertically rather than
+    // sitting on a line of its own beneath.
+    expect(button!.x).toBeGreaterThan(heading!.x + heading!.width)
+    expect(button!.y).toBeLessThan(heading!.y + heading!.height + button!.height)
+  })
+
+  test('the library reaches its albums in the first half of a phone screen', async ({ page }) => {
+    // Same budget as the album page, for the same reason: the heading was
+    // spaced as a magazine cover — 7rem of padding above a 5.8rem title — so
+    // the albums this page exists to list began 429px down a 915px screen.
+    // They now begin at 376px; 400 sits between.
+    const CHROME_BUDGET = 400
+
+    await stubSupabase(page, { albums: [albumRecord()] })
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('heading', { name: '1 album' })).toBeVisible()
+
+    await page.evaluate(() => window.scrollTo(0, 0))
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+
+    const card = await page.locator('.album-list li').first().boundingBox()
+    expect(card).not.toBeNull()
+    expect(card!.y).toBeLessThan(CHROME_BUDGET)
+  })
+
   test('nothing overflows the viewport sideways', async ({ page }) => {
     await stubSupabase(page, { albums: [albumRecord()] })
     await page.goto('/')

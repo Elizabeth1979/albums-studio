@@ -33,7 +33,9 @@ AI cost.
   alone did not reveal.
 - Phone layout is covered by an end-to-end suite at a 412x915 viewport, including a guard on
   field height, a check that no page scrolls sideways, and a budget on how much of the first
-  screen an album page may spend before its photographs start (520px of 915). The album
+  screen an album page may spend before its photographs start (520px of 915), the same for
+  the library before its album cards start (400px of 915), and a check that the library's
+  New album button sits beside the heading on a wide screen rather than below it. The album
   header is one block — back link, title with Rename beside it, description as a subtitle —
   rather than four separately spaced sections, and the Add photos heading is visually hidden
   once an album holds photographs, since the button below it says the same words.
