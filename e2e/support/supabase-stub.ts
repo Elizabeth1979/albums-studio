@@ -142,6 +142,12 @@ export type StubOptions = {
    * is not listed gets the same 404 a rotated or withdrawn one would.
    */
   shared?: Record<string, SharedResponse>
+  /**
+   * What the `architecture` Edge Function answers. Absent means the account
+   * asking is not the one the map is served to, which is the ordinary case
+   * for every account but one.
+   */
+  architecture?: { status: number; body: string }
 }
 
 export type AuthCalls = {
@@ -230,6 +236,21 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       const answer = options.shared?.[wanted]
 
       return answer ? json(answer) : json({ error: 'not found' }, 404)
+    }
+
+    // The Edge Function that serves the architecture map. It answers HTML
+    // rather than JSON, and only to one account, so the suite has to say
+    // which of those two answers it wants.
+    if (path === '/functions/v1/architecture') {
+      const answer = options.architecture
+
+      if (!answer) return json({ error: 'This page is not for this account.' }, 403)
+
+      return route.fulfill({
+        status: answer.status,
+        contentType: 'text/html; charset=utf-8',
+        body: answer.body,
+      })
     }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL
