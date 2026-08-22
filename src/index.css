@@ -753,6 +753,13 @@ textarea:focus-visible {
   gap: 0.5rem 1rem;
 }
 
+/* The heading names the section, so it takes the whole first line rather than
+   sitting in the row as though it were a third control. */
+.album-layout-row h2 {
+  flex: 0 0 100%;
+  margin-bottom: 0;
+}
+
 .album-layout-row .layout-hint {
   margin: 0;
   font-size: 0.88rem;
@@ -1076,6 +1083,24 @@ textarea:focus-visible {
 .drop-zone.dragging {
   border-color: #996130;
   background: #f7f0e6;
+}
+
+/*
+ * Once an album holds photographs, adding more is an occasional errand rather
+ * than the point of the screen. As a row it costs one line instead of a third
+ * of the first screenful, and the album itself starts where the eye already is.
+ */
+.drop-zone.compact {
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  justify-items: start;
+  align-items: center;
+  text-align: left;
+}
+
+.drop-zone.compact .choose-photos {
+  padding: 0.7rem 1.25rem;
 }
 
 /* A label styled as the button: tapping it opens the picker, which is the only
@@ -2096,6 +2121,14 @@ textarea:focus-visible {
   .choose-photos {
     width: 100%;
     justify-content: center;
+  }
+
+  /* A full-width button cannot share a row with anything, so the compact zone
+     stacks here. It keeps the tighter padding, which is most of the saving. */
+  .drop-zone.compact {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+    text-align: center;
   }
 }
 

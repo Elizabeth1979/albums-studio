@@ -121,6 +121,20 @@ describe('AlbumPage', () => {
     await waitFor(() => expect(onChangeLayout).toHaveBeenCalledWith('grid'))
   })
 
+  it('keeps the arrangement control below the photographs', () => {
+    // The owner opens an album to look at photographs and write about them, not
+    // to pick a layout. Above the album this control took a third of the first
+    // screen and pushed the pictures out of sight.
+    renderAlbumPage()
+
+    const photos = screen.getByTestId('album-photos')
+    const arrangement = screen.getByRole('group', { name: 'Album layout' })
+
+    expect(photos.compareDocumentPosition(arrangement)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
   it('does not rewrite the layout that is already set', () => {
     const onChangeLayout = vi.fn()
 

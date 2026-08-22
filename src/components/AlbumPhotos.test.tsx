@@ -173,6 +173,37 @@ describe('AlbumPhotos', () => {
     expect(image).not.toHaveAttribute('srcset')
   })
 
+  it('shrinks the drop zone once the album holds photographs', async () => {
+    // The first screenful belongs to the album. A drop zone with two paragraphs
+    // of explanation under it is right for an empty album and wrong for a full
+    // one, where it pushed the photographs below the fold.
+    photosApi.listPhotos.mockResolvedValue([photo(0)])
+    photosApi.signedUrls.mockResolvedValue(
+      new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/0']]),
+    )
+
+    const { container } = renderPhotos()
+
+    await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(1))
+    expect(container.querySelector('.drop-zone')).toHaveClass('compact')
+
+    // Shorter, but it still says what leaves the device.
+    expect(screen.getByText(/Resized in your browser first/)).toBeInTheDocument()
+    expect(screen.queryByText(/only the\s+smaller copy leaves your device/)).toBeNull()
+  })
+
+  it('gives an empty album the full drop zone and its explanation', async () => {
+    photosApi.listPhotos.mockResolvedValue([])
+
+    renderPhotos()
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'No photos yet' })).toBeInTheDocument(),
+    )
+    expect(document.querySelector('.drop-zone')).not.toHaveClass('compact')
+    expect(screen.getByText(/smaller copy leaves your device/)).toBeInTheDocument()
+  })
+
   it('keeps the image itself out of the accessibility tree', async () => {
     // The tile is a button now, and the button carries the description. An image
     // that also announced itself would make a screen reader read every photo

@@ -310,6 +310,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       <PhotoUploader
         items={items}
         busy={busy}
+        filled={photos.length > 0}
         onFiles={handleFiles}
         onDismiss={() => setItems([])}
       />

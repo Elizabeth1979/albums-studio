@@ -181,8 +181,17 @@ export function AlbumPage({
           )}
         </section>
 
+        {error && <p className="form-message error" role="alert">{error}</p>}
+
+        <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
+
+        {/* Below the album, not above it. This is a setting about how the
+            photographs are arranged, not a step on the way to adding them, and
+            at the top it sat between the owner and the album itself — pushing
+            the pictures off the first screen to make room for a control nobody
+            opens an album to use. */}
         <section className="album-controls album-layout-row" aria-labelledby="layout-title">
-          <h2 className="visually-hidden" id="layout-title">Layout</h2>
+          <h2 id="layout-title">Arrangement</h2>
           <div className="layout-switch" role="group" aria-label="Album layout">
             {ALBUM_LAYOUTS.map((option) => (
               <button
@@ -206,10 +215,6 @@ export function AlbumPage({
               : 'Equal tiles, scannable across a large batch.'}
           </p>
         </section>
-
-        {error && <p className="form-message error" role="alert">{error}</p>}
-
-        <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
 
         {/* After the album, not before it. Sharing is what you do once the
             photographs are in, and above them it stood between the owner and

@@ -13,8 +13,12 @@ AI cost.
 - Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
   sharpness in a Web Worker, then uploaded four at a time with retry. Measurements are
   stored so Phase 7 duplicate detection and best-shot ranking need no model calls.
-- Owners sign their own thumbnail URLs from the browser; Storage checks its policy against
+- Owners sign their own image URLs from the browser; Storage checks its policy against
   the caller's token first. Shared viewers have no token and still need Phase 6 server code.
+- Both the studio gallery and the visitor's view offer the thumbnail and the stored 2000px
+  image together in a `srcset`. A tile is about a third of a 78rem canvas, so a retina screen
+  needs close to 800 device pixels and the 400px thumbnail alone rendered visibly soft. A
+  mid-size rendition written at upload is the follow-up if this costs too much bandwidth.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
@@ -50,7 +54,15 @@ AI cost.
   carry a reveal toggle, and a recovery link must reach the set-a-new-password step before
   the library opens.
 - `albums.layout` is `masonry` or `grid`, checked in the database. Later layouts widen that
-  constraint in the migration for the phase that renders them.
+  constraint in the migration for the phase that renders them. The choice lives in an
+  **Arrangement** section below the photographs, not above them: it is a setting, not a step,
+  and the first screenful of an album belongs to the album.
+- **Open:** masonry is CSS `columns`, which fills column-major, so it reads the owner's
+  ordering down the columns while grid reads it across the rows. For a phone album of
+  uniformly 4:3 frames the two arrangements are otherwise indistinguishable. Either make
+  masonry row-major — grid row spans from each photo's aspect ratio, which needs `width` and
+  `height` added to the `shared-album` payload so the owner and the visitor see the same
+  album — or drop the choice and keep one layout.
 - Renaming an album leaves its slug untouched, because the slug is the stable half of a
   future share URL.
 - Phases 1 and 2 pass type checks, component tests, `App` state-machine tests, an
@@ -110,5 +122,8 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [Album first fold and image sharpness](sessions/2026-08-22-album-first-fold.md) — served
+  full-size images to studio tiles, moved the layout switch below the photographs, collapsed
+  the drop zone for albums that already hold photos, and recorded the open masonry question.
 
 When adding or materially changing a document under `docs/`, update its entry here.

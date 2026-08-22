@@ -5,6 +5,15 @@ import type { UploadItem } from '../lib/uploads'
 type PhotoUploaderProps = {
   items: UploadItem[]
   busy: boolean
+  /**
+   * Whether the album already holds photographs.
+   *
+   * An empty album has nothing else to offer, so adding photos is the whole
+   * screen and the zone is as large as it needs to be to say so. Once there are
+   * photographs it is a thing the owner does occasionally, and a drop zone the
+   * height of a phone screen only pushed the album itself out of sight.
+   */
+  filled: boolean
   onFiles: (files: File[]) => void
   onDismiss: () => void
 }
@@ -17,7 +26,13 @@ const STATUS_LABELS: Record<UploadItem['status'], string> = {
   failed: 'Failed',
 }
 
-export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploaderProps) {
+export function PhotoUploader({
+  items,
+  busy,
+  filled,
+  onFiles,
+  onDismiss,
+}: PhotoUploaderProps) {
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
 
@@ -50,7 +65,13 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
           there is nothing to drag. The drop zone is an enhancement for desktop
           and is not the only way in. */}
       <div
-        className={dragging ? 'drop-zone dragging' : 'drop-zone'}
+        className={[
+          'drop-zone',
+          filled ? 'compact' : '',
+          dragging ? 'dragging' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         onDragOver={(event) => {
           event.preventDefault()
           setDragging(true)
@@ -75,13 +96,24 @@ export function PhotoUploader({ items, busy, onFiles, onDismiss }: PhotoUploader
         <label className="primary-button choose-photos" htmlFor={inputId}>
           Choose photos
         </label>
-        <p className="drop-hint">
-          Photos are resized in your browser before they are uploaded, so only the
-          smaller copy leaves your device.
-        </p>
-        <p className="drop-formats">
-          {UNIVERSAL_FORMATS} work everywhere. iPhone photos convert as you add them.
-        </p>
+        {/* The reassurance is worth a paragraph the first time and a clause
+            every time after. Neither is dropped: what leaves the device is not
+            something to learn once and then hide. */}
+        {filled ? (
+          <p className="drop-hint">
+            Resized in your browser first. {UNIVERSAL_FORMATS} all work.
+          </p>
+        ) : (
+          <>
+            <p className="drop-hint">
+              Photos are resized in your browser before they are uploaded, so only the
+              smaller copy leaves your device.
+            </p>
+            <p className="drop-formats">
+              {UNIVERSAL_FORMATS} work everywhere. iPhone photos convert as you add them.
+            </p>
+          </>
+        )}
       </div>
 
       {items.length > 0 && (
