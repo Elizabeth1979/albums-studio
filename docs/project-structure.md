@@ -51,7 +51,7 @@ flowchart LR
         App["React and TypeScript app"]:::current
         AuthUI["Email auth, reset, protected library"]:::current
         Router["Client routing<br/>/, /albums/:slug, /shared/:token"]:::current
-        AlbumUI["Album shells<br/>create, rename, layout, describe, delete"]:::current
+        AlbumUI["Album shells<br/>create, rename, describe, delete"]:::current
         PhotoUI["Photo gallery"]:::current
         TextUI["Captions, story notes, alt text<br/>each hidden or visible"]:::current
         ShareUI["Share link<br/>create, rotate, revoke"]:::current
@@ -155,7 +155,7 @@ erDiagram
         text slug "NOT NULL; unique with owner_id"
         date date
         text description
-        text layout "NOT NULL; masonry or grid"
+        text layout "NOT NULL; retained, no longer written or read"
         float8 lat
         float8 lng
         album_visibility visibility "NOT NULL; private, link, or public"
@@ -215,8 +215,11 @@ The human-facing text fields have separate purposes:
 
 - `albums.title` is editable; `albums.slug` is not. The slug is the stable half of the
   `/albums/:slug` address, so a rename must not move it.
-- `albums.layout` selects the presentation. Its check constraint lists only the layouts the
-  application can draw today, and each later phase widens it when it ships the renderer.
+- `albums.layout` no longer selects anything. The masonry/grid switch was withdrawn on
+  2026-08-22 — the two were indistinguishable for a phone album, and masonry read the
+  owner's ordering down the columns while Move earlier and Move later promise it runs across
+  the rows. The column, its check constraint and its grants are retained untouched; the
+  client neither writes nor reads it, and Phase 7.5 picks it back up.
 - `albums.description` describes the album as a whole.
 - `photos.caption` provides context for one photo, and `photos.caption_visibility` decides
   whether a shared viewer ever reads it. Hidden is the default.

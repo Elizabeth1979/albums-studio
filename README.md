@@ -11,7 +11,7 @@ projects, and trips. Blog and map views are optional layouts rather than the pro
 
 1. Sign in and create an album.
 2. Upload resized photos to private Storage.
-3. Choose a masonry or grid layout.
+3. See the album as even tiles that read across the rows.
 4. Add captions, story notes, and manual alt text.
 5. Generate a reviewable AI Story Studio draft from selected photos and owner context.
 6. Share an album without requiring the viewer to register.
@@ -40,8 +40,10 @@ Shared viewers carry no token, so trusted server code must sign on their behalf.
 ## Current state
 
 The React and TypeScript application provides email/password authentication and an album
-library: albums can be created, opened, renamed, described, switched between masonry and
-grid layouts, and deleted behind a confirmation. Photos can be added from a phone's gallery
+library: albums can be created, opened, renamed, described, and deleted behind a
+confirmation. The masonry/grid switch was withdrawn on 2026-08-22 and every album now
+renders as even tiles reading across the rows; Phase 7.5 records what a layout choice worth
+making would need. Photos can be added from a phone's gallery
 or dropped in, and are resized, thumbnailed, hashed and scored in the browser before
 upload. The library lives at `/` and each album at `/albums/:slug`. The hosted Supabase project is
 configured and versioned in `supabase/migrations/`; its minimal schema contains `profiles`,
