@@ -198,10 +198,16 @@ library screen renders; profile row exists.
 
 ### Phase 2 — Albums + layouts
 Create/edit/delete album shells. Add a layout field to the schema before this phase ships.
-Start with two layouts:
+Started with two layouts:
 
 - **Masonry** - default for most albums.
 - **Grid** - predictable and scannable for large batches.
+
+> ⚠️ **Both were withdrawn from the interface on 2026-08-22 and folded into the deferred
+> layout work below.** They were not distinguishable for the albums people actually make,
+> and masonry got the reading order wrong. The `albums.layout` column and its check
+> constraint are untouched; the client stopped offering the choice and stopped rendering
+> from it.
 
 Later layouts:
 
@@ -214,8 +220,9 @@ Later layouts:
 
 Date and location stay optional. Not every album is a trip.
 
-**Checkpoint:** user can create an album, choose masonry or grid, rename it, and see the
-empty album page in that layout.
+**Checkpoint:** ✅ met as originally written, then narrowed. A user can create an album,
+rename it, describe it, and see the empty album page in the arrangement it will use. The
+"choose masonry or grid" half was withdrawn — see the deferred layout work below.
 
 ### Phase 3 — Upload (the spine)
 Drag photos in. In the browser, per file: resize to ~2000px, generate a thumbnail, compute
@@ -336,6 +343,38 @@ keep, hide, or delete.
 **Checkpoint:** given a set of similar photos, the app groups them and lets the user compare
 and keep the best one or two.
 
+### Phase 7.5 — Album layouts, done properly (deferred from Phase 2)
+Give albums a layout choice that is worth making. Phase 2 shipped Masonry and Grid; both were
+withdrawn from the interface on 2026-08-22, because:
+
+- For the albums people actually make — a phone camera roll, every frame the same shape —
+  three equal columns of 4:3 and three equal columns of 1:1 crops differ only in the crop.
+  The owner could not tell the two apart, which is the honest verdict on the feature.
+- Masonry is CSS `columns`, which fills **column-major**: photographs 1, 2, 3 run *down* the
+  first column while grid runs them *across* the first row. The album has Move earlier /
+  Move later controls, so the ordering is real, and masonry had been reading it in the wrong
+  direction since Phase 2 without anyone noticing.
+
+What a real version needs:
+
+- **A row-major masonry.** CSS grid with a row span computed from each photograph's aspect
+  ratio, so heights genuinely vary *and* the order reads across the rows. `grid-template-rows:
+  masonry` is not broadly shipped; do not wait for it.
+- **Dimensions in the shared payload.** `get_shared_album` and the `shared-album` Edge
+  Function return no `width` or `height`, so a visitor's browser cannot compute spans. Add
+  them, or the owner's view and the visitor's view will disagree about the same album.
+- **A reason for each layout to exist.** A choice earns its place when the options produce
+  visibly different albums from the same photographs. Story, blog and slideshow from the
+  Phase 2 list clear that bar; masonry-versus-grid did not.
+
+The `albums.layout` column, its check constraint, and its column grants are all still in
+place and hold whatever each album was created with. Nothing was migrated away, so this phase
+starts by widening the constraint rather than rebuilding the field.
+
+**Checkpoint:** given one set of photographs, the owner can switch between at least two
+layouts that are plainly different from each other, the owner's ordering reads the same in
+every one of them, and a visitor opening the share link sees the same album the owner sees.
+
 ### Phase 8 — Collages
 High-quality, editable collage layouts from selected photos, rendered to canvas and saved as
 a new photo. No AI required. This should compete with Google Photos-style collage creation,
@@ -409,7 +448,9 @@ in the same release as the feature — not later.
 3. ~~**Layout schema.**~~ Resolved. `albums.layout` ships with Phase 2 as `text not null
    default 'masonry'` checked against `masonry` and `grid`. Each later layout (`story`,
    `slideshow`, `map`, `blog`) widens the constraint in the migration for the phase that
-   renders it, so the database never advertises a layout the app cannot draw.
+   renders it, so the database never advertises a layout the app cannot draw. The column
+   still exists and is still constrained; since 2026-08-22 the client neither writes nor
+   reads it, and Phase 7.5 picks it back up.
 4. **Caption/story visibility schema.** Add `caption_visibility` before Phase 4 so captions
    can be visible or hidden/search-only. Add `photo_stories` with its own visibility field.
 5. **Story region model.** Decide whether story notes can attach to normalized image

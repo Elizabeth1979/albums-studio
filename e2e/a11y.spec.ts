@@ -83,7 +83,7 @@ test.describe('accessibility', () => {
   test('library listing albums', async ({ page }) => {
     await signIn(page, [
       albumRecord(),
-      albumRecord({ id: 'album-2', title: 'School trip', slug: 'school-trip', layout: 'grid' }),
+      albumRecord({ id: 'album-2', title: 'School trip', slug: 'school-trip' }),
     ])
     await expect(page.getByRole('heading', { name: '2 albums' })).toBeVisible()
 
@@ -99,7 +99,7 @@ test.describe('accessibility', () => {
   })
 
   test('album page in grid, mid-edit', async ({ page }) => {
-    await signIn(page, [albumRecord({ layout: 'grid', description: 'A week by the water' })])
+    await signIn(page, [albumRecord({ description: 'A week by the water' })])
     await page.getByRole('button', { name: /Summer by the lake/ }).click()
     await page.getByRole('button', { name: 'Rename album' }).click()
     await expect(page.getByLabel('Album title')).toBeVisible()

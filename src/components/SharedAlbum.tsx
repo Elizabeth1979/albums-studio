@@ -5,8 +5,8 @@ import { PhotoLightbox } from './PhotoLightbox'
 
 type SharedAlbumProps = { token: string }
 
-// Both layouts are three columns on a wide screen and two on a narrow one, so
-// a tile occupies roughly a third of the page, then half of it.
+// Three columns on a wide screen and two on a narrow one, so a tile occupies
+// roughly a third of the page, then half of it.
 const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
 
 /**
@@ -74,7 +74,7 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
       {album.photos.length === 0 ? (
         <p className="library-status">This album has no photographs yet.</p>
       ) : (
-        <ul className={`shared-photos layout-${album.album.layout}`}>
+        <ul className="shared-photos">
           {album.photos.map((photo, index) => (
             <li className="shared-photo" key={photo.id}>
               {(photo.fullUrl ?? photo.thumbnailUrl) && (

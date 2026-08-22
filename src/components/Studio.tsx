@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import {
   type Album,
-  type AlbumLayout,
   type AlbumVisibility,
   createAlbum,
   deleteAlbum,
@@ -33,7 +32,6 @@ type AlbumRouteProps = {
   albums: Album[]
   loading: boolean
   onRename: (album: Album, title: string) => Promise<void>
-  onChangeLayout: (album: Album, layout: AlbumLayout) => Promise<void>
   onChangeDescription: (album: Album, description: string) => Promise<void>
   onDelete: (album: Album) => Promise<void>
   onCoverChosen: (album: Album, photoId: string) => Promise<void>
@@ -50,7 +48,6 @@ function AlbumRoute({
   albums,
   loading,
   onRename,
-  onChangeLayout,
   onChangeDescription,
   onDelete,
   onCoverChosen,
@@ -68,7 +65,6 @@ function AlbumRoute({
         album={album}
         onBack={() => navigate('/')}
         onRename={(title) => onRename(album, title)}
-        onChangeLayout={(layout) => onChangeLayout(album, layout)}
         onChangeDescription={(description) => onChangeDescription(album, description)}
         onDelete={() => onDelete(album)}
         onCoverChosen={(photoId) => onCoverChosen(album, photoId)}
@@ -86,7 +82,7 @@ function AlbumRoute({
         ) : (
           <>
             <h1>Album not found</h1>
-            <p className="layout-hint">
+            <p className="album-note">
               This album may have been deleted, or the address may be mistyped.
             </p>
             <button className="secondary-button" type="button" onClick={() => navigate('/')}>
@@ -123,7 +119,7 @@ export function Studio({ identity, onSignOut }: StudioProps) {
     void load()
   }, [load])
 
-  // Keyed on the cover ids alone: renaming an album or changing its layout
+  // Keyed on the cover ids alone: renaming an album or editing its description
   // replaces the album object but leaves the pictures on the cards unchanged,
   // and re-signing them on every edit would be wasted round trips.
   const coverIds = albums
@@ -165,7 +161,6 @@ export function Studio({ identity, onSignOut }: StudioProps) {
 
   async function handleCreate(input: {
     title: string
-    layout: AlbumLayout
     description: string
   }) {
     const album = await createAlbum(input)
@@ -198,9 +193,6 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             albums={albums}
             loading={loading}
             onRename={async (album, title) => replace(await renameAlbum(album.id, title))}
-            onChangeLayout={async (album, layout) =>
-              replace(await updateAlbumDetails(album.id, { layout }))
-            }
             onChangeDescription={async (album, description) =>
               replace(await updateAlbumDetails(album.id, { description }))
             }
