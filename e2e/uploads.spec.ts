@@ -84,7 +84,7 @@ test.describe('uploading photos', () => {
     expect(objects.filter((key) => key.endsWith('-thumb.jpg'))).toHaveLength(1)
   })
 
-  test('shows the photos it added, in the album layout', async ({ page }) => {
+  test('shows the photos it added', async ({ page }) => {
     await openAlbum(page)
 
     await page.getByLabel('Choose photos').setInputFiles([
@@ -94,16 +94,26 @@ test.describe('uploading photos', () => {
 
     await expect(page.getByText('Added 2 of 2.')).toBeVisible()
     await expect(page.locator('.photo-gallery img')).toHaveCount(2)
-    await expect(page.locator('.photo-gallery')).toHaveClass(/layout-masonry/)
 
     // An <img> exists even when its source 404s, so check the bytes arrived.
     // Signed URLs are the one part of this path the browser resolves itself.
-    const loaded = await page
-      .locator('.photo-gallery img')
-      .evaluateAll((images) =>
-        images.every((image) => (image as HTMLImageElement).naturalWidth > 0),
-      )
-    expect(loaded).toBe(true)
+    //
+    // Asked through decode() rather than naturalWidth. A tile now offers the
+    // stored image and its thumbnail together, and naturalWidth on an element
+    // with a `srcset` is density-corrected: the intrinsic width divided by the
+    // chosen candidate's descriptor over its laid-out width. A correctly drawn
+    // photograph therefore reports 0 here, because the stub's stand-in image is
+    // one pixel and the descriptor says two thousand. decode() answers the
+    // question the test is actually asking — did these bytes arrive and are
+    // they an image — and rejects when they did not.
+    await expect(
+      page
+        .locator('.photo-gallery img')
+        .evaluateAll(async (images) => {
+          await Promise.all(images.map((image) => (image as HTMLImageElement).decode()))
+          return true
+        }),
+    ).resolves.toBe(true)
   })
 
   test('keeps the photos after a reload', async ({ page }) => {

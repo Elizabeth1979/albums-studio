@@ -84,7 +84,7 @@ export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosPro
   return (
     <section className="similar" aria-labelledby="similar-title">
       <h2 id="similar-title">Photos that look the same</h2>
-      <p className="layout-hint">
+      <p className="album-note">
         {groups.length === 1
           ? 'One set of photographs looks like the same picture taken more than once.'
           : `${groups.length} sets of photographs look like the same picture taken more than once.`}{' '}

@@ -52,7 +52,6 @@ export type SharedAlbum = {
   album: {
     title: string
     description: string | null
-    layout: 'masonry' | 'grid'
   }
   photos: SharedPhoto[]
 }

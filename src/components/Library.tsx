@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { ALBUM_LAYOUTS, type Album, type AlbumLayout, layoutLabel } from '../lib/albums'
+import type { Album } from '../lib/albums'
 import type { Identity } from '../lib/identity'
 import { AppHeader } from './AppHeader'
 
@@ -13,7 +13,6 @@ type LibraryProps = {
   error: string | null
   onCreateAlbum: (input: {
     title: string
-    layout: AlbumLayout
     description: string
   }) => Promise<void>
   onOpenAlbum: (album: Album) => void
@@ -43,7 +42,6 @@ export function Library({
 }: LibraryProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [layout, setLayout] = useState<AlbumLayout>('masonry')
   const [creating, setCreating] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   // Closed by default: the albums are what this page is for, and an always-open
@@ -69,11 +67,10 @@ export function Library({
     setFormError(null)
 
     try {
-      await onCreateAlbum({ title, layout, description })
+      await onCreateAlbum({ title, description })
       setCreated(title.trim())
       setTitle('')
       setDescription('')
-      setLayout('masonry')
       setComposing(false)
     } catch (caughtError) {
       setFormError(
@@ -148,22 +145,6 @@ export function Library({
               />
             </label>
 
-            <fieldset className="layout-choice">
-              <legend>Layout</legend>
-              {ALBUM_LAYOUTS.map((option) => (
-                <label className="layout-option" key={option}>
-                  <input
-                    type="radio"
-                    name="layout"
-                    value={option}
-                    checked={layout === option}
-                    onChange={() => setLayout(option)}
-                  />
-                  <span>{layoutLabel(option)}</span>
-                </label>
-              ))}
-            </fieldset>
-
             <div className="new-album-actions">
               <button className="primary-button" type="submit" disabled={creating}>
                 {creating ? 'Creating…' : 'Create album'}
@@ -233,7 +214,6 @@ export function Library({
                     )}
                     <span className="album-title">{album.title}</span>
                     <span className="album-meta">
-                      <span className="layout-badge">{layoutLabel(album.layout)}</span>
                       <span>{formatCreatedAt(album.createdAt)}</span>
                     </span>
                   </button>

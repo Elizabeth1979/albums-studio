@@ -1,8 +1,11 @@
-import type { AlbumLayout } from '../lib/albums'
+import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import type { Photo } from '../lib/photos'
 
+// Three columns on a wide screen and two on a narrow one, so a tile occupies
+// roughly a third of the album canvas, then half of it.
+const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
+
 type PhotoGalleryProps = {
-  layout: AlbumLayout
   photos: Photo[]
   /** Signed URLs by storage path; absent while they are still being minted. */
   thumbnails: Map<string, string>
@@ -31,7 +34,6 @@ function tileLabel(photo: Photo, index: number, isCover: boolean): string {
 }
 
 export function PhotoGallery({
-  layout,
   photos,
   thumbnails,
   storyCounts,
@@ -40,9 +42,11 @@ export function PhotoGallery({
   onSelect,
 }: PhotoGalleryProps) {
   return (
-    <ul className={`photo-gallery layout-${layout}`}>
+    <ul className="photo-gallery">
       {photos.map((photo, index) => {
-        const source = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
+        const thumbnail = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
+        const full = thumbnails.get(photo.storagePath)
+        const source = full ?? thumbnail
         const stories = storyCounts.get(photo.id) ?? 0
         const written = Boolean(photo.caption) || Boolean(photo.alt) || stories > 0
         const isCover = photo.id === coverPhotoId
@@ -57,7 +61,19 @@ export function PhotoGallery({
             >
               {source ? (
                 <img
+                  // A tile is around a third of a 78rem canvas, so on a retina
+                  // screen it asks for close to 800 device pixels. The 400px
+                  // thumbnail alone was being stretched to twice its size, and
+                  // an album of photographs rendered visibly soft. Offering the
+                  // stored image alongside it lets the browser take whichever
+                  // one the tile actually needs.
                   src={source}
+                  srcSet={
+                    full && thumbnail
+                      ? `${thumbnail} ${THUMBNAIL_SIZE}w, ${full} ${FULL_SIZE}w`
+                      : undefined
+                  }
+                  sizes={full && thumbnail ? TILE_SIZES : undefined}
                   // The button carries the description; repeating it on the
                   // image would make a screen reader read the photo twice.
                   alt=""

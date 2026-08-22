@@ -599,38 +599,6 @@ textarea:focus-visible {
   margin-top: 0;
 }
 
-.layout-choice {
-  display: flex;
-  flex: none;
-  gap: 1rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.layout-choice legend {
-  padding: 0 0 0.45rem;
-  color: #4d4740;
-  font-size: 0.83rem;
-  font-weight: 700;
-}
-
-.layout-option {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 3.25rem;
-  color: #3f3a34;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.layout-option input {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: #996130;
-}
-
 .library-status {
   margin: 3rem 0;
   color: #746d64;
@@ -705,17 +673,6 @@ textarea:focus-visible {
   font-size: 0.78rem;
 }
 
-.layout-badge {
-  padding: 0.3rem 0.6rem;
-  border: 1px solid #cbbfaa;
-  border-radius: 2rem;
-  color: #675844;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 /* Album page --------------------------------------------------------------- */
 
 .album-main {
@@ -742,20 +699,6 @@ textarea:focus-visible {
   color: #57514a;
   font-size: 0.96rem;
   line-height: 1.6;
-}
-
-/* The layout control and its hint side by side; the hint is a caption for the
-   switch, not a paragraph in its own right. */
-.album-layout-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-}
-
-.album-layout-row .layout-hint {
-  margin: 0;
-  font-size: 0.88rem;
 }
 
 .album-heading h1 {
@@ -816,37 +759,8 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
-.layout-switch {
-  display: inline-flex;
-  padding: 0.25rem;
-  border: 1px solid #ded6ca;
-  border-radius: 0.6rem;
-  background: #fffdf9;
-}
-
-.layout-button {
-  padding: 0.6rem 1.2rem;
-  border: 0;
-  border-radius: 0.45rem;
-  color: #4d4740;
-  background: transparent;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: color 150ms ease, background 150ms ease;
-}
-
-.layout-button.active {
-  color: #fffaf2;
-  background: #2d2924;
-}
-
-.layout-button:disabled {
-  cursor: wait;
-  opacity: 0.6;
-}
-
-.layout-hint {
+/* A quiet explanatory paragraph under a heading or a title. */
+.album-note {
   max-width: 40rem;
   margin: 0.9rem 0 0;
   color: #746d64;
@@ -863,35 +777,13 @@ textarea:focus-visible {
 }
 
 .layout-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.7rem;
 }
 
-.layout-masonry {
-  columns: 3;
-  column-gap: 0.7rem;
-}
-
-.layout-masonry .layout-tile {
-  display: block;
-  width: 100%;
-  margin-bottom: 0.7rem;
-  break-inside: avoid;
-}
-
-.layout-masonry .tile-0 { height: 7rem; }
-.layout-masonry .tile-1 { height: 11rem; }
-.layout-masonry .tile-2 { height: 9rem; }
-
-.layout-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.layout-grid .layout-tile {
-  aspect-ratio: 1;
-}
-
 .layout-tile {
+  aspect-ratio: 1;
   border-radius: 0.5rem;
   background: linear-gradient(160deg, #efe8dd, #e2d8c9);
 }
@@ -975,11 +867,7 @@ textarea:focus-visible {
     width: 100%;
   }
 
-  .layout-masonry {
-    columns: 2;
-  }
-
-  .layout-grid {
+  .layout-preview {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1076,6 +964,24 @@ textarea:focus-visible {
 .drop-zone.dragging {
   border-color: #996130;
   background: #f7f0e6;
+}
+
+/*
+ * Once an album holds photographs, adding more is an occasional errand rather
+ * than the point of the screen. As a row it costs one line instead of a third
+ * of the first screenful, and the album itself starts where the eye already is.
+ */
+.drop-zone.compact {
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  justify-items: start;
+  align-items: center;
+  text-align: left;
+}
+
+.drop-zone.compact .choose-photos {
+  padding: 0.7rem 1.25rem;
 }
 
 /* A label styled as the button: tapping it opens the picker, which is the only
@@ -1176,17 +1082,7 @@ textarea:focus-visible {
   list-style: none;
 }
 
-.photo-gallery.layout-masonry {
-  columns: 3;
-  column-gap: 0.7rem;
-}
-
-.photo-gallery.layout-masonry .photo-tile {
-  margin-bottom: 0.7rem;
-  break-inside: avoid;
-}
-
-.photo-gallery.layout-grid {
+.photo-gallery {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
 }
@@ -1197,18 +1093,14 @@ textarea:focus-visible {
   background: #efe8dd;
 }
 
-.photo-gallery.layout-masonry img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* Grid crops to equal tiles; masonry keeps each photo's own proportions. */
-.photo-gallery.layout-grid .photo-tile {
+/* Equal tiles, so a long album stays scannable and the owner's ordering reads
+   across the rows the way Move earlier / Move later promise it does. The whole
+   photograph is one tap away in the editor. */
+.photo-tile {
   aspect-ratio: 1;
 }
 
-.photo-gallery.layout-grid img {
+.photo-gallery img {
   display: block;
   width: 100%;
   height: 100%;
@@ -1575,36 +1467,20 @@ textarea:focus-visible {
   list-style: none;
 }
 
-/* The layout the owner chose, shown to the person they sent the link to.
-   Masonry keeps each photograph's proportions; grid crops to equal tiles. */
-.shared-photos.layout-masonry {
-  columns: 3;
-  column-gap: 1.6rem;
-}
-
-.shared-photos.layout-masonry .shared-photo {
-  margin-bottom: 2.4rem;
-  /* A caption belongs to the photograph above it, so the pair must not be
-     split across a column boundary. */
-  break-inside: avoid;
-}
-
-.shared-photos.layout-grid {
+.shared-photos {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2.4rem 1.6rem;
 }
 
+/* Equal tiles, cropped, so the album reads across the rows in the order the
+   owner arranged it. The whole photograph opens in the lightbox on a tap. */
 .shared-photo img {
   display: block;
   width: 100%;
-  height: auto;
+  aspect-ratio: 1;
   border-radius: 0.7rem;
   background: #efe8dd;
-}
-
-.shared-photos.layout-grid .shared-photo img {
-  aspect-ratio: 1;
   object-fit: cover;
 }
 
@@ -2083,19 +1959,22 @@ textarea:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .photo-gallery.layout-masonry,
-  .shared-photos.layout-masonry {
-    columns: 2;
-  }
-
-  .photo-gallery.layout-grid,
-  .shared-photos.layout-grid {
+  .photo-gallery,
+  .shared-photos {
     grid-template-columns: repeat(2, 1fr);
   }
 
   .choose-photos {
     width: 100%;
     justify-content: center;
+  }
+
+  /* A full-width button cannot share a row with anything, so the compact zone
+     stacks here. It keeps the tighter padding, which is most of the saving. */
+  .drop-zone.compact {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+    text-align: center;
   }
 }
 

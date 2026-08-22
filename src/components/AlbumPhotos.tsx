@@ -68,9 +68,18 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     }
   }, [])
 
+  /**
+   * Signs what the album needs to draw itself: the thumbnail of every photo and
+   * the stored image beside it.
+   *
+   * Both, because a tile on a wide screen is larger than a 400px thumbnail and
+   * the browser picks between the two from the `srcset` the gallery writes. One
+   * request signs the lot; asking twice would double the round trips for no
+   * gain.
+   */
   const refreshThumbnails = useCallback(async (current: Photo[]) => {
     const paths = current
-      .map((photo) => photo.thumbnailPath)
+      .flatMap((photo) => [photo.thumbnailPath, photo.storagePath])
       .filter((path): path is string => Boolean(path))
 
     if (paths.length === 0) {
@@ -301,6 +310,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       <PhotoUploader
         items={items}
         busy={busy}
+        filled={photos.length > 0}
         onFiles={handleFiles}
         onDismiss={() => setItems([])}
       />
@@ -312,13 +322,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
           <p className="library-status" aria-live="polite">Opening this album…</p>
         ) : photos.length === 0 ? (
           <>
-            <LayoutPreview layout={album.layout} />
+            <LayoutPreview />
             <div className="album-empty-copy">
               <h2 id="album-photos-title">No photos yet</h2>
-              <p>
-                This is how a {album.layout} album will arrange your photographs. Choose
-                some above to fill it.
-              </p>
+              <p>This is how your photographs will be arranged. Choose some above to fill it.</p>
             </div>
           </>
         ) : (
@@ -328,7 +335,6 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
             </h2>
             <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
             <PhotoGallery
-              layout={album.layout}
               photos={photos}
               thumbnails={thumbnails}
               storyCounts={storyCounts}
