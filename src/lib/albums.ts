@@ -2,8 +2,6 @@ import { photoObjectPaths, removePhotoObjects } from './photos'
 import { currentOwnerId } from './session'
 import { supabase } from './supabase'
 
-export const ALBUM_LAYOUTS = ['masonry', 'grid'] as const
-
 /**
  * Who can open an album.
  *
@@ -14,15 +12,24 @@ export const ALBUM_LAYOUTS = ['masonry', 'grid'] as const
  */
 export const ALBUM_VISIBILITIES = ['private', 'link'] as const
 
-export type AlbumLayout = (typeof ALBUM_LAYOUTS)[number]
-
 export type AlbumVisibility = (typeof ALBUM_VISIBILITIES)[number]
 
+/**
+ * An album shell.
+ *
+ * No `layout`. The `albums.layout` column and its check constraint are still in
+ * the database and still hold whatever each album was created with — nothing has
+ * been dropped or migrated. The client simply stopped offering the choice and
+ * stopped rendering from it: masonry and grid were indistinguishable for an
+ * album of uniformly shaped phone photographs, and masonry's CSS `columns` read
+ * the owner's ordering down the columns while the Move earlier / Move later
+ * controls promise it runs across the rows. One arrangement, read in the right
+ * direction, until the phase that gives albums real layouts. See the roadmap.
+ */
 export type Album = {
   id: string
   title: string
   slug: string
-  layout: AlbumLayout
   description: string | null
   /** The photo shown on the album's card, or null while the album is empty. */
   coverPhotoId: string | null
@@ -34,7 +41,6 @@ type AlbumRow = {
   id: string
   title: string
   slug: string
-  layout: AlbumLayout
   description: string | null
   cover_photo_id: string | null
   visibility: AlbumVisibility
@@ -42,26 +48,16 @@ type AlbumRow = {
 }
 
 const ALBUM_COLUMNS =
-  'id, title, slug, layout, description, cover_photo_id, visibility, created_at'
+  'id, title, slug, description, cover_photo_id, visibility, created_at'
 
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = '23505'
-
-const LAYOUT_LABELS: Record<AlbumLayout, string> = {
-  masonry: 'Masonry',
-  grid: 'Grid',
-}
-
-export function layoutLabel(layout: AlbumLayout): string {
-  return LAYOUT_LABELS[layout]
-}
 
 function toAlbum(row: AlbumRow): Album {
   return {
     id: row.id,
     title: row.title,
     slug: row.slug,
-    layout: row.layout,
     description: row.description,
     coverPhotoId: row.cover_photo_id,
     visibility: row.visibility,
@@ -96,7 +92,6 @@ export async function listAlbums(): Promise<Album[]> {
 
 export async function createAlbum(input: {
   title: string
-  layout: AlbumLayout
   description?: string
 }): Promise<Album> {
   const title = input.title.trim()
@@ -115,7 +110,9 @@ export async function createAlbum(input: {
     const slug = attempt === 1 ? base : `${base}-${attempt}`
     const { data, error } = await supabase
       .from('albums')
-      .insert({ owner_id: ownerId, title, slug, layout: input.layout, description })
+      // No `layout`: the column keeps its own default. Writing one from here
+      // would record a choice the interface no longer offers.
+      .insert({ owner_id: ownerId, title, slug, description })
       .select(ALBUM_COLUMNS)
       .single()
 
@@ -160,13 +157,9 @@ export async function renameAlbum(id: string, title: string): Promise<Album> {
  */
 export async function updateAlbumDetails(
   id: string,
-  patch: { layout?: AlbumLayout; description?: string },
+  patch: { description?: string },
 ): Promise<Album> {
   const columns: Record<string, unknown> = {}
-
-  if (patch.layout !== undefined) {
-    columns.layout = patch.layout
-  }
 
   if (patch.description !== undefined) {
     columns.description = patch.description.trim() || null

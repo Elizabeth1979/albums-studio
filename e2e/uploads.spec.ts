@@ -84,7 +84,7 @@ test.describe('uploading photos', () => {
     expect(objects.filter((key) => key.endsWith('-thumb.jpg'))).toHaveLength(1)
   })
 
-  test('shows the photos it added, in the album layout', async ({ page }) => {
+  test('shows the photos it added', async ({ page }) => {
     await openAlbum(page)
 
     await page.getByLabel('Choose photos').setInputFiles([
@@ -94,7 +94,6 @@ test.describe('uploading photos', () => {
 
     await expect(page.getByText('Added 2 of 2.')).toBeVisible()
     await expect(page.locator('.photo-gallery img')).toHaveCount(2)
-    await expect(page.locator('.photo-gallery')).toHaveClass(/layout-masonry/)
 
     // An <img> exists even when its source 404s, so check the bytes arrived.
     // Signed URLs are the one part of this path the browser resolves itself.

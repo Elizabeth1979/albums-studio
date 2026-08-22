@@ -1,11 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import {
-  ALBUM_LAYOUTS,
-  type Album,
-  type AlbumLayout,
-  type AlbumVisibility,
-  layoutLabel,
-} from '../lib/albums'
+import type { Album, AlbumVisibility } from '../lib/albums'
 import type { Identity } from '../lib/identity'
 import { AlbumPhotos } from './AlbumPhotos'
 import { ShareAlbum } from './ShareAlbum'
@@ -17,7 +11,6 @@ type AlbumPageProps = {
   album: Album
   onBack: () => void
   onRename: (title: string) => Promise<void>
-  onChangeLayout: (layout: AlbumLayout) => Promise<void>
   onChangeDescription: (description: string) => Promise<void>
   onDelete: () => Promise<void>
   onCoverChosen: (photoId: string) => Promise<void>
@@ -30,7 +23,6 @@ export function AlbumPage({
   album,
   onBack,
   onRename,
-  onChangeLayout,
   onChangeDescription,
   onDelete,
   onCoverChosen,
@@ -184,37 +176,6 @@ export function AlbumPage({
         {error && <p className="form-message error" role="alert">{error}</p>}
 
         <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
-
-        {/* Below the album, not above it. This is a setting about how the
-            photographs are arranged, not a step on the way to adding them, and
-            at the top it sat between the owner and the album itself — pushing
-            the pictures off the first screen to make room for a control nobody
-            opens an album to use. */}
-        <section className="album-controls album-layout-row" aria-labelledby="layout-title">
-          <h2 id="layout-title">Arrangement</h2>
-          <div className="layout-switch" role="group" aria-label="Album layout">
-            {ALBUM_LAYOUTS.map((option) => (
-              <button
-                className={option === album.layout ? 'layout-button active' : 'layout-button'}
-                type="button"
-                key={option}
-                aria-pressed={option === album.layout}
-                disabled={pending}
-                onClick={() =>
-                  option !== album.layout &&
-                  run(() => onChangeLayout(option), 'Could not change the layout.')
-                }
-              >
-                {layoutLabel(option)}
-              </button>
-            ))}
-          </div>
-          <p className="layout-hint">
-            {album.layout === 'masonry'
-              ? 'Each photo keeps its own proportions.'
-              : 'Equal tiles, scannable across a large batch.'}
-          </p>
-        </section>
 
         {/* After the album, not before it. Sharing is what you do once the
             photographs are in, and above them it stood between the owner and

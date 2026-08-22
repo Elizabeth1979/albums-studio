@@ -1,13 +1,11 @@
-import type { AlbumLayout } from '../lib/albums'
 import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import type { Photo } from '../lib/photos'
 
-// Both layouts are three columns on a wide screen and two on a narrow one, so
-// a tile occupies roughly a third of the album canvas, then half of it.
+// Three columns on a wide screen and two on a narrow one, so a tile occupies
+// roughly a third of the album canvas, then half of it.
 const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
 
 type PhotoGalleryProps = {
-  layout: AlbumLayout
   photos: Photo[]
   /** Signed URLs by storage path; absent while they are still being minted. */
   thumbnails: Map<string, string>
@@ -36,7 +34,6 @@ function tileLabel(photo: Photo, index: number, isCover: boolean): string {
 }
 
 export function PhotoGallery({
-  layout,
   photos,
   thumbnails,
   storyCounts,
@@ -45,7 +42,7 @@ export function PhotoGallery({
   onSelect,
 }: PhotoGalleryProps) {
   return (
-    <ul className={`photo-gallery layout-${layout}`}>
+    <ul className="photo-gallery">
       {photos.map((photo, index) => {
         const thumbnail = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
         const full = thumbnails.get(photo.storagePath)

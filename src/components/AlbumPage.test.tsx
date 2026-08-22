@@ -17,7 +17,6 @@ function album(overrides: Partial<Album> = {}): Album {
     id: 'album-1',
     title: 'Summer by the lake',
     slug: 'summer-by-the-lake',
-    layout: 'masonry',
     description: null,
     coverPhotoId: null,
     visibility: 'private',
@@ -34,7 +33,6 @@ function renderAlbumPage(props: Partial<ComponentProps<typeof AlbumPage>> = {}) 
       album={album()}
       onBack={vi.fn()}
       onRename={vi.fn().mockResolvedValue(undefined)}
-      onChangeLayout={vi.fn().mockResolvedValue(undefined)}
       onChangeDescription={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onCoverChosen={vi.fn().mockResolvedValue(undefined)}
@@ -45,14 +43,10 @@ function renderAlbumPage(props: Partial<ComponentProps<typeof AlbumPage>> = {}) 
 }
 
 describe('AlbumPage', () => {
-  it('shows the album title and its current layout', () => {
+  it('shows the album title over its photographs', () => {
     renderAlbumPage()
 
     expect(screen.getByRole('heading', { name: 'Summer by the lake' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Masonry' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
     expect(screen.getByTestId('album-photos')).toBeInTheDocument()
   })
 
@@ -112,43 +106,16 @@ describe('AlbumPage', () => {
     expect(screen.getByRole('heading', { name: 'Summer by the lake' })).toBeInTheDocument()
   })
 
-  it('switches the layout', async () => {
-    const onChangeLayout = vi.fn().mockResolvedValue(undefined)
-
-    renderAlbumPage({ onChangeLayout })
-    fireEvent.click(screen.getByRole('button', { name: 'Grid' }))
-
-    await waitFor(() => expect(onChangeLayout).toHaveBeenCalledWith('grid'))
-  })
-
-  it('keeps the arrangement control below the photographs', () => {
-    // The owner opens an album to look at photographs and write about them, not
-    // to pick a layout. Above the album this control took a third of the first
-    // screen and pushed the pictures out of sight.
+  it('offers no layout choice at all', () => {
+    // Masonry and grid were indistinguishable for an album of uniformly shaped
+    // phone photographs, and masonry read the owner's ordering down the columns
+    // while Move earlier / Move later promise it runs across the rows. One
+    // arrangement until the phase that gives albums real layouts.
     renderAlbumPage()
 
-    const photos = screen.getByTestId('album-photos')
-    const arrangement = screen.getByRole('group', { name: 'Album layout' })
-
-    expect(photos.compareDocumentPosition(arrangement)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
-  })
-
-  it('does not rewrite the layout that is already set', () => {
-    const onChangeLayout = vi.fn()
-
-    renderAlbumPage({ onChangeLayout })
-    fireEvent.click(screen.getByRole('button', { name: 'Masonry' }))
-
-    expect(onChangeLayout).not.toHaveBeenCalled()
-  })
-
-  it('describes the grid layout when the album uses it', () => {
-    renderAlbumPage({ album: album({ layout: 'grid' }) })
-
-    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText(/Equal tiles/)).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Album layout' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Masonry' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Grid' })).not.toBeInTheDocument()
   })
 
   it('invites a description when the album has none', () => {

@@ -53,7 +53,6 @@ function album(overrides: Partial<Album> = {}): Album {
     id: 'album-1',
     title: 'Summer by the lake',
     slug: 'summer-by-the-lake',
-    layout: 'masonry',
     description: null,
     coverPhotoId: null,
     visibility: 'private',
@@ -146,21 +145,24 @@ describe('Studio', () => {
     expect(albumsApi.renameAlbum).toHaveBeenCalledWith('album-1', 'Lake days')
   })
 
-  it('keeps a switched layout on the open album', async () => {
+  it('keeps an edited description on the open album', async () => {
     albumsApi.listAlbums.mockResolvedValue([album()])
-    albumsApi.updateAlbumDetails.mockResolvedValue(album({ layout: 'grid' }))
+    albumsApi.updateAlbumDetails.mockResolvedValue(album({ description: 'A week by the water' }))
 
     renderStudio()
     fireEvent.click(await screen.findByRole('button', { name: /Summer by the lake/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Grid' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add a description' }))
+    fireEvent.change(screen.getByLabelText('What is this album about?'), {
+      target: { value: 'A week by the water' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save description' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      ),
+      expect(screen.getByText('A week by the water')).toBeInTheDocument(),
     )
-    expect(albumsApi.updateAlbumDetails).toHaveBeenCalledWith('album-1', { layout: 'grid' })
+    expect(albumsApi.updateAlbumDetails).toHaveBeenCalledWith('album-1', {
+      description: 'A week by the water',
+    })
   })
 
   it('opens an album straight from its address', async () => {

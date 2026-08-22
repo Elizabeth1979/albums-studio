@@ -32,7 +32,6 @@ const album: Album = {
   id: 'album-1',
   title: 'Eilat',
   slug: 'eilat',
-  layout: 'masonry',
   description: null,
   coverPhotoId: null,
   visibility: 'private',
@@ -99,7 +98,7 @@ describe('AlbumPhotos', () => {
     expect(await screen.findByLabelText('Choose photos')).toBeInTheDocument()
   })
 
-  it('shows the empty album in its layout', async () => {
+  it('shows an empty album as an empty album', async () => {
     renderPhotos()
 
     expect(await screen.findByRole('heading', { name: 'No photos yet' })).toBeInTheDocument()

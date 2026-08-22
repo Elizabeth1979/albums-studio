@@ -224,24 +224,6 @@ test.describe('opening a shared album as a visitor', () => {
     await expect(image).toHaveAttribute('srcset', /shared-pixel\.png 400w/)
   })
 
-  test('lays the album out the way its owner chose', async ({ page }) => {
-    // The owner picks masonry or grid for their own gallery. A visitor was
-    // shown a single column regardless, which is not the album that was shared.
-    await stubSupabase(page, {
-      shared: {
-        'good-token': {
-          ...SHARED['good-token'],
-          album: { ...SHARED['good-token'].album, layout: 'grid' as const },
-        },
-      },
-    })
-
-    await page.goto('/shared/good-token')
-    await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
-
-    await expect(page.locator('ul.shared-photos')).toHaveClass(/layout-grid/)
-  })
-
   test('still shows a photograph when only the thumbnail could be signed', async ({ page }) => {
     await stubSupabase(page, {
       shared: {

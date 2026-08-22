@@ -1,15 +1,15 @@
-import type { AlbumLayout } from '../lib/albums'
-
 /**
- * Placeholder tiles standing in for photos that do not exist yet. An album
- * shell would otherwise look identical in both layouts, leaving the owner's
- * layout choice invisible until Phase 3 adds uploads.
+ * Placeholder tiles standing in for photographs that are not there yet.
+ *
+ * An empty album would otherwise be a heading over nothing, with no sense of
+ * what it will become. The tiles are the arrangement the album will use, drawn
+ * empty.
  */
-export function LayoutPreview({ layout }: { layout: AlbumLayout }) {
+export function LayoutPreview() {
   return (
-    <div className={`layout-preview layout-${layout}`} aria-hidden="true">
+    <div className="layout-preview" aria-hidden="true">
       {Array.from({ length: 9 }, (_, index) => (
-        <span className={`layout-tile tile-${index % 3}`} key={index} />
+        <span className="layout-tile" key={index} />
       ))}
     </div>
   )

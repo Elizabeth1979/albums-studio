@@ -9,7 +9,6 @@ function album(overrides: Partial<Album> = {}): Album {
     id: 'album-1',
     title: 'Summer by the lake',
     slug: 'summer-by-the-lake',
-    layout: 'masonry',
     description: null,
     coverPhotoId: null,
     visibility: 'private',
@@ -130,28 +129,27 @@ describe('Library', () => {
     await waitFor(() =>
       expect(onCreateAlbum).toHaveBeenCalledWith({
         title: 'Wedding',
-        layout: 'masonry',
-        description: '',
+            description: '',
       }),
     )
   })
 
-  it('creates a grid album when grid is chosen', async () => {
+  it('asks for no layout, and sends none', async () => {
+    // The column keeps its own default. A form that chose one would be writing
+    // a decision the product no longer offers.
     const onCreateAlbum = vi.fn().mockResolvedValue(undefined)
 
     renderLibrary({ onCreateAlbum })
     startAlbum()
+
+    expect(screen.queryByRole('radio', { name: 'Masonry' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Grid' })).not.toBeInTheDocument()
+
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'School trip' } })
-    fireEvent.click(screen.getByRole('radio', { name: 'Grid' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
-    await waitFor(() =>
-      expect(onCreateAlbum).toHaveBeenCalledWith({
-        title: 'School trip',
-        layout: 'grid',
-        description: '',
-      }),
-    )
+    await waitFor(() => expect(onCreateAlbum).toHaveBeenCalled())
+    expect(onCreateAlbum.mock.calls[0][0]).not.toHaveProperty('layout')
   })
 
   it('creates an album with a description', async () => {
@@ -168,8 +166,7 @@ describe('Library', () => {
     await waitFor(() =>
       expect(onCreateAlbum).toHaveBeenCalledWith({
         title: 'Eilat',
-        layout: 'masonry',
-        description: 'Red sea, October',
+            description: 'Red sea, October',
       }),
     )
   })
@@ -202,7 +199,6 @@ describe('Library', () => {
     startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
     fireEvent.change(screen.getByLabelText(/^Description/), { target: { value: 'Notes' } })
-    fireEvent.click(screen.getByRole('radio', { name: 'Grid' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
     await screen.findByRole('status')
@@ -210,7 +206,6 @@ describe('Library', () => {
 
     expect(screen.getByLabelText('Album title')).toHaveValue('')
     expect(screen.getByLabelText(/^Description/)).toHaveValue('')
-    expect(screen.getByRole('radio', { name: 'Masonry' })).toBeChecked()
   })
 
   it('refuses a blank title without calling the server', async () => {
@@ -237,22 +232,20 @@ describe('Library', () => {
     expect(screen.getByLabelText('Album title')).toHaveValue('Wedding')
   })
 
-  it('lists albums with their layout and count', () => {
+  it('lists albums and counts them', () => {
     renderLibrary({
-      albums: [
-        album(),
-        album({ id: 'album-2', title: 'School trip', layout: 'grid' }),
-      ],
+      albums: [album(), album({ id: 'album-2', title: 'School trip' })],
     })
 
     expect(screen.getByRole('heading', { name: '2 albums' })).toBeInTheDocument()
 
-    // Scoped to the list: "Masonry" and "Grid" also label the create form's
-    // layout radios.
     const list = within(screen.getByRole('list'))
     expect(list.getByText('Summer by the lake')).toBeInTheDocument()
-    expect(list.getByText('Masonry')).toBeInTheDocument()
-    expect(list.getByText('Grid')).toBeInTheDocument()
+    expect(list.getByText('School trip')).toBeInTheDocument()
+
+    // No layout badge: a card cannot advertise a choice the album no longer has.
+    expect(list.queryByText('Masonry')).not.toBeInTheDocument()
+    expect(list.queryByText('Grid')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'No albums yet' })).not.toBeInTheDocument()
   })
 

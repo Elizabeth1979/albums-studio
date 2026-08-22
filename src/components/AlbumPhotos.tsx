@@ -322,13 +322,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
           <p className="library-status" aria-live="polite">Opening this album…</p>
         ) : photos.length === 0 ? (
           <>
-            <LayoutPreview layout={album.layout} />
+            <LayoutPreview />
             <div className="album-empty-copy">
               <h2 id="album-photos-title">No photos yet</h2>
-              <p>
-                This is how a {album.layout} album will arrange your photographs. Choose
-                some above to fill it.
-              </p>
+              <p>This is how your photographs will be arranged. Choose some above to fill it.</p>
             </div>
           </>
         ) : (
@@ -338,7 +335,6 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
             </h2>
             <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
             <PhotoGallery
-              layout={album.layout}
               photos={photos}
               thumbnails={thumbnails}
               storyCounts={storyCounts}

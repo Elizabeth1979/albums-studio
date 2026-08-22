@@ -23,7 +23,6 @@ const ROW = {
   id: 'album-1',
   title: 'Summer by the lake',
   slug: 'summer-by-the-lake',
-  layout: 'masonry',
   description: null,
   cover_photo_id: null,
   visibility: 'private',
@@ -72,14 +71,13 @@ describe('createAlbum', () => {
   it('stores a trimmed title with its derived slug', async () => {
     const insert = insertBuilder([{ data: ROW, error: null }])
 
-    const created = await createAlbum({ title: '  Summer by the lake  ', layout: 'masonry' })
+    const created = await createAlbum({ title: '  Summer by the lake  ' })
 
     expect(insert).toHaveBeenCalledWith({
       owner_id: 'owner-1',
       title: 'Summer by the lake',
       slug: 'summer-by-the-lake',
-      layout: 'masonry',
-      description: null,
+          description: null,
     })
     expect(created.id).toBe('album-1')
   })
@@ -87,10 +85,10 @@ describe('createAlbum', () => {
   it('stores a trimmed description, or null when it is blank', async () => {
     const insert = insertBuilder([{ data: ROW, error: null }, { data: ROW, error: null }])
 
-    await createAlbum({ title: 'Eilat', layout: 'masonry', description: '  Red sea  ' })
+    await createAlbum({ title: 'Eilat', description: '  Red sea  ' })
     expect(insert.mock.calls[0][0]).toMatchObject({ description: 'Red sea' })
 
-    await createAlbum({ title: 'Eilat', layout: 'masonry', description: '   ' })
+    await createAlbum({ title: 'Eilat', description: '   ' })
     expect(insert.mock.calls[1][0]).toMatchObject({ description: null })
   })
 
@@ -100,7 +98,7 @@ describe('createAlbum', () => {
       { data: ROW, error: null },
     ])
 
-    await createAlbum({ title: 'Summer by the lake', layout: 'grid' })
+    await createAlbum({ title: 'Summer by the lake' })
 
     expect(insert).toHaveBeenCalledTimes(2)
     expect(insert.mock.calls[0][0]).toMatchObject({ slug: 'summer-by-the-lake' })
@@ -112,14 +110,14 @@ describe('createAlbum', () => {
       { data: null, error: { code: '42501', message: 'permission denied' } },
     ])
 
-    await expect(createAlbum({ title: 'Wedding', layout: 'masonry' })).rejects.toThrow(
+    await expect(createAlbum({ title: 'Wedding' })).rejects.toThrow(
       'permission denied',
     )
     expect(insert).toHaveBeenCalledOnce()
   })
 
   it('refuses a blank title before reaching the database', async () => {
-    await expect(createAlbum({ title: '   ', layout: 'masonry' })).rejects.toThrow(
+    await expect(createAlbum({ title: '   ' })).rejects.toThrow(
       'Give the album a title.',
     )
     expect(from).not.toHaveBeenCalled()
@@ -128,7 +126,7 @@ describe('createAlbum', () => {
   it('reports an expired session rather than inserting a null owner', async () => {
     auth.getClaims.mockResolvedValue({ data: null, error: null })
 
-    await expect(createAlbum({ title: 'Wedding', layout: 'masonry' })).rejects.toThrow(
+    await expect(createAlbum({ title: 'Wedding' })).rejects.toThrow(
       'Your session has expired. Sign in again.',
     )
     expect(from).not.toHaveBeenCalled()
@@ -146,12 +144,12 @@ function updateBuilder(row: object) {
 }
 
 describe('updateAlbumDetails', () => {
-  it('writes only the fields it was given', async () => {
-    const update = updateBuilder({ ...ROW, layout: 'grid' })
+  it('writes nothing when it was given nothing', async () => {
+    const update = updateBuilder(ROW)
 
-    await updateAlbumDetails('album-1', { layout: 'grid' })
+    await updateAlbumDetails('album-1', {})
 
-    expect(update).toHaveBeenCalledWith({ layout: 'grid' })
+    expect(update).toHaveBeenCalledWith({})
   })
 
   it('trims a description', async () => {
@@ -170,12 +168,16 @@ describe('updateAlbumDetails', () => {
     expect(update).toHaveBeenCalledWith({ description: null })
   })
 
-  it('can change layout and description together', async () => {
-    const update = updateBuilder({ ...ROW, layout: 'grid', description: 'Both' })
+  it('never writes a layout, because the interface no longer chooses one', async () => {
+    // The column and its check constraint are still in the database. Nothing
+    // here may set them: an album's stored layout is whatever the column
+    // defaulted to, not a choice this client pretends to offer.
+    const update = updateBuilder({ ...ROW, description: 'Both' })
 
-    await updateAlbumDetails('album-1', { layout: 'grid', description: 'Both' })
+    await updateAlbumDetails('album-1', { description: 'Both' })
 
-    expect(update).toHaveBeenCalledWith({ layout: 'grid', description: 'Both' })
+    expect(update).toHaveBeenCalledWith({ description: 'Both' })
+    expect(update.mock.calls[0][0]).not.toHaveProperty('layout')
   })
 })
 

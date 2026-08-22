@@ -9,7 +9,7 @@ AI cost.
 ## Current state
 
 - The React and TypeScript application has email/password authentication, an album library
-  (create, open, rename, describe, relayout, delete), and photo upload.
+  (create, open, rename, describe, delete), and photo upload.
 - Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
   sharpness in a Web Worker, then uploaded four at a time with retry. Measurements are
   stored so Phase 7 duplicate detection and best-shot ranking need no model calls.
@@ -53,16 +53,16 @@ AI cost.
 - Authentication covers password sign-in, magic links, and password reset. Password inputs
   carry a reveal toggle, and a recovery link must reach the set-a-new-password step before
   the library opens.
-- `albums.layout` is `masonry` or `grid`, checked in the database. Later layouts widen that
-  constraint in the migration for the phase that renders them. The choice lives in an
-  **Arrangement** section below the photographs, not above them: it is a setting, not a step,
-  and the first screenful of an album belongs to the album.
-- **Open:** masonry is CSS `columns`, which fills column-major, so it reads the owner's
-  ordering down the columns while grid reads it across the rows. For a phone album of
-  uniformly 4:3 frames the two arrangements are otherwise indistinguishable. Either make
-  masonry row-major — grid row spans from each photo's aspect ratio, which needs `width` and
-  `height` added to the `shared-album` payload so the owner and the visitor see the same
-  album — or drop the choice and keep one layout.
+- **Albums have one arrangement, and it is not a choice.** Equal tiles in three columns,
+  two on a phone, reading across the rows — the same in the studio and for a visitor. The
+  masonry/grid switch was withdrawn on 2026-08-22: for a phone album of uniformly 4:3 frames
+  the two were indistinguishable, and masonry's CSS `columns` read the owner's ordering down
+  the columns while Move earlier / Move later promise it runs across the rows. Deferred to
+  **Phase 7.5** in the roadmap, which says what a version worth having would need.
+- `albums.layout` is still `masonry` or `grid`, checked in the database, with its column
+  grants intact. Nothing was migrated away and no album lost its value; the client simply
+  stopped writing and reading the column. `createAlbum` sends no `layout`, so the column
+  default stands. Phase 7.5 starts by widening the constraint.
 - Renaming an album leaves its slug untouched, because the slug is the stable half of a
   future share URL.
 - Phases 1 and 2 pass type checks, component tests, `App` state-machine tests, an
@@ -123,7 +123,8 @@ AI cost.
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
 - [Album first fold and image sharpness](sessions/2026-08-22-album-first-fold.md) — served
-  full-size images to studio tiles, moved the layout switch below the photographs, collapsed
-  the drop zone for albums that already hold photos, and recorded the open masonry question.
+  full-size images to studio tiles, collapsed the drop zone for albums that already hold
+  photos, and withdrew the masonry/grid choice after finding the two indistinguishable and
+  masonry's reading order wrong.
 
 When adding or materially changing a document under `docs/`, update its entry here.
