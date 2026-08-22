@@ -698,11 +698,18 @@ textarea:focus-visible {
 .album-main {
   width: min(100% - 2.5rem, 78rem);
   margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 3rem) 0 4rem;
+  padding: clamp(1.1rem, 2.5vw, 1.9rem) 0 4rem;
 }
 
+/*
+ * The album header is one block: where you came from, what this album is, and
+ * what it is about. Each line used to be spaced as its own section of a
+ * document, so three short lines — "Usa", one word of description — filled the
+ * screen before a single photograph appeared. The rhythm here is a heading's,
+ * not a page's.
+ */
 .back-link {
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.15rem;
 }
 
 /* Title and rename on one line, so the album's name and the way to change it
@@ -714,20 +721,25 @@ textarea:focus-visible {
   gap: 0.4rem 0.9rem;
 }
 
+.album-summary {
+  margin-top: 0.45rem;
+}
+
 .album-description {
-  margin: 0.5rem 0 0;
+  max-width: 44rem;
+  margin: 0;
   color: #57514a;
   font-size: 0.96rem;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .album-heading h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
   font-weight: 400;
-  letter-spacing: -0.05em;
-  line-height: 1;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
   overflow-wrap: anywhere;
 }
 
@@ -789,7 +801,7 @@ textarea:focus-visible {
 }
 
 .album-canvas {
-  margin-top: 2.5rem;
+  margin-top: 1.4rem;
   padding: 1.6rem;
   border: 1px solid #ded6ca;
   border-radius: 0.9rem;
@@ -957,7 +969,12 @@ textarea:focus-visible {
 }
 
 .uploader {
-  margin-top: 2.5rem;
+  margin-top: 1.9rem;
+}
+
+/* A compact zone is a row, not a section, so it sits closer to both sides. */
+.uploader:has(.drop-zone.compact) {
+  margin-top: 1.2rem;
 }
 
 .uploader h2 {

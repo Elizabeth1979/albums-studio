@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { sampleFile } from './support/sample-image'
 import { albumRecord, stubSupabase } from './support/supabase-stub'
 
 /** Roughly a Galaxy S-class phone in CSS pixels. */
@@ -50,6 +51,44 @@ test.describe('phone layout', () => {
     const box = await card.boundingBox()
     expect(box).not.toBeNull()
     expect(box!.y).toBeLessThan(PHONE.height)
+  })
+
+  test('the album starts in the first half of a phone screen', async ({ page }) => {
+    // The album page's header, its description, and a labelled drop zone were
+    // each spaced as a separate section of a document, so opening an album on a
+    // phone showed a title, one word of description, and a box asking for more
+    // photographs, with a single row of the album squeezed in beneath. The
+    // photographs are what this page is for.
+    //
+    // A measured budget rather than a round number: the first tile began at
+    // 571px of this 915px screen before, and begins at 468px after. 520 sits
+    // between the two, so this fails against the old spacing and holds about
+    // 50px of room for the next change that wants to add a line up here.
+    const CHROME_BUDGET = 520
+
+    await stubSupabase(page, { albums: [albumRecord({ description: 'A week by the water' })] })
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+
+    await page.getByLabel('Choose photos').setInputFiles([
+      sampleFile('one.png'),
+      sampleFile('two.png'),
+      sampleFile('three.png'),
+    ])
+    await expect(page.getByText('Added 3 of 3.')).toBeVisible()
+    await page.getByRole('button', { name: 'Clear this list' }).click()
+
+    // boundingBox is viewport-relative, so measuring after a scroll would call
+    // anything visible "above the fold".
+    await page.evaluate(() => window.scrollTo(0, 0))
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+
+    const first = await page.locator('.photo-tile').first().boundingBox()
+    expect(first).not.toBeNull()
+    expect(first!.y).toBeLessThan(CHROME_BUDGET)
   })
 
   test('nothing overflows the viewport sideways', async ({ page }) => {

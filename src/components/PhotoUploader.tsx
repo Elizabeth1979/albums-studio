@@ -59,7 +59,13 @@ export function PhotoUploader({
 
   return (
     <section className="uploader" aria-labelledby="uploader-title">
-      <h2 id="uploader-title">Add photos</h2>
+      {/* Once the album has photographs the button below says "Choose photos"
+          in full, so a heading above it repeating the same words is a line of
+          the first screenful spent saying nothing twice. It stays in the
+          accessibility tree either way: the section is named by it. */}
+      <h2 className={filled ? 'visually-hidden' : undefined} id="uploader-title">
+        Add photos
+      </h2>
 
       {/* The button is the real control, so this works by tap on a phone where
           there is nothing to drag. The drop zone is an enhancement for desktop
