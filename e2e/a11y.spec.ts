@@ -90,7 +90,7 @@ test.describe('accessibility', () => {
     await expectNoViolations(page)
   })
 
-  test('album page in masonry', async ({ page }) => {
+  test('album page, empty', async ({ page }) => {
     await signIn(page)
     await page.getByRole('button', { name: /Summer by the lake/ }).click()
     await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
@@ -98,7 +98,40 @@ test.describe('accessibility', () => {
     await expectNoViolations(page)
   })
 
-  test('album page in grid, mid-edit', async ({ page }) => {
+  test('a text button does not look like the text beside it', async ({ page }) => {
+    // Rename album and Edit description sit inline next to the words they act
+    // on, and carried nothing but ink colour and a bold weight. "Usa  Rename
+    // album" scanned as one phrase, and the only thing announcing a control was
+    // a cursor that a phone does not have.
+    //
+    // Two separate guarantees, because either alone is insufficient: a colour
+    // distinct from the prose around it, and an underline, which is what
+    // survives a monochrome screen and colour blindness (WCAG 1.4.1).
+    //
+    // Asked of the rendered page rather than the stylesheet, because the fault
+    // this replaces was a second `.text-button` block further down the file
+    // quietly overriding the first. Reading either rule alone said it was fine.
+    await signIn(page, [albumRecord({ description: 'A week by the water' })])
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
+
+    const rename = page.getByRole('button', { name: 'Rename album' })
+    const styles = await rename.evaluate((element) => {
+      const own = getComputedStyle(element)
+      const prose = getComputedStyle(document.querySelector('.album-description') as Element)
+
+      return {
+        colour: own.color,
+        proseColour: prose.color,
+        decoration: own.textDecorationLine,
+      }
+    })
+
+    expect(styles.decoration).toContain('underline')
+    expect(styles.colour).not.toBe(styles.proseColour)
+  })
+
+  test('album page, mid-edit', async ({ page }) => {
     await signIn(page, [albumRecord({ description: 'A week by the water' })])
     await page.getByRole('button', { name: /Summer by the lake/ }).click()
     await page.getByRole('button', { name: 'Rename album' }).click()
