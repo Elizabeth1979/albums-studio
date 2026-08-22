@@ -166,4 +166,9 @@ saying so.
   starts writing belongs in it in the same change, or the next missing grant will reach the
   deployed app exactly as the last four did.
 - Update `docs/README.md` when adding or materially changing a document under `docs/`.
+- Update `docs/project-structure.md` in the same pull request that changes what it draws: a
+  boundary, a route, a table, or the model registry. A model or library that reaches the
+  repository before it reaches that registry is how a licence nobody checked gets adopted.
+  InsightFace's `buffalo_*` weights are non-commercial research only, and that surfaced while
+  writing the registry rather than while installing them.
 - Add a short session log only for work that changes durable decisions or project state.

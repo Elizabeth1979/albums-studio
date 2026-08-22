@@ -93,8 +93,9 @@ AI cost.
 
 ## Architecture
 
-- [Project structure](project-structure.md) — visual frontend/backend map, planned services,
-  and album lifecycle state machine.
+- [Project structure](project-structure.md) — visual frontend/backend map, the model and
+  library registry with licences and status, planned services, the live schema, and the
+  album lifecycle state machine.
 
 ## Session logs
 
