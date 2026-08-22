@@ -11,10 +11,12 @@ AI cost.
 - The React and TypeScript application has email/password authentication, an album library
   (create, open, rename, describe, relayout, delete), and photo upload.
 - Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
-  sharpness in a Web Worker, then uploaded four at a time with retry. Measurements are
-  stored so Phase 7 duplicate detection and best-shot ranking need no model calls.
+  sharpness in a Web Worker, then uploaded four at a time with retry. Those measurements
+  are what Phase 7 duplicate grouping and best-shot ranking run on, so neither needs a
+  model call.
 - Owners sign their own thumbnail URLs from the browser; Storage checks its policy against
-  the caller's token first. Shared viewers have no token and still need Phase 6 server code.
+  the caller's token first. Shared viewers have no token, so Phase 6 signs on their behalf
+  from an Edge Function.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
@@ -86,7 +88,8 @@ AI cost.
 ## Plans
 
 - [Albums Studio roadmap](plans/2026-08-15-albums-studio-roadmap.md) — active phased build
-  plan and open product decisions.
+  plan and open product decisions, including the recorded evaluation of free and local
+  models for alt text, semantic search, and faces.
 
 ## Architecture
 
