@@ -11,7 +11,7 @@ projects, and trips. Blog and map views are optional layouts rather than the pro
 
 1. Sign in and create an album.
 2. Upload resized photos to private Storage.
-3. Choose a masonry or grid layout.
+3. See the album as even tiles that read across the rows.
 4. Add captions, story notes, and manual alt text.
 5. Generate a reviewable AI Story Studio draft from selected photos and owner context.
 6. Share an album without requiring the viewer to register.
@@ -40,15 +40,17 @@ Shared viewers carry no token, so trusted server code must sign on their behalf.
 ## Current state
 
 The React and TypeScript application provides email/password authentication and an album
-library: albums can be created, opened, renamed, described, switched between masonry and
-grid layouts, and deleted behind a confirmation. Photos can be added from a phone's gallery
+library: albums can be created, opened, renamed, described, and deleted behind a
+confirmation. The masonry/grid switch was withdrawn on 2026-08-22 and every album now
+renders as even tiles reading across the rows; Phase 7.5 records what a layout choice worth
+making would need. Photos can be added from a phone's gallery
 or dropped in, and are resized, thumbnailed, hashed and scored in the browser before
 upload. The library lives at `/` and each album at `/albums/:slug`. The hosted Supabase project is
 configured and versioned in `supabase/migrations/`; its minimal schema contains `profiles`,
 `albums`, `photos`, and `ai_usage`. Later-phase structures will be added only when
 implemented.
 
-Phases 1 to 4 and 6 are implemented and automatically verified. Password sign-in, magic
+Phases 1 to 4, 6 and 7 are implemented and automatically verified. Password sign-in, magic
 links, and password reset are supported; signup does not require email confirmation. A real
 sign-in and password-reset pass has been confirmed against production. A magic-link request
 made seconds after a reset email was refused by Supabase's per-address email throttle, so
@@ -56,7 +58,11 @@ successful magic-link delivery is still unconfirmed; the app now explains that r
 rather than repeating it. Phase 4 adds captions, story notes, and manual alt text, each
 publishable or kept private. Phase 6 adds share links: an album set to `link` can be opened
 by someone with no account, through an Edge Function that signs thumbnails on their behalf,
-and replacing the link revokes the previous one.
+and replacing the link revokes the previous one. Phase 7 adds near-duplicate review: photos
+are grouped by perceptual hash and by burst timing from EXIF, shown side by side with a
+sharpness reading and a sharpest-of-the-group badge, and removed only after the owner
+confirms. That review runs entirely on measurements taken at upload, so it costs no model
+calls and sends nothing anywhere.
 
 Phase 6 ships two of its three visibilities. `private` and `link` are in the interface;
 `public` exists in the database enum and in `get_shared_album`, but nothing offers it yet.

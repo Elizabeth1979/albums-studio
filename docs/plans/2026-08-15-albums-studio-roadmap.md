@@ -56,10 +56,27 @@ subscription, Supabase, RLS, share links, Family Travels.
   anon grant at all. Verified by a rolled-back probe run as the real `authenticated` and
   `anon` roles.
 
-**Next action:** Phase 5 AI Story Studio — the first AI checkpoint. Owners now supply the
-context it needs: captions, story notes, and alt text, each already marked with who it is
-for. Drafted alt text must respect `alt_source`; a human's wording is never overwritten by a
-suggestion.
+- ✅ **Phase 6 implemented, ahead of Phase 5.** An album set to `link` opens for someone
+  with no account, through an Edge Function that signs thumbnails on their behalf, and
+  replacing the link revokes the previous one. `public` exists in the database enum and in
+  `get_shared_album`, but nothing in the interface offers it yet. Sharing was taken before
+  Phase 5 deliberately, so that the hidden/published distinction Phase 4 introduced had
+  somewhere real to prove itself before AI began generating text.
+- ✅ **Phase 7 implemented against its checkpoint.** Photographs are grouped by pHash
+  Hamming distance and by burst-like timing read from EXIF, compared side by side with a
+  sharpness reading and a sharpest-of-the-group badge, and nothing is removed until the
+  owner confirms. All of it is arithmetic over signals the browser already computed at
+  upload, so reviewing a batch costs no model calls and sends nothing anywhere. The one
+  item listed under the phase still outstanding is the later "faces visible / eyes open"
+  signal. This document does not record the checkpoint having been confirmed on a real
+  album.
+
+**Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
+checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:
+captions, story notes, and alt text, each already marked with who it is for. Drafted alt
+text must respect `alt_source`; a human's wording is never overwritten by a suggestion. If
+a smaller step is wanted first, Phase 7's remaining faces-visible/eyes-open signal is the
+cheapest thing on the board, and open question 9 now costs it out.
 
 **Known schema gaps:** add forward-only migrations when their phases begin for `ai_drafts`,
 `studio_interactions`, `ai_suggestions`, and any face/embedding structures. Story notes have
@@ -447,10 +464,58 @@ in the same release as the feature — not later.
    accidentally publish or execute before review.
 8. **Search scope.** Owners can search hidden captions/stories; shared viewers should only
    search text intended for them. Decide exact behavior before shared search exists.
-9. **Open/free AI evaluation.** Before choosing paid APIs, research browser/Python/open-source
-   and Hugging Face options for transcription, embeddings, image quality, near-duplicate
-   detection, face/eyes-open signals, and local semantic search. Record quality, runtime,
-   privacy, hosting cost, and licensing.
+9. **Open/free AI evaluation.** Resolved for images. Transcription is still open.
+
+   **Python is not available to this project.** The deploy targets are Vercel for the
+   static app and Supabase Edge Functions on Deno, so `face_recognition`, `insightface`,
+   or BLIP under PyTorch would each need a host that does not exist here — and would mean
+   photographs leaving the browser for a third service, which is the one thing the private
+   bucket exists to prevent. The same models run in the browser as ONNX through
+   transformers.js or `onnxruntime-web`, which keeps the pixels on the device and costs
+   nothing to host. Weights are fetched from the Hugging Face CDN at runtime, so the
+   browser makes a third-party request for the model even though no photograph ever leaves
+   it; they can be self-hosted from `public/` instead, paid for in Vercel bandwidth.
+
+   Evaluated, in the order they become useful:
+
+   - **Face visible / eyes open (Phase 7).** Detection plus landmarks, around 2-3MB, and
+     the eyes-open reading is an eye-aspect ratio computed from the landmarks rather than
+     a second model. **Detection is not recognition:** it answers "is a face visible here,
+     and are the eyes open" without ever asking whose face it is, so it yields no
+     identity, no embedding, and nothing that falls under Phase 12's consent gate. Store
+     the per-photo signal and never the landmarks, and that line holds. The cheapest
+     curation signal left, and the next increment worth building.
+   - **Semantic search (Phase 10).** CLIP or SigLIP image embeddings, around 90MB
+     quantized, computed once in the existing imaging worker and stored per photo. Nothing
+     is generated, so there is nothing to hallucinate: the owner types a query and judges
+     the results against the photographs. The best value per megabyte of anything here.
+     MIT for CLIP, Apache-2.0 for SigLIP.
+   - **Alt drafts (Phase 11).** Florence-2-base with `<MORE_DETAILED_CAPTION>` (MIT), or
+     SmolVLM at 256M/500M (Apache-2.0), on WebGPU. Quality is accurate but generic: expect
+     "a man in a wetsuit standing beside an inflatable board" where the interface's own
+     example reads "Two children on a jetty at sunset, feet in the water". Small models
+     also miscount people and invent objects with complete confidence, which is exactly
+     the failure Phase 11 already calls worse than no alt text at all. 300-500MB on first
+     use, and a phone may not have the memory to load it; detect WebGPU and withdraw the
+     offer when it is absent, rather than asking the owner what the device can do. Worth
+     having as a free first draft behind owner review, never as the only path and never
+     published unreviewed.
+   - **Face grouping (Phase 12).** ArcFace 512-d embeddings, with the clustering done as
+     cosine distance and DBSCAN in TypeScript — a pure function with its own tests rather
+     than a model. What runs is an embedding model, not a generative one, and the naming
+     stays human. **Licensing is the obstacle:** InsightFace's code is MIT, but its
+     pretrained `buffalo_*` packs are released for non-commercial research only, so they
+     cannot ship in a product with a paid tier without a separate commercial licence.
+     Settle that before building on them.
+
+   **Not all of this needs a model.** "Who is that, and remember it for the whole album"
+   has a version with no model at all: an album people roster the owner fills in once,
+   offered as one-tap chips in the photo editor. It can ship at any time, and it is the
+   same data Phase 12 needs in order to put a name on a cluster, so none of it is wasted
+   when face grouping arrives.
+
+   Still open: transcription for Phase 5 voice capture. Whisper in the browser against a
+   hosted API has not been measured for quality or runtime.
 10. **Platform key economics.** What does a vision call cost per photo, and what monthly
    quota does a subscription include? Needs a real number before pricing is set.
 11. **Freemium/trial design.** Decide whether free AI trials are day/week/month based,
