@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AlbumPhotos } from './AlbumPhotos'
 import type { Album } from '../lib/albums'
+import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import type { Photo } from '../lib/photos'
 
 const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted(() => ({
@@ -120,6 +121,56 @@ describe('AlbumPhotos', () => {
     await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(2))
     expect(container.querySelectorAll('img')[0]).toHaveAttribute('src', 'https://signed/0')
     expect(screen.queryByRole('heading', { name: 'No photos yet' })).not.toBeInTheDocument()
+  })
+
+  it('offers the stored image beside the thumbnail, so a wide tile is not upscaled', async () => {
+    // A tile is roughly a third of a 78rem canvas, which on a retina screen is
+    // close to 800 device pixels. Handed only the 400px thumbnail the browser
+    // stretched it to twice its size and every album rendered soft.
+    photosApi.listPhotos.mockResolvedValue([photo(0)])
+    photosApi.signedUrls.mockResolvedValue(
+      new Map([
+        ['owner/album-1/photo-0-thumb.jpg', 'https://signed/thumb-0'],
+        ['owner/album-1/photo-0.jpg', 'https://signed/full-0'],
+      ]),
+    )
+
+    const { container } = renderPhotos()
+
+    await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(1))
+    const image = container.querySelectorAll('img')[0]
+
+    expect(image).toHaveAttribute(
+      'srcset',
+      `https://signed/thumb-0 ${THUMBNAIL_SIZE}w, https://signed/full-0 ${FULL_SIZE}w`,
+    )
+    expect(image).toHaveAttribute('sizes')
+
+    // Both halves have to be signed for the browser to have a choice at all.
+    expect(photosApi.signedUrls).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        'owner/album-1/photo-0-thumb.jpg',
+        'owner/album-1/photo-0.jpg',
+      ]),
+    )
+  })
+
+  it('falls back to the one image it could sign', async () => {
+    // Half a pair is still an album worth showing. Without a srcset the browser
+    // has nothing to choose between, and offering one anyway would name a URL
+    // that does not resolve.
+    photosApi.listPhotos.mockResolvedValue([photo(0)])
+    photosApi.signedUrls.mockResolvedValue(
+      new Map([['owner/album-1/photo-0-thumb.jpg', 'https://signed/thumb-0']]),
+    )
+
+    const { container } = renderPhotos()
+
+    await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(1))
+    const image = container.querySelectorAll('img')[0]
+
+    expect(image).toHaveAttribute('src', 'https://signed/thumb-0')
+    expect(image).not.toHaveAttribute('srcset')
   })
 
   it('keeps the image itself out of the accessibility tree', async () => {

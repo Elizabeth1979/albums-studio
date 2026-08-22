@@ -68,9 +68,18 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     }
   }, [])
 
+  /**
+   * Signs what the album needs to draw itself: the thumbnail of every photo and
+   * the stored image beside it.
+   *
+   * Both, because a tile on a wide screen is larger than a 400px thumbnail and
+   * the browser picks between the two from the `srcset` the gallery writes. One
+   * request signs the lot; asking twice would double the round trips for no
+   * gain.
+   */
   const refreshThumbnails = useCallback(async (current: Photo[]) => {
     const paths = current
-      .map((photo) => photo.thumbnailPath)
+      .flatMap((photo) => [photo.thumbnailPath, photo.storagePath])
       .filter((path): path is string => Boolean(path))
 
     if (paths.length === 0) {
