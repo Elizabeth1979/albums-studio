@@ -2032,3 +2032,46 @@ textarea:focus-visible {
   font-size: 0.78rem;
   line-height: 1.5;
 }
+
+/* The architecture map, for the account it is served to.
+
+   The frame carries a whole document of its own, with its own type and colours,
+   so it is given the page rather than styled into it: a border, a ground, and
+   as much height as the viewport can spare. */
+.architecture-main {
+  width: min(100% - 2.5rem, 76rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem) 0 3rem;
+}
+
+.architecture-frame {
+  display: block;
+  width: 100%;
+  /* Tall enough that the map is read by scrolling inside the frame rather than
+     by scrolling the page to find it, on a phone as well as a desktop. */
+  height: min(82vh, 60rem);
+  border: 1px solid #ded7cb;
+  border-radius: 0.5rem;
+  background: #ffffff;
+}
+
+.architecture-note {
+  max-width: 34rem;
+  padding: 3rem 0;
+}
+
+.architecture-note h1 {
+  margin: 0 0 1rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 400;
+}
+
+.architecture-note p {
+  color: #6f675c;
+  line-height: 1.7;
+}
+
+.architecture-note code {
+  font-size: 0.9em;
+}

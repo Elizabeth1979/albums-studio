@@ -338,4 +338,34 @@ test.describe('accessibility', () => {
 
     await expectNoViolations(page)
   })
+
+  test('the architecture map', async ({ page }) => {
+    // Axe cannot see inside the frame: it is sandboxed without same-origin
+    // access, deliberately. What is checked here is the page around it, and
+    // that the frame carries a name a screen reader can announce.
+    await stubSupabase(page, {
+      albums: [albumRecord()],
+      architecture: { status: 200, body: '<!doctype html><title>Map</title><h1>The map</h1>' },
+    })
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('heading', { name: 'Your albums' })).toBeVisible()
+
+    await page.goto('/architecture')
+    await expect(page.getByTitle('Albums Studio architecture')).toBeVisible()
+
+    await expectNoViolations(page)
+  })
+
+  test('the architecture map, asked for by another account', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/architecture')
+    await expect(
+      page.getByRole('heading', { name: 'This page is not for this account.' }),
+    ).toBeVisible()
+
+    await expectNoViolations(page)
+  })
 })
