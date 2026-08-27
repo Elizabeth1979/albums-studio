@@ -314,28 +314,25 @@ belongs to someone who has no account and must never be sent to a sign-in screen
 
 ## Serving this map inside the application
 
-The map is also readable at `/architecture` in the running application, by one account and
-no other. It is served by the `architecture` Edge Function rather than from `public/` or the
-application bundle, because neither of those is a boundary: anything Vite ships is readable
-by any visitor who opens the JavaScript, so a check in the browser would hide the page
-without protecting it. The markup only leaves the function once the caller has been
-identified, and the screen drops it into a sandboxed frame with no same-origin access.
+The map is readable at `/architecture.html` in the running application, linked from the foot
+of the library. It is an ordinary static file in `public/`, generated from the published
+artifact.
 
-Two things have to be set once, and neither can be done from the repository:
+It was briefly something more elaborate: an Edge Function that identified the caller before
+releasing the markup, so the page reached one account and nobody else. That was deleted on
+2026-08-27, because the premise was wrong rather than the code. **This repository is
+public.** The same diagrams, the same registry and the same schema sit in this file, and the
+page's entire HTML sat in the function's own `page.ts`, both readable by anyone. A gate in
+front of a document that GitHub already serves is not a boundary, it is ceremony — and it
+cost a deploy step, a project secret and an environment variable to maintain.
 
-```bash
-supabase functions deploy architecture --project-ref vsxbedlsnfmsbnlfayae
-supabase secrets set ARCHITECTURE_ADMIN_ID=<the owner uuid> --project-ref vsxbedlsnfmsbnlfayae
-```
+The judgement to re-examine if this repository ever becomes private: at that point the map
+would be public while the code was not, and the deleted function is in the history under
+`Serve the architecture map to the owner, at /architecture (#41)`.
 
-Without the secret the function answers 503 and the screen says which secret is missing,
-which is the safe direction to fail in: an unset allowlist means nobody, not everybody.
-
-The page inside the frame is generated from the published artifact into
-`supabase/functions/architecture/page.ts`. Redeploy the function in the same change that
-updates the drawing, or the two will disagree. The page reaches two hosts of its own —
-Google Fonts for its type and jsDelivr for Mermaid — so a blocked network degrades it to
-fallback fonts and unrendered diagram source rather than breaking the screen.
+The page reaches two hosts of its own — Google Fonts for its type and jsDelivr for Mermaid.
+A blocked network degrades it to fallback fonts and unrendered diagram source rather than
+breaking the page, which is the behaviour to keep if either is ever replaced.
 
 ## Keeping this file true
 

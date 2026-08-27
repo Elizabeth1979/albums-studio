@@ -15,7 +15,6 @@ import type { Identity } from '../lib/identity'
 import { thumbnailsByPhotoId } from '../lib/photos'
 import { AlbumPage } from './AlbumPage'
 import { AppHeader } from './AppHeader'
-import { ArchitecturePage } from './ArchitecturePage'
 import { Library } from './Library'
 
 type StudioProps = {
@@ -210,10 +209,6 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             }}
           />
         }
-      />
-      <Route
-        path="/architecture"
-        element={<ArchitecturePage identity={identity} onSignOut={onSignOut} />}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -235,6 +235,24 @@ export function Library({
             </ul>
           </section>
         )}
+
+        {/* Below the albums, deliberately. This is a document about how the
+            thing is built, not a feature of keeping an album, and the header is
+            already the tightest space on a phone — an item there costs a row of
+            the first screen the albums are supposed to occupy. It opens in its
+            own tab because it is a static page outside the application, and the
+            name says so rather than moving the page out from under anyone. */}
+        <footer className="library-footer">
+          <a
+            className="text-button"
+            href="/architecture.html"
+            target="_blank"
+            rel="noopener"
+          >
+            Architecture{' '}
+            <span className="visually-hidden">(opens in a new tab)</span>
+          </a>
+        </footer>
       </main>
     </div>
   )

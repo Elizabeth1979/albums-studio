@@ -172,3 +172,13 @@ saying so.
   InsightFace's `buffalo_*` weights are non-commercial research only, and that surfaced while
   writing the registry rather than while installing them.
 - Add a short session log only for work that changes durable decisions or project state.
+- Do the work rather than handing over instructions. If a thing can be done from here, do it;
+  a list of commands for the owner to paste is the fallback, not the deliverable. Hand back
+  only what genuinely cannot be done from here — a browser sign-in, a credential only she
+  holds, a decision that is hers to make — and say which of those it is rather than leaving a
+  chore looking like a step.
+- Before building a protection, establish that there is something to protect. The
+  `/architecture` Edge Function guarded a document that this public repository already served
+  to anyone, and the whole apparatus — a deploy step, a project secret, an environment
+  variable — was deleted a week later. The question "how strong should this gate be" is worth
+  nothing until "is this worth gating" has an answer.
