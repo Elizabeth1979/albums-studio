@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Albums Studio Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper: #E9ECEF;
+    --surface: #FFFFFF;
+    --sheet: #FDFDFC;
+    --ink: #131A20;
+    --muted: #5C6874;
+    --hair: #C9D1D8;
+    --hair-soft: #DFE5EA;
+    --accent: #1B3A6B;
+    --accent-soft: #E3EAF4;
+    --ok: #1A6B4C;
+    --ok-soft: #DCF0E6;
+    --wait: #8A5A00;
+    --wait-soft: #F6EBD5;
+    --stop: #9E2A2A;
+    --stop-soft: #F7E2E0;
+    --idle: #5C6874;
+    --idle-soft: #E5E9ED;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0F1419;
+      --surface: #171E25;
+      --ink: #E4E9ED;
+      --muted: #98A5B1;
+      --hair: #2C3740;
+      --hair-soft: #222B33;
+      --accent: #8FB0DE;
+      --accent-soft: #1B2836;
+      --ok: #5CC796;
+      --ok-soft: #152A22;
+      --wait: #DDA34A;
+      --wait-soft: #2C2317;
+      --stop: #E8817A;
+      --stop-soft: #331D1D;
+      --idle: #98A5B1;
+      --idle-soft: #1E262E;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0F1419;
+    --surface: #171E25;
+    --ink: #E4E9ED;
+    --muted: #98A5B1;
+    --hair: #2C3740;
+    --hair-soft: #222B33;
+    --accent: #8FB0DE;
+    --accent-soft: #1B2836;
+    --ok: #5CC796;
+    --ok-soft: #152A22;
+    --wait: #DDA34A;
+    --wait-soft: #2C2317;
+    --stop: #E8817A;
+    --stop-soft: #331D1D;
+    --idle: #98A5B1;
+    --idle-soft: #1E262E;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 0 20px 80px;
+  }
+
+  .wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+
+  h1, h2, h3 { font-family: "Zilla Slab", Georgia, serif; text-wrap: balance; line-height: 1.15; }
+
+  .label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---- Titleblock header ---- */
+  header { padding-top: 52px; display: flex; flex-direction: column; gap: 20px; }
+  header h1 { font-size: clamp(34px, 5.5vw, 52px); font-weight: 700; letter-spacing: -0.015em; }
+  header .lede { font-size: 18px; color: var(--muted); max-width: 62ch; }
+
+  .titleblock {
+    border: 1px solid var(--hair);
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .titleblock div { padding: 12px 16px; border-right: 1px solid var(--hair-soft); }
+  .titleblock div:last-child { border-right: none; }
+  .titleblock dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.11em; text-transform: uppercase; color: var(--muted); }
+  .titleblock dd { font-size: 15px; font-weight: 500; margin-top: 3px; }
+
+  /* ---- Sections ---- */
+  section { display: flex; flex-direction: column; gap: 18px; }
+  section > h2 { font-size: 27px; font-weight: 600; letter-spacing: -0.01em; }
+  section p { max-width: 68ch; }
+  .note { color: var(--muted); font-size: 15px; }
+
+  /* ---- Registry ---- */
+  .counts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .count {
+    border: 1px solid var(--hair); background: var(--surface);
+    padding: 12px 16px; min-width: 116px; flex: 1 1 116px;
+  }
+  .count b { font-family: "Zilla Slab", serif; font-size: 30px; font-weight: 700; display: block;
+    line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .count.is-stop b { color: var(--stop); }
+  .count.is-ok b { color: var(--ok); }
+  .count.is-wait b { color: var(--wait); }
+  .count span { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--hair); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14.5px; }
+  thead th {
+    text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--hair);
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); white-space: nowrap;
+  }
+  tbody td { padding: 13px 14px; border-bottom: 1px solid var(--hair-soft); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody th {
+    padding: 13px 14px; border-bottom: 1px solid var(--hair-soft); text-align: left;
+    font-weight: 600; vertical-align: top; border-left: 3px solid transparent;
+  }
+  tbody tr:last-child th { border-bottom: none; }
+  tr.row-stop th { border-left-color: var(--stop); }
+  tr.row-stop { background: var(--stop-soft); }
+  code, .mono { font-family: "IBM Plex Mono", monospace; font-size: 0.92em; }
+
+  .chip {
+    display: inline-block; white-space: nowrap;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 4px 8px; border: 1px solid currentColor;
+  }
+  .chip.ok { color: var(--ok); background: var(--ok-soft); }
+  .chip.wait { color: var(--wait); background: var(--wait-soft); }
+  .chip.stop { color: var(--stop); background: var(--stop-soft); }
+  .chip.idle { color: var(--idle); background: var(--idle-soft); }
+
+  .callout {
+    border: 1px solid var(--stop); border-left-width: 4px; background: var(--stop-soft);
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .callout h3 { font-size: 17px; font-weight: 600; color: var(--stop); }
+  .callout p { margin: 0; font-size: 15px; max-width: 74ch; }
+
+  /* ---- Figure and sheets ---- */
+  figure { margin: 0; border: 1px solid var(--hair); background: var(--surface); }
+  figure svg { display: block; width: 100%; height: auto; padding: 18px 18px 0; box-sizing: border-box; }
+  figure .alert-stroke { stroke: var(--stop); }
+  figure .alert-fill { fill: var(--stop); }
+  figcaption {
+    padding: 14px 18px; border-top: 1px solid var(--hair-soft);
+    font-size: 14px; color: var(--muted); max-width: 78ch;
+  }
+
+  /* Diagrams are pinned as paper sheets: they keep a light ground in both themes so the
+     mermaid palette always resolves. */
+  .sheet { border: 1px solid var(--hair); background: var(--sheet); }
+  .sheet-strip {
+    display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline;
+    padding: 10px 16px; border-bottom: 1px solid #DDE3E8; background: #F1F3F5;
+  }
+  .sheet-strip .no { font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.1em; color: #1B3A6B; }
+  .sheet-strip .ttl { font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase; color: #4A5661; }
+  .sheet-body { overflow-x: auto; padding: 20px 16px; }
+  .sheet-body pre.mermaid { background: transparent; color: #131A20; margin: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 0 16px 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase; color: #4A5661; }
+  .swatch { width: 22px; height: 12px; border: 1px solid; display: inline-block; }
+  .swatch.now { background: #dcfce7; border-color: #15803d; }
+  .swatch.plan { background: #dbeafe; border-color: #2563eb; border-style: dashed; }
+
+  ul.rules { display: flex; flex-direction: column; gap: 10px; padding-left: 20px; max-width: 74ch; }
+  ul.rules li::marker { color: var(--accent); }
+
+  footer { border-top: 1px solid var(--hair); padding-top: 20px; color: var(--muted); font-size: 14.5px; }
+  footer p { max-width: 74ch; }
+  a { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header { padding-top: 34px; }
+    .sheet-body { padding: 14px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="label">Albums Studio &middot; architecture drawing set</p>
+    <h1>Albums Studio Architecture</h1>
+    <p class="lede">What is built, where each part runs, and — the part that was missing —
+      every model and library in play, with its licence and its status.</p>
+    <dl class="titleblock">
+      <div><dt>Drawn</dt><dd>27 Aug 2026</dd></div>
+      <div><dt>Phases built</dt><dd>1&ndash;4, 6, 7 &middot; 7.5 deferred</dd></div>
+      <div><dt>Next gate</dt><dd>Phase 5, Story Studio</dd></div>
+      <div><dt>Source of truth</dt><dd class="mono">docs/project-structure.md</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Models and libraries</h2>
+    <p>Nothing in the product runs a machine-learning model today. Every signal on screen —
+      the near-duplicate groups, the sharpness reading, the best shot, the burst grouping —
+      is arithmetic over measurements the browser takes at upload. That is the baseline this
+      table protects: a model earns a row only when a deterministic method cannot do the job.</p>
+
+    <div class="counts">
+      <div class="count is-ok"><b>0</b><span>models in production</span></div>
+      <div class="count"><b>3</b><span>deterministic signals shipped</span></div>
+      <div class="count is-wait"><b>4</b><span>candidates evaluated</span></div>
+      <div class="count"><b>2</b><span>planned or unmeasured</span></div>
+      <div class="count is-stop"><b>1</b><span>blocked on licence</span></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Model or library</th>
+            <th scope="col">Job</th>
+            <th scope="col">Runs in</th>
+            <th scope="col">Licence</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">pHash (DCT)</th>
+            <td>Near-duplicate grouping</td><td>Browser</td>
+            <td>Project code</td><td><span class="chip ok">Shipped</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Laplacian sharpness</th>
+            <td>Best-shot ranking</td><td>Browser</td>
+            <td>Project code</td><td><span class="chip ok">Shipped</span></td>
+          </tr>
+          <tr>
+            <th scope="row">EXIF timestamps</th>
+            <td>Burst grouping</td><td>Browser</td>
+            <td>Project code</td><td><span class="chip ok">Shipped</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Face detector and landmarks</th>
+            <td>Faces visible, eyes open</td><td>Browser, WASM</td>
+            <td>Apache-2.0 &mdash; bundle still to confirm</td>
+            <td><span class="chip wait">Candidate &middot; Ph 7</span></td>
+          </tr>
+          <tr>
+            <th scope="row">CLIP or SigLIP</th>
+            <td>Semantic search embeddings</td><td>Browser, ONNX</td>
+            <td>MIT &middot; Apache-2.0</td>
+            <td><span class="chip wait">Candidate &middot; Ph 10</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Florence-2-base</th>
+            <td>Alt text drafts</td><td>Browser, WebGPU</td>
+            <td>MIT</td><td><span class="chip wait">Candidate &middot; Ph 11</span></td>
+          </tr>
+          <tr>
+            <th scope="row">SmolVLM 256M / 500M</th>
+            <td>Alt text drafts</td><td>Browser, WebGPU</td>
+            <td>Apache-2.0</td><td><span class="chip wait">Candidate &middot; Ph 11</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Hosted vision model</th>
+            <td>Alt drafts, Story Studio</td><td>Edge Function &rarr; provider</td>
+            <td>Commercial terms</td><td><span class="chip idle">Planned &middot; Ph 5, 11</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Whisper</th>
+            <td>Voice transcription</td><td>Browser or hosted</td>
+            <td>MIT</td><td><span class="chip idle">Unmeasured &middot; Ph 5</span></td>
+          </tr>
+          <tr class="row-stop">
+            <th scope="row">InsightFace <code>buffalo_*</code> (ArcFace)</th>
+            <td>Face grouping embeddings</td><td>Browser, ONNX</td>
+            <td>Code MIT &mdash; <strong>weights non-commercial research only</strong></td>
+            <td><span class="chip stop">Blocked</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>Why one row is blocked</h3>
+      <p>InsightFace ships its code under MIT, but the pretrained <code>buffalo_*</code> packs
+        are released for non-commercial research only. Phase 12 face grouping cannot be built
+        on them and also charge for the product. Nothing has been installed — this was found
+        while writing the registry, which is the reason the registry exists.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where a model is allowed to run</h2>
+    <p>Three zones, and one boundary that matters: the moment a photograph leaves the
+      owner's device. Which zone a model sits in decides what it costs, what it can see, and
+      whether it needs a key.</p>
+
+    <figure>
+      <svg viewBox="0 0 900 330" role="img"
+           aria-label="Three execution zones. The browser holds photographs and can run local ONNX or WASM models with nothing leaving the device. A Supabase Edge Function on Deno holds provider keys and is the only place that may call an external AI provider, which is where photographs cross off the device. No Python runtime exists on either deploy target.">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="ah-stop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" class="alert-fill"/>
+          </marker>
+        </defs>
+
+        <!-- zone labels -->
+        <text x="20" y="26" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" letter-spacing="1.2" fill="currentColor" opacity="0.6">ZONE 1 &#183; BROWSER</text>
+        <text x="345" y="26" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" letter-spacing="1.2" fill="currentColor" opacity="0.6">ZONE 2 &#183; EDGE FUNCTION</text>
+        <text x="690" y="26" font-family="IBM Plex Mono, monospace" font-size="11.5" font-weight="600" letter-spacing="1.2" fill="currentColor" opacity="0.6">ZONE 3 &#183; EXTERNAL</text>
+
+        <!-- zones -->
+        <rect x="20" y="40" width="290" height="170" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+        <rect x="345" y="40" width="290" height="170" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+        <rect x="670" y="40" width="210" height="170" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+
+        <!-- zone 1 contents -->
+        <rect x="42" y="64" width="246" height="40" fill="currentColor" opacity="0.07"/>
+        <text x="56" y="89" font-family="IBM Plex Sans, sans-serif" font-size="13.5" fill="currentColor">Photographs, resize, pHash, sharpness</text>
+        <rect x="42" y="118" width="246" height="40" fill="currentColor" opacity="0.07"/>
+        <text x="56" y="143" font-family="IBM Plex Sans, sans-serif" font-size="13.5" fill="currentColor">Local models &#183; ONNX, WASM, WebGPU</text>
+        <text x="42" y="184" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor" opacity="0.65">Nothing leaves the device</text>
+
+        <!-- zone 2 contents -->
+        <rect x="367" y="64" width="246" height="40" fill="currentColor" opacity="0.07"/>
+        <text x="381" y="89" font-family="IBM Plex Sans, sans-serif" font-size="13.5" fill="currentColor">Trusted server code &#183; Deno</text>
+        <rect x="367" y="118" width="246" height="40" fill="currentColor" opacity="0.07"/>
+        <text x="381" y="143" font-family="IBM Plex Sans, sans-serif" font-size="13.5" fill="currentColor">Vault &#183; provider keys</text>
+        <text x="367" y="184" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor" opacity="0.65">Keys never reach zone 1</text>
+
+        <!-- zone 3 contents -->
+        <rect x="692" y="64" width="166" height="40" fill="currentColor" opacity="0.07"/>
+        <text x="706" y="89" font-family="IBM Plex Sans, sans-serif" font-size="13.5" fill="currentColor">Hosted vision model</text>
+        <text x="692" y="184" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor" opacity="0.65">Metered, per call</text>
+
+        <!-- crossings -->
+        <line x1="310" y1="138" x2="341" y2="138" class="alert-stroke" stroke-width="1.8" marker-end="url(#ah-stop)"/>
+        <line x1="635" y1="138" x2="666" y2="138" class="alert-stroke" stroke-width="1.8" marker-end="url(#ah-stop)"/>
+        <text x="325" y="126" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" font-weight="600" class="alert-fill">photo bytes</text>
+        <text x="650" y="126" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" font-weight="600" class="alert-fill">cross here</text>
+
+        <!-- no python -->
+        <rect x="345" y="248" width="290" height="52" fill="none" class="alert-stroke" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <line x1="345" y1="300" x2="635" y2="248" class="alert-stroke" stroke-width="1.5" opacity="0.55"/>
+        <text x="490" y="272" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="13.5" class="alert-fill">Python service</text>
+        <text x="490" y="290" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" class="alert-fill">no runtime on either deploy target</text>
+        <text x="20" y="272" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="currentColor" opacity="0.75">Vercel serves zone 1.</text>
+        <text x="20" y="290" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="currentColor" opacity="0.75">Supabase serves zone 2.</text>
+      </svg>
+      <figcaption>Every candidate in the registry sits in zone 1, where a photograph never
+        leaves the device and a model costs a download rather than a call. Only a hosted model
+        needs zone 2, because that is the single place a provider key exists — and reaching
+        zone 3 is the moment photographs leave. A Python library would need a fourth host that
+        neither deploy target provides.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>The system as built</h2>
+    <div class="sheet">
+      <div class="sheet-strip">
+        <span class="no">A-01</span>
+        <span class="ttl">Frontend and backend &#183; rev dc1d808</span>
+      </div>
+      <div class="sheet-body">
+<pre class="mermaid">
+flowchart LR
+    User([Owner or editor]):::external
+    Viewer([Shared viewer]):::external
+    Provider[Paid AI provider]:::external
+
+    subgraph Frontend["Frontend - browser"]
+        App["React and TypeScript app"]:::current
+        AuthUI["Email auth, reset, protected library"]:::current
+        Router["Client routing&lt;br/&gt;/, /albums/:slug, /shared/:token"]:::current
+        AlbumUI["Album shells&lt;br/&gt;create, rename, describe, delete"]:::current
+        PhotoUI["Photo gallery"]:::current
+        TextUI["Captions, story notes, alt text&lt;br/&gt;each hidden or visible"]:::current
+        ShareUI["Share link&lt;br/&gt;create, rotate, revoke"]:::current
+        Curation["Near-duplicate review&lt;br/&gt;groups, sharpness, best shot"]:::current
+        Studio["AI Story Studio"]:::planned
+        Local["Local image processing&lt;br/&gt;resize, thumbnail, pHash, sharpness, EXIF"]:::current
+        LocalModel["Local models&lt;br/&gt;faces, embeddings, alt drafts"]:::planned
+        Upload["Upload queue&lt;br/&gt;4 concurrent, retry"]:::current
+
+        App --&gt; AuthUI
+        App --&gt; Router --&gt; AlbumUI
+        AlbumUI --&gt; PhotoUI --&gt; TextUI
+        AlbumUI --&gt; ShareUI
+        PhotoUI --&gt; Curation
+        App --&gt; Studio
+        PhotoUI --&gt; Local --&gt; Upload
+        Local -. "planned" .-&gt; LocalModel
+        Curation -. "planned signal" .-&gt; LocalModel
+    end
+
+    subgraph Supabase["Supabase backend"]
+        Auth["Auth&lt;br/&gt;email and password"]:::current
+        DataAPI["Data API&lt;br/&gt;RLS and column grants"]:::current
+        RPC["get_shared_album&lt;br/&gt;security definer"]:::current
+        Storage["Private photos bucket"]:::current
+        Vault["Vault extension"]:::current
+
+        subgraph Database["Postgres 17"]
+            Profiles[(profiles)]:::current
+            Albums[(albums)]:::current
+            Photos[(photos)]:::current
+            Stories[(photo_stories)]:::current
+            Usage[(ai_usage)]:::current
+            Tokens[(private album_share_tokens)]:::current
+            AISchema["Drafts, interactions, suggestions"]:::planned
+            SearchSchema["Full-text and semantic search"]:::planned
+            OutputSchema["Collages, slideshows, exports"]:::planned
+            FaceSchema["Consent and face embeddings"]:::planned
+        end
+
+        EdgeShare["Edge Function shared-album&lt;br/&gt;verify_jwt off, token is the credential"]:::current
+        EdgeAI["Edge Functions&lt;br/&gt;AI calls, quotas, BYOK keys"]:::planned
+
+        Auth --&gt; Profiles
+        DataAPI --&gt; Albums &amp; Photos &amp; Stories &amp; Profiles &amp; Usage
+        Albums --&gt; Tokens
+        RPC --&gt; Albums &amp; Photos &amp; Tokens
+        EdgeShare --&gt; RPC
+        EdgeShare --&gt; Storage
+        EdgeAI --&gt; Database
+        EdgeAI --&gt; Vault
+    end
+
+    User --&gt; App
+    AuthUI --&gt; Auth
+    AlbumUI --&gt; DataAPI
+    ShareUI --&gt; DataAPI
+    Upload --&gt; Storage
+    PhotoUI -. "owner signs own thumbnails" .-&gt; Storage
+    Studio --&gt; EdgeAI
+    EdgeAI -. "photographs leave the device here" .-&gt; Provider
+    Viewer --&gt; EdgeShare
+    EdgeShare -. "short-lived signed URLs" .-&gt; Viewer
+
+    classDef current fill:#dcfce7,stroke:#15803d,color:#14532d
+    classDef planned fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-dasharray:5 5
+    classDef external fill:#f3f4f6,stroke:#6b7280,color:#1f2937
+</pre>
+      </div>
+      <div class="legend">
+        <span><i class="swatch now"></i> built now</span>
+        <span><i class="swatch plan"></i> planned by the roadmap</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How an album moves</h2>
+    <div class="sheet">
+      <div class="sheet-strip">
+        <span class="no">A-02</span>
+        <span class="ttl">Album lifecycle &#183; product states, not a database enum</span>
+      </div>
+      <div class="sheet-body">
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --&gt; SignedOut
+    SignedOut --&gt; Library: sign in
+    Library --&gt; AlbumDraft: create album
+    AlbumDraft --&gt; Uploading: add photos
+    Uploading --&gt; Editing: upload completes
+    Uploading --&gt; Uploading: retry failed files
+
+    Editing --&gt; Curating: review near-duplicates
+    Curating --&gt; Editing: keep, or remove after confirmation
+
+    Editing --&gt; StudioDraft: request AI assistance
+    StudioDraft --&gt; Editing: revise or reject
+    StudioDraft --&gt; Editing: accept into editable content
+
+    Editing --&gt; Private: save privately
+    Private --&gt; LinkShared: create share link
+    Private --&gt; Public: publish publicly
+    LinkShared --&gt; Private: rotate or revoke link
+    Public --&gt; Private: unpublish
+
+    Editing --&gt; DeletionPending: request deletion
+    Private --&gt; DeletionPending: request deletion
+    LinkShared --&gt; DeletionPending: request deletion
+    Public --&gt; DeletionPending: request deletion
+    DeletionPending --&gt; Editing: cancel
+    DeletionPending --&gt; [*]: confirm deletion
+
+    Library --&gt; SignedOut: sign out
+</pre>
+      </div>
+    </div>
+    <p class="note">Only visibility and durable content are persisted. <code>StudioDraft</code>
+      is drawn because the invariant lives there: AI output enters as a draft and reaches an
+      album only after the owner accepts it.</p>
+  </section>
+
+  <section>
+    <h2>What is stored</h2>
+    <div class="sheet">
+      <div class="sheet-strip">
+        <span class="no">A-03</span>
+        <span class="ttl">Live schema &#183; profiles, albums, photos, stories, usage, tokens</span>
+      </div>
+      <div class="sheet-body">
+<pre class="mermaid">
+erDiagram
+    AUTH_USERS ||--|| PROFILES : creates
+    AUTH_USERS ||--o{ ALBUMS : owns
+    AUTH_USERS ||--o{ PHOTOS : owns
+    AUTH_USERS ||--o{ PHOTO_STORIES : writes
+    ALBUMS ||--o{ PHOTOS : contains
+    ALBUMS ||--|| ALBUM_SHARE_TOKENS : has
+    PHOTOS ||--o{ PHOTO_STORIES : "carries several"
+
+    PROFILES {
+        uuid id PK
+        text display_name
+    }
+
+    ALBUMS {
+        uuid id PK
+        uuid owner_id FK
+        text title
+        text slug "stable; a rename must not move it"
+        text layout "retained; withdrawn from the interface"
+        album_visibility visibility "private, link, public"
+        uuid cover_photo_id FK
+    }
+
+    PHOTOS {
+        uuid id PK
+        uuid album_id FK
+        text storage_path "private bucket path, not a URL"
+        text caption
+        text caption_visibility "hidden by default"
+        text alt "always delivered"
+        text alt_source "ai or human"
+        bit phash "near-duplicate grouping"
+        float4 sharpness "best-shot ranking"
+        timestamp taken_at "burst grouping"
+        int4 sort_order
+    }
+
+    PHOTO_STORIES {
+        uuid id PK
+        uuid photo_id FK
+        text body "blank is not stored"
+        text visibility "hidden or visible"
+    }
+
+    ALBUM_SHARE_TOKENS {
+        uuid album_id PK
+        uuid token "private schema; never on an album row"
+    }
+</pre>
+      </div>
+    </div>
+    <p class="note">Abridged for reading; <code>docs/project-structure.md</code> carries every
+      column and constraint. <code>ai_usage</code> is omitted here because nothing writes to it
+      yet.</p>
+  </section>
+
+  <section>
+    <h2>Keeping this drawing true</h2>
+    <p>A map that lags the code is worse than none, because it is trusted. Two rules, both now
+      in <code>AGENTS.md</code>:</p>
+    <ul class="rules">
+      <li>A pull request that changes a boundary, a route, a table, or the model registry
+        updates <code>docs/project-structure.md</code> in the same pull request.</li>
+      <li>A pull request that adopts, replaces, or rules out a model or library lands its row
+        here — licence included — before the dependency lands. A model that reaches the
+        repository before it reaches this table is how a non-commercial licence gets adopted
+        by accident.</li>
+    </ul>
+    <footer>
+      <p>Drawn on 27 August 2026. Source of
+        truth: <span class="mono">docs/project-structure.md</span>. Licences marked
+        &ldquo;to confirm&rdquo; have not been read in full and should be before that row moves
+        off <em>candidate</em>.</p>
+    </footer>
+  </section>
+
+</div>
+<script type="module">
+  // Rendered here rather than shipped in the application bundle: this page is
+  // served only to the one account allowed to read it, so its weight belongs to
+  // that request and not to every visitor who opens an album.
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" })
+</script>
+</body>
+</html>
+

@@ -118,6 +118,20 @@ describe('Library', () => {
     await waitFor(() => expect(onSignOut).toHaveBeenCalledOnce())
   })
 
+  it('offers the architecture map, in its own tab', () => {
+    // The map is a static document served outside the application, so this is
+    // an ordinary link rather than a route. It said so out loud before this
+    // test existed only in the sense that the author knew; a reader of the
+    // header did not, which is why the accessible name carries it.
+    renderLibrary()
+
+    const link = screen.getByRole('link', { name: 'Architecture (opens in a new tab)' })
+
+    expect(link).toHaveAttribute('href', '/architecture.html')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener')
+  })
+
   it('creates a masonry album by default', async () => {
     const onCreateAlbum = vi.fn().mockResolvedValue(undefined)
 

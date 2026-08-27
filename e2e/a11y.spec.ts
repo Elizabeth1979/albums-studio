@@ -340,30 +340,17 @@ test.describe('accessibility', () => {
   })
 
   test('the architecture map', async ({ page }) => {
-    // Axe cannot see inside the frame: it is sandboxed without same-origin
-    // access, deliberately. What is checked here is the page around it, and
-    // that the frame carries a name a screen reader can announce.
-    await stubSupabase(page, {
-      albums: [albumRecord()],
-      architecture: { status: 200, body: '<!doctype html><title>Map</title><h1>The map</h1>' },
-    })
-    await page.goto('/')
-    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
-    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page.getByRole('heading', { name: 'Your albums' })).toBeVisible()
+    // A static document rather than a screen, so axe reads the real thing here
+    // instead of stopping at a frame boundary. Its diagrams are drawn by a
+    // script fetched from a CDN the suite has no business reaching, so that
+    // request is failed fast and what gets checked is the page's own markup:
+    // headings, the registry table, and the figure's text alternative.
+    await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort())
+    await page.route('https://fonts.googleapis.com/**', (route) => route.abort())
 
-    await page.goto('/architecture')
-    await expect(page.getByTitle('Albums Studio architecture')).toBeVisible()
-
-    await expectNoViolations(page)
-  })
-
-  test('the architecture map, asked for by another account', async ({ page }) => {
-    await signIn(page)
-    await page.goto('/architecture')
+    await page.goto('/architecture.html')
     await expect(
-      page.getByRole('heading', { name: 'This page is not for this account.' }),
+      page.getByRole('heading', { name: 'Albums Studio Architecture' }),
     ).toBeVisible()
 
     await expectNoViolations(page)
