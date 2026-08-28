@@ -21,6 +21,31 @@ test.describe('albums', () => {
     await expect(page.getByRole('button', { name: 'Start your first album' })).toBeVisible()
   })
 
+  test('the create form stacks its fields on one left edge', async ({ page }) => {
+    // The form was a flex row bottom-aligned, so on a laptop a one-line title,
+    // a three-line textarea and the buttons sat side by side and nothing lined
+    // up. Fields stack, share a left edge, and the actions come last.
+    await signIn(page)
+
+    await page.getByRole('button', { name: 'Start your first album' }).click()
+
+    const title = await page.getByLabel('Album title').boundingBox()
+    const description = await page.getByLabel(/^Description/).boundingBox()
+    const create = await page.getByRole('button', { name: 'Create album' }).boundingBox()
+    expect(title).not.toBeNull()
+    expect(description).not.toBeNull()
+    expect(create).not.toBeNull()
+
+    expect(description!.x).toBeCloseTo(title!.x, 0)
+    expect(create!.x).toBeCloseTo(title!.x, 0)
+    expect(description!.y).toBeGreaterThan(title!.y + title!.height)
+    expect(create!.y).toBeGreaterThan(description!.y + description!.height)
+
+    // A field that runs the full width of a wide window is unpleasant to read
+    // back; the form is measured rather than stretched.
+    expect(title!.width).toBeLessThan(600)
+  })
+
   test('creates an album and lists it', async ({ page }) => {
     const calls = await signIn(page)
 
