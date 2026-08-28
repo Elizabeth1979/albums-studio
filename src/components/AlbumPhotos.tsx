@@ -25,6 +25,7 @@ import { SimilarPhotos } from './SimilarPhotos'
 import { SoftPhotos } from './SoftPhotos'
 import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
+import { mapWithConcurrency } from '../lib/concurrency'
 import { findSoftPhotos } from '../lib/focus'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
@@ -42,6 +43,9 @@ function describe(error: unknown, fallback: string): string {
 export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map())
+  // How well each photograph is focused, by photo id, filled in as the readings
+  // arrive. A photo missing from this map has not been judged yet.
+  const [focusReadings, setFocusReadings] = useState<Map<string, number | null>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<UploadItem[]>([])
@@ -86,14 +90,48 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
     if (paths.length === 0) {
       setThumbnails(new Map())
-      return
+      return new Map()
     }
 
     try {
-      setThumbnails(await signedUrls(paths))
+      const urls = await signedUrls(paths)
+      setThumbnails(urls)
+      return urls
     } catch (caughtError) {
       setError(describe(caughtError, 'Could not load the photo previews.'))
+      return null
     }
+  }, [])
+
+  /**
+   * Reads how well each photograph is focused, from the thumbnails the album has
+   * just signed.
+   *
+   * Done here, on every album open, rather than stored at upload. Every
+   * photograph that predates this feature carries no stored reading, and an
+   * album that is already full is exactly the one with something to clean up —
+   * so measuring only new uploads would help nobody who needs it. Four at a
+   * time, because this is background work: the album is already on screen and
+   * the advice appears underneath it a moment later.
+   */
+  const measureFocus = useCallback(async (current: Photo[], urls: Map<string, string>) => {
+    const measurable = current.filter((photo) => photo.thumbnailPath)
+    if (measurable.length === 0) return
+
+    const processor = imageProcessor()
+
+    const results = await mapWithConcurrency(measurable, 4, (photo) => {
+      const url = urls.get(photo.thumbnailPath as string)
+      return url ? processor.measure(url) : Promise.resolve(null)
+    })
+
+    setFocusReadings((known) => {
+      const next = new Map(known)
+      results.forEach((result, index) => {
+        next.set(measurable[index].id, result.status === 'fulfilled' ? result.value : null)
+      })
+      return next
+    })
   }, [])
 
   useEffect(() => {
@@ -108,7 +146,12 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
         setPhotos(loaded)
         setError(null)
-        await refreshThumbnails(loaded)
+        const urls = await refreshThumbnails(loaded)
+        if (!active || !urls) return
+
+        // Deliberately not awaited: the album is drawable now, and the focus
+        // advice is worth none of that wait.
+        void measureFocus(loaded, urls)
       } catch (caughtError) {
         if (active) setError(describe(caughtError, 'Could not load this album’s photos.'))
       } finally {
@@ -121,7 +164,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     return () => {
       active = false
     }
-  }, [album.id, refreshThumbnails])
+  }, [album.id, measureFocus, refreshThumbnails])
 
   // Story notes load on their own, keyed on which photos are on screen. They are
   // the secondary half of this screen: making the pictures wait on them would
@@ -304,7 +347,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
   // Blurred photographs that no group already speaks for. Grouped ones are
   // handled a section above, where there is something to compare them against.
-  const softPhotos = findSoftPhotos(photos, similarGroups)
+  const softPhotos = findSoftPhotos(photos, focusReadings, similarGroups)
 
   const storyCounts = new Map<string, number>()
   for (const story of stories) {

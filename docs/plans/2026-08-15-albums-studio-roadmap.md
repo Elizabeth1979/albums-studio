@@ -65,9 +65,12 @@ subscription, Supabase, RLS, share links, Family Travels.
 - ✅ **Phase 7 implemented against its checkpoint.** Photographs are grouped by pHash
   Hamming distance and by burst-like timing read from EXIF, compared side by side with a
   sharpness reading and a sharpest-of-the-group badge, and nothing is removed until the
-  owner confirms. A second review offers photographs that measure as blurred against an
-  absolute floor, which is what a group-relative reading structurally cannot see: a soft
-  frame taken only once has no sibling to be compared against. All of it is arithmetic over signals the browser already computed at
+  owner confirms. A second review offers photographs that are blurred on their own, which
+  is what a group-relative reading structurally cannot see: a soft frame taken only once has
+  no sibling to be compared against. It judges the sharpest part of a frame against that
+  part's own contrast, so a blurred background or a misty lake is not mistaken for a
+  mistake, and it runs over the thumbnails when an album opens so albums filled before it
+  existed are covered too. All of it is arithmetic over signals the browser already computed at
   upload, so reviewing a batch costs no model calls and sends nothing anywhere. The one
   item listed under the phase still outstanding is the later "faces visible / eyes open"
   signal. This document does not record the checkpoint having been confirmed on a real

@@ -145,6 +145,11 @@ export type StubOptions = {
   albums?: AlbumRecord[]
   /** Rows the fake `photos` table starts with. */
   photos?: PhotoRecord[]
+  /**
+   * Image bytes served for a given storage path, for tests that measure what
+   * the browser decodes. Anything unlisted gets the one-pixel stand-in.
+   */
+  objectBytes?: Record<string, Buffer>
   /** Status and body returned by writes to `albums`, for failure cases. */
   albumWrite?: { status: number; body: object }
   /** Status and body returned by the magic-link and reset endpoints. */
@@ -272,6 +277,13 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     }
 
     if (path.startsWith('/storage/v1/object/signed/')) {
+      const wanted = decodeURIComponent(path.slice('/storage/v1/object/signed/'.length))
+      const bytes = options.objectBytes?.[wanted]
+
+      if (bytes) {
+        return route.fulfill({ status: 200, contentType: 'image/png', body: bytes })
+      }
+
       // A one-pixel PNG so the browser has real bytes to decode.
       return route.fulfill({
         status: 200,

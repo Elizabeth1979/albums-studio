@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FocusReading, SoftPhoto } from '../lib/focus'
+import type { SoftPhoto } from '../lib/focus'
 import type { Photo } from '../lib/photos'
 
 type SoftPhotosProps = {
@@ -7,12 +7,6 @@ type SoftPhotosProps = {
   /** Signed thumbnail URLs, by storage path. */
   thumbnails: Map<string, string>
   onRemove: (photos: Photo[]) => Promise<void>
-}
-
-/** What each focus reading says out loud. */
-const READING_TEXT: Record<FocusReading, string> = {
-  blurred: 'Out of focus',
-  soft: 'Looks soft',
 }
 
 /**
@@ -28,6 +22,11 @@ const READING_TEXT: Record<FocusReading, string> = {
  * or that the softness was the point. So nothing is preselected, the wording
  * offers rather than instructs, and removing anything takes two deliberate
  * actions.
+ *
+ * One wording, not a scale. The measurement separates "in focus" from "not"
+ * cleanly and then flattens: past a certain blur it stops telling one degree
+ * from the next, so grading these as "soft" and "very soft" would be inventing
+ * a distinction the number cannot support.
  */
 export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
@@ -78,7 +77,7 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
       </p>
 
       <ul className="similar-row soft-row">
-        {soft.map(({ photo, reading }) => {
+        {soft.map(({ photo }) => {
           const url = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
           const isMarked = marked.has(photo.id)
 
@@ -91,7 +90,7 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
               )}
 
               <p className="similar-meta">
-                <span className="similar-sharpness">{READING_TEXT[reading]}</span>
+                <span className="similar-sharpness">Out of focus</span>
               </p>
 
               <label className="similar-choice">

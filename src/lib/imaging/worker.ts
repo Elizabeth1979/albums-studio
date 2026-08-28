@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { measureFocus } from './measure'
 import { type ProcessedImage, detailOf, isPermanentFailure, processImage } from './process'
 
 export type ProcessRequest = {
@@ -7,16 +8,36 @@ export type ProcessRequest = {
   fileName: string
 }
 
+/** Judging the focus of a photograph the album already holds. */
+export type MeasureRequest = {
+  id: string
+  measure: string
+}
+
+export type WorkerRequest = ProcessRequest | MeasureRequest
+
 export type ProcessResponse =
   | ({ id: string; ok: true } & ProcessedImage)
   | { id: string; ok: false; message: string; detail: string; unreadable: boolean }
+  | { id: string; ok: true; focus: number | null }
+
+function isMeasure(request: WorkerRequest): request is MeasureRequest {
+  return 'measure' in request
+}
 
 /**
  * Decoding and resizing a 50-megapixel photo takes long enough to drop frames,
  * and an album import does it hundreds of times. Doing it here keeps the page
  * responsive while the queue runs.
  */
-self.addEventListener('message', async (event: MessageEvent<ProcessRequest>) => {
+self.addEventListener('message', async (event: MessageEvent<WorkerRequest>) => {
+  if (isMeasure(event.data)) {
+    const { id, measure } = event.data
+    const response: ProcessResponse = { id, ok: true, focus: await measureFocus(measure) }
+    self.postMessage(response)
+    return
+  }
+
   const { id, file, fileName } = event.data
 
   try {

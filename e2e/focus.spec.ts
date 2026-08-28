@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test'
+import { blurredPng, sharpPng } from './support/sample-image'
 import { type StubOptions, albumRecord, photoRecord, stubSupabase } from './support/supabase-stub'
 
 /** Signs in and opens an album already holding `options.photos`. */
@@ -14,28 +15,39 @@ async function openAlbum(page: Page, options: StubOptions = {}) {
   return calls
 }
 
-const sharpAndSoft = [
-  photoRecord({ id: 'photo-1', sort_order: 0, sharpness: 900 }),
+const photos = [
+  photoRecord({ id: 'photo-1', sort_order: 0 }),
   photoRecord({
     id: 'photo-2',
     storage_path: 'owner/album-1/photo-2.jpg',
     thumbnail_path: 'owner/album-1/photo-2-thumb.jpg',
     sort_order: 1,
-    sharpness: 4,
   }),
 ]
 
+/** The first photograph came out; the second did not. */
+const oneOfEach = {
+  photos,
+  objectBytes: {
+    'owner/album-1/photo-1-thumb.jpg': sharpPng(),
+    'owner/album-1/photo-2-thumb.jpg': blurredPng(),
+  },
+}
+
 test.describe('photos that are out of focus', () => {
-  test('offers a blurred photograph that no near-duplicate group would catch', async ({
+  test('judges the photographs the album already held, from what the browser decodes', async ({
     page,
   }) => {
-    await openAlbum(page, { photos: sharpAndSoft })
+    // End to end because nothing else can prove this: the measurement runs on
+    // pixels a real browser decoded, and every unit test above it works on
+    // numbers someone chose.
+    await openAlbum(page, oneOfEach)
 
     await expect(page.getByRole('heading', { name: 'Photos that look out of focus' })).toBeVisible()
-    await expect(page.locator('section.soft .similar-sharpness')).toHaveText('Out of focus')
+    await expect(page.locator('section.soft .similar-item')).toHaveCount(1)
+    await expect(page.getByLabel(/Remove photo 2/)).toBeVisible()
 
-    // Two deliberate acts, and the row is gone from the database only after the
-    // second one.
+    // Two deliberate acts, and the row leaves the album only after the second.
     await page.getByLabel(/Remove photo 2/).check()
     await page.getByRole('button', { name: 'Remove 1 ticked photo' }).click()
     await page.getByRole('button', { name: 'Yes, remove 1 blurred photo' }).click()
@@ -44,7 +56,10 @@ test.describe('photos that are out of focus', () => {
   })
 
   test('says nothing about an album that is in focus', async ({ page }) => {
-    await openAlbum(page, { photos: [photoRecord({ sharpness: 900 })] })
+    await openAlbum(page, {
+      photos: [photos[0]],
+      objectBytes: { 'owner/album-1/photo-1-thumb.jpg': sharpPng() },
+    })
 
     await expect(page.getByText('Choose a photo to add a caption')).toBeVisible()
     await expect(
@@ -56,7 +71,7 @@ test.describe('photos that are out of focus', () => {
     // Every visual fault found so far was found on a phone, so the tiles, the
     // reading and the tick box are measured at that width rather than assumed.
     await page.setViewportSize({ width: 390, height: 844 })
-    await openAlbum(page, { photos: sharpAndSoft })
+    await openAlbum(page, oneOfEach)
 
     const section = page.locator('section.soft')
     await expect(section).toBeVisible()
@@ -65,7 +80,6 @@ test.describe('photos that are out of focus', () => {
     expect(box.width).toBeLessThanOrEqual(390)
 
     const choice = (await page.getByLabel(/Remove photo 2/).boundingBox())!
-    // Comfortably tappable rather than a hairline check box.
     expect(choice.height).toBeGreaterThanOrEqual(16)
     expect(choice.x + choice.width).toBeLessThanOrEqual(390)
   })

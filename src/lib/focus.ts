@@ -5,71 +5,73 @@
  * say which of four frames of the same picture is sharpest, and says nothing at
  * all about a blurred photograph that was taken only once. That is the common
  * case — a phone fired while someone was still moving, and one soft frame sits
- * in the album with nothing to compare it to. This module is the other half:
- * a reading against an absolute floor rather than against a sibling.
+ * in the album with nothing to compare it to. This module is the other half.
+ *
+ * The reading it works from is `focusScore` in `imaging/sharpness`: how well the
+ * best-focused part of the frame is focused, divided by that part's own
+ * contrast. Both halves matter here. Judging the sharpest part rather than the
+ * average is what lets a portrait with a deliberately blurred background pass,
+ * and dividing by contrast is what stops a misty lake from being called a
+ * mistake. Between them they make one number that means the same thing for a
+ * landscape, a portrait and a close-up — which is what allows a single line to
+ * be drawn at all.
  */
 import type { Photo } from './photos'
 import type { SimilarGroup } from './similarity'
 
 /**
- * Below this Laplacian variance, a photograph is soft enough to be worth
- * mentioning.
+ * Below this reading, the sharpest part of the photograph is not sharp.
  *
- * The measurement happens at a fixed 256px analysis size (see `imaging/process`),
- * which is what makes an absolute line meaningful at all: the same photograph
- * always produces the same reading regardless of what the camera wrote. Real
- * photographs carry texture everywhere — sand, foliage, hair, water — and in
- * focus they measure in the hundreds or thousands; a visibly blurred frame
- * collapses to single or low double digits.
+ * Measured rather than guessed. Across scenes built to span the cases that
+ * matter — textured landscapes, low-contrast fog, a portrait against a blurred
+ * background, a small subject against a blurred background, and the same
+ * scenes progressively blurred — everything in focus measured 0.72 and above
+ * and everything blurred measured 0.17 and below. The line sits at 0.3: inside
+ * that gap, and deliberately nearer the blurred end.
  *
- * The line sits well under any plausible in-focus reading rather than at the
- * midpoint, because the two mistakes are not equal. Missing a soft photograph
- * costs nothing — the owner scrolls past it exactly as she does today. Calling
- * a deliberately soft photograph blurred asks her to consider deleting a
- * picture she meant to keep, and a suggestion that does that twice stops being
- * read. A low-contrast subject shot through fog can measure low while being
- * perfectly in focus, which is the other reason to stay conservative.
+ * Nearer the blurred end because the two mistakes are not equal. Missing a soft
+ * photograph costs nothing — the owner scrolls past it exactly as she does
+ * today. Calling a photograph she meant to keep blurred asks her to consider
+ * deleting it, and a suggestion that does that twice stops being read.
+ * `src/lib/focus.test.ts` holds the scenes; re-run it after changing anything
+ * about how the reading is taken.
  */
-export const SOFT_SHARPNESS = 60
-
-/**
- * How far below the floor a photograph sits, spoken rather than numbered.
- *
- * Same reasoning as the near-duplicate readings: a variance of 7 means nothing
- * to the person looking at the picture, and the picture itself is the evidence.
- * The words only say how confident the measurement is.
- */
-export type FocusReading = 'blurred' | 'soft'
+export const SOFT_FOCUS = 0.3
 
 export type SoftPhoto = {
   photo: Photo
-  reading: FocusReading
-}
-
-/** True when this photograph reads as out of focus on its own. */
-export function isSoft(photo: Photo): boolean {
-  return photo.sharpness !== null && photo.sharpness < SOFT_SHARPNESS
-}
-
-function read(photo: Photo): FocusReading {
-  // Half the floor and below is not a marginal call: nothing in the frame has
-  // an edge. Between there and the floor, "soft" is the honest word.
-  return (photo.sharpness as number) < SOFT_SHARPNESS / 2 ? 'blurred' : 'soft'
+  /** What the measurement said, kept so the interface can explain itself. */
+  focus: number
 }
 
 /**
  * The photographs worth asking about, in album order.
  *
- * Anything already sitting in a near-duplicate group is left out: it is on the
- * same screen a few centimetres above, with a comparison that says more than
- * this one does. Being asked about the same photograph twice, in two different
+ * A photograph with no reading is left alone. That covers a thumbnail that
+ * would not decode and a frame with too little contrast anywhere to judge —
+ * fog, a blank wall, a photograph of the sky. Nothing can honestly be said
+ * about those, so nothing is said.
+ *
+ * Anything already sitting in a near-duplicate group is left out too: it is on
+ * the same screen a few centimetres above, with a comparison that says more
+ * than this does. Being asked about the same photograph twice, in two different
  * words, reads as two separate problems.
  */
-export function findSoftPhotos(photos: Photo[], groups: SimilarGroup[] = []): SoftPhoto[] {
+export function findSoftPhotos(
+  photos: Photo[],
+  readings: Map<string, number | null>,
+  groups: SimilarGroup[] = [],
+): SoftPhoto[] {
   const grouped = new Set(groups.flatMap((group) => group.photos).map((photo) => photo.id))
 
   return photos
-    .filter((photo) => !grouped.has(photo.id) && isSoft(photo))
-    .sort((one, two) => one.sortOrder - two.sortOrder)
-    .map((photo) => ({ photo, reading: read(photo) }))
+    .filter((photo) => !grouped.has(photo.id))
+    .flatMap((photo) => {
+      const focus = readings.get(photo.id)
+
+      return focus !== null && focus !== undefined && focus < SOFT_FOCUS
+        ? [{ photo, focus }]
+        : []
+    })
+    .sort((one, two) => one.photo.sortOrder - two.photo.sortOrder)
 }

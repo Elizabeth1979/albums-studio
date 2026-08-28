@@ -13,8 +13,10 @@ AI cost.
 - Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
   sharpness in a Web Worker, then uploaded four at a time with retry. Those measurements
   are what Phase 7 duplicate grouping and best-shot ranking run on, so neither needs a
-  model call. Sharpness is read twice over: against the other frames of a near-duplicate
-  group, and against an absolute floor that catches a blurred photograph taken only once.
+  model call. Focus is read twice over: against the other frames of a near-duplicate group
+  at upload time, and — for every photograph, including ones uploaded years earlier — from
+  the thumbnail when an album opens, which is what catches a blurred photograph taken only
+  once.
 - Owners sign their own image URLs from the browser; Storage checks its policy against
   the caller's token first. Shared viewers have no token, so Phase 6 signs on their behalf
   from an Edge Function.
@@ -141,8 +143,10 @@ AI cost.
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
 - [Blurred photographs the cleanup could not see](sessions/2026-08-28-blurred-photos.md) —
-  read sharpness against an absolute floor as well as against a photograph's near-duplicate
-  group, so a single out-of-focus frame is offered for removal instead of going unmentioned.
+  judged the sharpest part of each frame against its own contrast rather than averaging the
+  whole picture, so a single out-of-focus photograph is offered for removal while fog and
+  blurred backgrounds are left alone; measured when an album opens, so albums that were
+  already full are covered.
 - [Album first fold and image sharpness](sessions/2026-08-22-album-first-fold.md) — served
   full-size images to studio tiles, collapsed the drop zone for albums that already hold
   photos, and withdrew the masonry/grid choice after finding the two indistinguishable and

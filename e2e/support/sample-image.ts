@@ -48,6 +48,63 @@ export function samplePng(width = 96, height = width): Buffer {
   ])
 }
 
+/**
+ * A PNG built from a pixel function, so a test can serve a photograph that is
+ * genuinely in or out of focus rather than a stand-in that only stands for one.
+ */
+function pngFrom(
+  width: number,
+  height: number,
+  shade: (x: number, y: number) => number,
+): Buffer {
+  const raw = Buffer.alloc(height * (width * 3 + 1))
+  let offset = 0
+
+  for (let y = 0; y < height; y += 1) {
+    raw[offset] = 0
+    offset += 1
+
+    for (let x = 0; x < width; x += 1) {
+      const value = Math.max(0, Math.min(255, Math.round(shade(x, y))))
+      raw[offset] = value
+      raw[offset + 1] = value
+      raw[offset + 2] = value
+      offset += 3
+    }
+  }
+
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
+  header[8] = 8
+  header[9] = 2
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+/** Detail at every scale and hard edges: a photograph that came out. */
+export function sharpPng(size = 400): Buffer {
+  return pngFrom(size, size, (x, y) => {
+    const coarse = 60 * Math.sin(x / 11) + 50 * Math.cos(y / 9)
+    const fine = 45 * (((x + y) % 3) - 1) + 35 * ((x % 2) - 0.5)
+
+    return 128 + coarse + fine
+  })
+}
+
+/**
+ * The same scene with every edge smeared away: enough contrast to be judged,
+ * and nothing in it in focus.
+ */
+export function blurredPng(size = 400): Buffer {
+  return pngFrom(size, size, (x, y) => 128 + 60 * Math.sin(x / 55) + 50 * Math.cos(y / 47))
+}
+
 export function sampleFile(name = 'reef.png', width = 96, height = width) {
   return { name, mimeType: 'image/png', buffer: samplePng(width, height) }
 }

@@ -14,7 +14,7 @@ const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted
     deletePhoto: vi.fn(),
     swapPhotoOrder: vi.fn(),
   },
-  processorApi: { process: vi.fn(), dispose: vi.fn() },
+  processorApi: { process: vi.fn(), measure: vi.fn(), dispose: vi.fn() },
   createImageProcessor: vi.fn(),
   storiesApi: {
     listStories: vi.fn(),
@@ -77,6 +77,9 @@ beforeEach(() => {
   onCoverChosen.mockResolvedValue(undefined)
   photosApi.listPhotos.mockResolvedValue([])
   photosApi.signedUrls.mockResolvedValue(new Map())
+  // In focus unless a test says otherwise: the advice has to be something a
+  // photograph earns, not the default state of an album.
+  processorApi.measure.mockResolvedValue(1.4)
   processorApi.process.mockResolvedValue({
     full: new Blob(['full']),
     thumbnail: new Blob(['thumb']),
@@ -236,6 +239,9 @@ describe('AlbumPhotos', () => {
     // so it stays in the name rather than leaving a row of identical buttons.
     photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
     photosApi.signedUrls.mockResolvedValue(new Map())
+  // In focus unless a test says otherwise: the advice has to be something a
+  // photograph earns, not the default state of an album.
+  processorApi.measure.mockResolvedValue(1.4)
 
     renderPhotos()
 
@@ -461,6 +467,9 @@ describe('AlbumPhotos', () => {
     async function openSecondOfThree() {
       photosApi.listPhotos.mockResolvedValue([photo(0), photo(1), photo(2)])
       photosApi.signedUrls.mockResolvedValue(new Map())
+  // In focus unless a test says otherwise: the advice has to be something a
+  // photograph earns, not the default state of an album.
+  processorApi.measure.mockResolvedValue(1.4)
 
       renderPhotos()
       fireEvent.click(await screen.findByRole('button', { name: /^Edit photo 2/ }))
@@ -511,6 +520,9 @@ describe('AlbumPhotos', () => {
     async function openEditorFor(name: RegExp, overrides: Partial<Album> = {}) {
       photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
       photosApi.signedUrls.mockResolvedValue(new Map())
+  // In focus unless a test says otherwise: the advice has to be something a
+  // photograph earns, not the default state of an album.
+  processorApi.measure.mockResolvedValue(1.4)
 
       renderPhotos(overrides)
       fireEvent.click(await screen.findByRole('button', { name }))
@@ -548,6 +560,9 @@ describe('AlbumPhotos', () => {
     async function openThree(name: RegExp, overrides: Partial<Album> = {}) {
       photosApi.listPhotos.mockResolvedValue([photo(0), photo(1), photo(2)])
       photosApi.signedUrls.mockResolvedValue(new Map())
+  // In focus unless a test says otherwise: the advice has to be something a
+  // photograph earns, not the default state of an album.
+  processorApi.measure.mockResolvedValue(1.4)
       photosApi.swapPhotoOrder.mockResolvedValue(undefined)
       photosApi.deletePhoto.mockResolvedValue(undefined)
 
@@ -653,40 +668,74 @@ describe('AlbumPhotos', () => {
   })
 
   describe('photos that are out of focus', () => {
+    /** Signs a thumbnail for each photo, so there is something to measure. */
+    function albumOf(count: number) {
+      const photos = Array.from({ length: count }, (_, index) => photo(index))
+      photosApi.listPhotos.mockResolvedValue(photos)
+      photosApi.signedUrls.mockResolvedValue(
+        new Map(photos.map((one) => [one.thumbnailPath as string, `https://signed/${one.id}`])),
+      )
+      return photos
+    }
+
     it('offers a lone blurred photograph for removal', async () => {
       // The gap this closes: near-duplicate review can only rank a photograph
       // against its siblings, so a single soft frame was never mentioned.
-      photosApi.listPhotos.mockResolvedValue([
-        { ...photo(0), sharpness: 900 },
-        { ...photo(1), sharpness: 4 },
-      ])
+      albumOf(2)
+      processorApi.measure.mockImplementation(async (url: string) =>
+        url.endsWith('photo-1') ? 0.05 : 1.4,
+      )
 
       renderPhotos()
 
       expect(
         await screen.findByRole('heading', { name: 'Photos that look out of focus' }),
       ).toBeInTheDocument()
-      expect(screen.getByText('Out of focus')).toBeInTheDocument()
-      expect(screen.getByLabelText(/Remove photo 2/)).toBeInTheDocument()
+      expect(await screen.findByLabelText(/Remove photo 2/)).toBeInTheDocument()
       expect(screen.queryByLabelText(/Remove photo 1/)).not.toBeInTheDocument()
     })
 
-    it('says nothing when every photograph is in focus', async () => {
-      photosApi.listPhotos.mockResolvedValue([{ ...photo(0), sharpness: 900 }])
+    it('measures photographs the album already held, not only new uploads', async () => {
+      // The album that prompted this feature was already full. A reading taken
+      // at upload time would never reach any of those photographs.
+      albumOf(2)
 
       renderPhotos()
 
-      await screen.findByText('Choose a photo to add a caption, a story, or alt text.')
+      await waitFor(() => expect(processorApi.measure).toHaveBeenCalledTimes(2))
+      expect(processorApi.measure).toHaveBeenCalledWith('https://signed/photo-0')
+    })
+
+    it('says nothing when every photograph is in focus', async () => {
+      albumOf(1)
+
+      renderPhotos()
+
+      await waitFor(() => expect(processorApi.measure).toHaveBeenCalled())
+      expect(
+        screen.queryByRole('heading', { name: 'Photos that look out of focus' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('says nothing about a photograph it could not judge', async () => {
+      // Fog, a blank wall, a thumbnail that would not decode: no reading is not
+      // the same as a bad one.
+      albumOf(1)
+      processorApi.measure.mockResolvedValue(null)
+
+      renderPhotos()
+
+      await waitFor(() => expect(processorApi.measure).toHaveBeenCalled())
       expect(
         screen.queryByRole('heading', { name: 'Photos that look out of focus' }),
       ).not.toBeInTheDocument()
     })
 
     it('removes nothing until the owner ticks and then confirms', async () => {
-      photosApi.listPhotos.mockResolvedValue([
-        { ...photo(0), sharpness: 900 },
-        { ...photo(1), sharpness: 4 },
-      ])
+      albumOf(2)
+      processorApi.measure.mockImplementation(async (url: string) =>
+        url.endsWith('photo-1') ? 0.05 : 1.4,
+      )
 
       renderPhotos()
       fireEvent.click(await screen.findByLabelText(/Remove photo 2/))
