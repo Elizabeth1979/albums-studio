@@ -22,8 +22,10 @@ import { type UploadItem, runUploads } from '../lib/uploads'
 import { LayoutPreview } from './LayoutPreview'
 import { PhotoEditor } from './PhotoEditor'
 import { SimilarPhotos } from './SimilarPhotos'
+import { SoftPhotos } from './SoftPhotos'
 import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
+import { findSoftPhotos } from '../lib/focus'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -276,13 +278,13 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   }
 
   /**
-   * Removes a set of near-duplicates the owner picked.
+   * Removes the photographs the owner picked in either cleanup review.
    *
    * Sequential rather than parallel: each delete removes rows and then storage
    * objects, and a failure partway through should leave the rest of the album
    * alone rather than half-applied across several photographs at once.
    */
-  async function handleRemoveSimilar(chosen: Photo[]) {
+  async function handleRemoveChosen(chosen: Photo[]) {
     for (const photo of chosen) {
       await handleDeletePhoto(photo)
     }
@@ -299,6 +301,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // Recomputed from the photos themselves, so removing one re-groups the rest
   // without another round trip.
   const similarGroups = groupSimilar(photos)
+
+  // Blurred photographs that no group already speaks for. Grouped ones are
+  // handled a section above, where there is something to compare them against.
+  const softPhotos = findSoftPhotos(photos, similarGroups)
 
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
@@ -347,7 +353,12 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
             <SimilarPhotos
               groups={similarGroups}
               thumbnails={thumbnails}
-              onRemove={handleRemoveSimilar}
+              onRemove={handleRemoveChosen}
+            />
+            <SoftPhotos
+              soft={softPhotos}
+              thumbnails={thumbnails}
+              onRemove={handleRemoveChosen}
             />
 
             <dialog

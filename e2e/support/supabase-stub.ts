@@ -116,11 +116,35 @@ export type SharedResponse = {
   }[]
 }
 
+export function photoRecord(overrides: Partial<PhotoRecord> = {}): PhotoRecord {
+  return {
+    id: 'photo-1',
+    album_id: 'album-1',
+    storage_path: 'owner/album-1/photo-1.jpg',
+    thumbnail_path: 'owner/album-1/photo-1-thumb.jpg',
+    width: 2000,
+    height: 1500,
+    caption: null,
+    caption_visibility: 'hidden',
+    alt: null,
+    alt_source: null,
+    sort_order: 0,
+    phash: null,
+    // In focus by a comfortable margin, so a test that wants a soft one has to
+    // say so rather than getting it by accident.
+    sharpness: 900,
+    taken_at: null,
+    ...overrides,
+  }
+}
+
 export type StubOptions = {
   /** Status and body returned by the password grant, for failure cases. */
   passwordGrant?: { status: number; body: object }
   /** Rows the fake `albums` table starts with. */
   albums?: AlbumRecord[]
+  /** Rows the fake `photos` table starts with. */
+  photos?: PhotoRecord[]
   /** Status and body returned by writes to `albums`, for failure cases. */
   albumWrite?: { status: number; body: object }
   /** Status and body returned by the magic-link and reset endpoints. */
@@ -198,7 +222,7 @@ function parseBody(request: Request): unknown {
 export async function stubSupabase(page: Page, options: StubOptions = {}): Promise<AuthCalls> {
   const calls: AuthCalls['all'] = []
   let albums: AlbumRecord[] = [...(options.albums ?? [])]
-  let photos: PhotoRecord[] = []
+  let photos: PhotoRecord[] = [...(options.photos ?? [])]
   let stories: StoryRecord[] = []
   let objects: string[] = []
   let created = 0

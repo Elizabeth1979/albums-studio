@@ -652,6 +652,61 @@ describe('AlbumPhotos', () => {
     })
   })
 
+  describe('photos that are out of focus', () => {
+    it('offers a lone blurred photograph for removal', async () => {
+      // The gap this closes: near-duplicate review can only rank a photograph
+      // against its siblings, so a single soft frame was never mentioned.
+      photosApi.listPhotos.mockResolvedValue([
+        { ...photo(0), sharpness: 900 },
+        { ...photo(1), sharpness: 4 },
+      ])
+
+      renderPhotos()
+
+      expect(
+        await screen.findByRole('heading', { name: 'Photos that look out of focus' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Out of focus')).toBeInTheDocument()
+      expect(screen.getByLabelText(/Remove photo 2/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Remove photo 1/)).not.toBeInTheDocument()
+    })
+
+    it('says nothing when every photograph is in focus', async () => {
+      photosApi.listPhotos.mockResolvedValue([{ ...photo(0), sharpness: 900 }])
+
+      renderPhotos()
+
+      await screen.findByText('Choose a photo to add a caption, a story, or alt text.')
+      expect(
+        screen.queryByRole('heading', { name: 'Photos that look out of focus' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('removes nothing until the owner ticks and then confirms', async () => {
+      photosApi.listPhotos.mockResolvedValue([
+        { ...photo(0), sharpness: 900 },
+        { ...photo(1), sharpness: 4 },
+      ])
+
+      renderPhotos()
+      fireEvent.click(await screen.findByLabelText(/Remove photo 2/))
+
+      // Ticking is not removing: the confirmation is the second deliberate act.
+      expect(photosApi.deletePhoto).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove 1 ticked photo' }))
+      expect(photosApi.deletePhoto).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, remove 1 blurred photo' }))
+
+      await waitFor(() =>
+        expect(photosApi.deletePhoto).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'photo-1' }),
+        ),
+      )
+    })
+  })
+
   describe('the image processor', () => {
     it('is not built until there is a photo to process', () => {
       // It was built in an effect, and a file chosen before that effect ran was
