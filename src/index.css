@@ -597,16 +597,18 @@ textarea:focus-visible {
   letter-spacing: -0.02em;
 }
 
+/* The fields used to sit on one flex row with the buttons, bottom-aligned:
+   on a laptop that put a one-line title, a three-line textarea and the actions
+   side by side with nothing lining up. One column, measured for reading, keeps
+   the labels on a single left edge at every width. */
 .new-album-form {
-  display: flex;
-  align-items: end;
-  flex-wrap: wrap;
+  display: grid;
   gap: 1.1rem;
+  max-width: 34rem;
 }
 
 .new-album-form > label {
   display: grid;
-  flex: 1 1 18rem;
   gap: 0.45rem;
   color: #4d4740;
   font-size: 0.83rem;
@@ -631,6 +633,10 @@ textarea:focus-visible {
 .new-album-form .primary-button {
   flex: none;
   margin-top: 0;
+}
+
+.new-album-actions {
+  margin-top: 0.2rem;
 }
 
 .library-status {
@@ -898,19 +904,8 @@ textarea:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .new-album-form {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  /* flex-basis measures the main axis, so the 18rem that sets a comfortable
-     field width in a row became a 18rem-tall field once the form stacked. */
-  .new-album-form > label {
-    flex: 0 0 auto;
-  }
-
   .new-album-form .primary-button {
-    width: 100%;
+    flex: 1 1 auto;
   }
 
   .layout-preview {
@@ -1371,7 +1366,8 @@ textarea:focus-visible {
 .new-album-actions {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
 }
 
 .visibility-choice {

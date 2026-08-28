@@ -9,9 +9,9 @@ test.use({ viewport: PHONE })
 
 test.describe('phone layout', () => {
   test('the create form fields stay a sensible height', async ({ page }) => {
-    // `flex: 1 1 18rem` sets a comfortable field *width* while the form is a
-    // row. Once it stacks on a phone, flex-basis measures height instead and
-    // the title field grew to 18rem tall.
+    // `flex: 1 1 18rem` once set a comfortable field *width* while the form was
+    // a row; stacked on a phone, flex-basis measured height instead and the
+    // title field grew to 18rem tall. The form is a grid now, at every width.
     await stubSupabase(page, { albums: [] })
     await page.goto('/')
     await page.getByLabel('Email', { exact: true }).fill('person@example.com')
