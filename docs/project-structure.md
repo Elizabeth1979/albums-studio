@@ -277,8 +277,9 @@ albums-studio/
 |-- src/
 |   |-- components/              current screens and shared UI
 |   |-- lib/                     current data access and helpers
-|   |   |-- imaging/             current resize, thumbnail, pHash, sharpness, EXIF
-|   |   `-- similarity.ts        current near-duplicate and burst grouping
+|   |   |-- imaging/             current resize, thumbnail, pHash, sharpness, focus, EXIF
+|   |   |-- similarity.ts        current near-duplicate and burst grouping
+|   |   `-- focus.ts             current out-of-focus advice, read when an album opens
 |   `-- *.test.tsx               current component and state-machine tests
 |-- e2e/                         current Playwright suites, including axe checks
 |-- .github/workflows/ci.yml     current typecheck, tests, build, end-to-end

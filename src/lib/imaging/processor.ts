@@ -1,5 +1,6 @@
 import { type ProcessedImage, processImage } from './process'
-import type { ProcessRequest, ProcessResponse } from './worker'
+import { measureFocus } from './measure'
+import type { MeasureRequest, ProcessRequest, ProcessResponse } from './worker'
 
 class RelayedUnreadableError extends Error {
   detail: string
@@ -13,6 +14,11 @@ class RelayedUnreadableError extends Error {
 
 export type ImageProcessor = {
   process: (file: File, fileName: string) => Promise<ProcessedImage>
+  /**
+   * How well the best-focused part of an already-stored photograph is focused,
+   * read from its thumbnail. Null when there is nothing to judge.
+   */
+  measure: (url: string) => Promise<number | null>
   dispose: () => void
 }
 
@@ -24,6 +30,7 @@ function workersUsable(): boolean {
 function mainThreadProcessor(): ImageProcessor {
   return {
     process: (file, fileName) => processImage(file, fileName),
+    measure: (url) => measureFocus(url),
     dispose: () => {},
   }
 }
@@ -46,7 +53,7 @@ export function createImageProcessor(): ImageProcessor {
 
   const pending = new Map<
     string,
-    { resolve: (image: ProcessedImage) => void; reject: (error: Error) => void }
+    { resolve: (result: never) => void; reject: (error: Error) => void }
   >()
 
   worker.addEventListener('message', (event: MessageEvent<ProcessResponse>) => {
@@ -57,8 +64,10 @@ export function createImageProcessor(): ImageProcessor {
     pending.delete(response.id)
 
     if (response.ok) {
-      const { id: _id, ok: _ok, ...image } = response
-      waiting.resolve(image)
+      const { id: _id, ok: _ok, ...result } = response
+      ;(waiting.resolve as (value: unknown) => void)(
+        'focus' in result ? result.focus : result,
+      )
       return
     }
 
@@ -80,15 +89,21 @@ export function createImageProcessor(): ImageProcessor {
     pending.clear()
   })
 
+  function ask<T>(build: (id: string) => ProcessRequest | MeasureRequest): Promise<T> {
+    const id = crypto.randomUUID()
+
+    return new Promise<T>((resolve, reject) => {
+      pending.set(id, { resolve: resolve as (result: never) => void, reject })
+      worker.postMessage(build(id))
+    })
+  }
+
   return {
     process(file, fileName) {
-      const id = crypto.randomUUID()
-
-      return new Promise<ProcessedImage>((resolve, reject) => {
-        pending.set(id, { resolve, reject })
-        const request: ProcessRequest = { id, file, fileName }
-        worker.postMessage(request)
-      })
+      return ask<ProcessedImage>((id) => ({ id, file, fileName }))
+    },
+    measure(url) {
+      return ask<number | null>((id) => ({ id, measure: url }))
     },
     dispose() {
       pending.clear()

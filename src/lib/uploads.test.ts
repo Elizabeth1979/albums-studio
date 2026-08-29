@@ -46,7 +46,8 @@ function harness(overrides: Partial<Parameters<typeof runUploads>[3]> = {}) {
     deps: {
       processor: {
         process: vi.fn().mockResolvedValue(processed()),
-        dispose: vi.fn(),
+        measure: vi.fn().mockResolvedValue(null),
+    dispose: vi.fn(),
       },
       store: vi.fn(async ({ sortOrder }) => photo(`photo-${sortOrder}`, sortOrder)),
       onItemChange: (item: UploadItem) => items.push(item),
@@ -131,7 +132,7 @@ describe('runUploads', () => {
   it('does not retry a format the browser cannot decode', async () => {
     const process = vi.fn().mockRejectedValue(new UnreadableImageError('holiday.heic'))
     const { items, deps } = harness({
-      processor: { process, dispose: vi.fn() },
+      processor: { process, measure: vi.fn().mockResolvedValue(null), dispose: vi.fn() },
     })
 
     await runUploads('album-1', [{ id: 'a', file: file('holiday.heic') }], 0, deps)
@@ -152,7 +153,7 @@ describe('runUploads', () => {
     const relayed = new Error('holiday.heic is a HEIC photo, which this browser cannot open.')
     relayed.name = 'UnreadableImageError'
     const process = vi.fn().mockRejectedValue(relayed)
-    const { items, deps } = harness({ processor: { process, dispose: vi.fn() } })
+    const { items, deps } = harness({ processor: { process, measure: vi.fn().mockResolvedValue(null), dispose: vi.fn() } })
 
     await runUploads('album-1', [{ id: 'a', file: file('holiday.heic') }], 0, deps)
 
@@ -166,7 +167,7 @@ describe('runUploads', () => {
       return processed()
     })
     const { items, photos, deps } = harness({
-      processor: { process, dispose: vi.fn() },
+      processor: { process, measure: vi.fn().mockResolvedValue(null), dispose: vi.fn() },
     })
 
     await runUploads(
@@ -196,7 +197,7 @@ describe('runUploads', () => {
       running -= 1
       return processed()
     })
-    const { deps } = harness({ processor: { process, dispose: vi.fn() }, concurrency: 4 })
+    const { deps } = harness({ processor: { process, measure: vi.fn().mockResolvedValue(null), dispose: vi.fn() }, concurrency: 4 })
 
     await runUploads(
       'album-1',

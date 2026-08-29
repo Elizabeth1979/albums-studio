@@ -2037,3 +2037,13 @@ textarea:focus-visible {
   padding-top: 1.25rem;
   border-top: 1px solid #ddd6cc;
 }
+
+/*
+ * Blurred photographs are not being compared with one another, so unlike the
+ * near-duplicate rows they wrap rather than scroll sideways: there is no
+ * ordering to preserve and no reason to hide any of them off the edge.
+ */
+.soft-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
