@@ -21,44 +21,61 @@ import { focusScore } from './sharpness'
 const ANALYSIS_CEILING = 512
 
 /**
- * Measures how well the best-focused part of an already-stored photograph is
- * focused, from the thumbnail the album has just drawn.
+ * What came back from trying to judge one photograph.
  *
- * Measured at whatever size the thumbnail arrived at, and measured here rather
- * than kept in the database, both on purpose. Every photograph
- * uploaded before this existed would otherwise carry no reading, and the
- * albums that most need the advice are exactly the ones already full — so the
- * one design that helps nobody is the one that only measures new uploads. The
- * thumbnail is already signed and already fetched to be drawn, so the reading
- * costs a decode and some arithmetic and reaches every photograph equally.
- *
- * Returns null when the frame carries too little contrast to judge, or when the
- * bytes cannot be read at all. Both mean the same thing to the owner: nothing
- * worth saying about this one.
+ * Three outcomes, not two, and the difference is the point. This used to return
+ * null for both "nothing here to judge" and "could not read the picture at
+ * all", and the album said nothing either way — which reads as "your
+ * photographs are fine" when the truth may be that not one of them was ever
+ * looked at. Silence is only honest when something was actually measured.
  */
-export async function measureFocus(url: string): Promise<number | null> {
+export type FocusReading =
+  | { kind: 'measured'; focus: number }
+  /** Fog, a blank wall: real pixels, nothing in them to judge. */
+  | { kind: 'unjudgeable' }
+  /** The bytes could not be read or decoded. Nothing was measured. */
+  | { kind: 'failed'; detail: string }
+
+function describe(error: unknown): string {
+  if (error instanceof Error) return error.message ? `${error.name}: ${error.message}` : error.name
+
+  return String(error)
+}
+
+/**
+ * Measures how well the best-focused part of an already-stored photograph is
+ * focused, from the thumbnail the album has already downloaded.
+ *
+ * Measured at whatever size the thumbnail arrived at, and measured when the
+ * album opens rather than kept in the database, both on purpose. Every
+ * photograph uploaded before this existed would otherwise carry no reading, and
+ * the albums that most need the advice are exactly the ones already full — so
+ * the one design that helps nobody is the one that only measures new uploads.
+ */
+export async function measureFocus(source: Blob): Promise<FocusReading> {
+  let bitmap: ImageBitmap
+
   try {
-    const response = await fetch(url)
-    if (!response.ok) return null
+    bitmap = await createImageBitmap(source)
+  } catch (error) {
+    return { kind: 'failed', detail: describe(error) }
+  }
 
-    const bitmap = await createImageBitmap(await response.blob())
+  try {
+    const size = fitWithin(bitmap.width, bitmap.height, ANALYSIS_CEILING)
+    const canvas = new OffscreenCanvas(size.width, size.height)
+    const context = canvas.getContext('2d')
 
-    try {
-      const size = fitWithin(bitmap.width, bitmap.height, ANALYSIS_CEILING)
-      const canvas = new OffscreenCanvas(size.width, size.height)
-      const context = canvas.getContext('2d')
-      if (!context) return null
+    if (!context) return { kind: 'failed', detail: 'no 2D canvas' }
 
-      context.drawImage(bitmap, 0, 0, size.width, size.height)
-      const pixels = context.getImageData(0, 0, size.width, size.height)
+    context.drawImage(bitmap, 0, 0, size.width, size.height)
+    const pixels = context.getImageData(0, 0, size.width, size.height)
+    const focus = focusScore(toLuma(pixels.data), size.width, size.height)
 
-      return focusScore(toLuma(pixels.data), size.width, size.height)
-    } finally {
-      bitmap.close()
-    }
-  } catch {
-    // A thumbnail that will not decode is a display problem, not a focus
-    // verdict. The album already shows its own placeholder for that.
-    return null
+    return focus === null ? { kind: 'unjudgeable' } : { kind: 'measured', focus }
+  } catch (error) {
+    return { kind: 'failed', detail: describe(error) }
+  } finally {
+    bitmap.close()
   }
 }

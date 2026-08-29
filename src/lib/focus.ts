@@ -16,6 +16,7 @@
  * landscape, a portrait and a close-up — which is what allows a single line to
  * be drawn at all.
  */
+import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import type { SimilarGroup } from './similarity'
 
@@ -54,13 +55,19 @@ export type SoftPhoto = {
   focus: number
 }
 
+/** Photographs the app tried to judge and could not read at all. */
+export function unreadable(photos: Photo[], readings: Map<string, FocusReading>): Photo[] {
+  return photos.filter((photo) => readings.get(photo.id)?.kind === 'failed')
+}
+
 /**
  * The photographs worth asking about, in album order.
  *
- * A photograph with no reading is left alone. That covers a thumbnail that
- * would not decode and a frame with too little contrast anywhere to judge —
- * fog, a blank wall, a photograph of the sky. Nothing can honestly be said
- * about those, so nothing is said.
+ * A photograph with no reading is left alone. That covers one not yet measured,
+ * one whose bytes could not be read, and a frame with too little contrast
+ * anywhere to judge — fog, a blank wall, a photograph of the sky. Nothing can
+ * honestly be said about any of those from here; what separates them is that
+ * the album says so out loud when it could not read a photograph at all.
  *
  * Anything already sitting in a near-duplicate group is left out too: it is on
  * the same screen a few centimetres above, with a comparison that says more
@@ -69,7 +76,7 @@ export type SoftPhoto = {
  */
 export function findSoftPhotos(
   photos: Photo[],
-  readings: Map<string, number | null>,
+  readings: Map<string, FocusReading>,
   groups: SimilarGroup[] = [],
 ): SoftPhoto[] {
   const grouped = new Set(groups.flatMap((group) => group.photos).map((photo) => photo.id))
@@ -77,10 +84,10 @@ export function findSoftPhotos(
   return photos
     .filter((photo) => !grouped.has(photo.id))
     .flatMap((photo) => {
-      const focus = readings.get(photo.id)
+      const reading = readings.get(photo.id)
 
-      return focus !== null && focus !== undefined && focus < SOFT_FOCUS
-        ? [{ photo, focus }]
+      return reading?.kind === 'measured' && reading.focus < SOFT_FOCUS
+        ? [{ photo, focus: reading.focus }]
         : []
     })
     .sort((one, two) => one.photo.sortOrder - two.photo.sortOrder)

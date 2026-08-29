@@ -340,6 +340,25 @@ export async function storePhoto(input: {
 }
 
 /**
+ * The bytes of one stored object, fetched through the Supabase client.
+ *
+ * Deliberately not a hand-rolled `fetch` of a signed URL. A signed URL is
+ * enough for an `<img>`, which needs no permission to read what it draws, and
+ * that is exactly the trap: reading the same URL from script is a cross-origin
+ * request with different rules, so images can display perfectly while every
+ * attempt to measure them fails silently. Going through the client uses the
+ * same authenticated path that already works everywhere else here.
+ */
+export async function photoBytes(path: string): Promise<Blob> {
+  const { data, error } = await supabase.storage.from(PHOTO_BUCKET).download(path)
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(`${path} returned no bytes.`)
+
+  return data
+}
+
+/**
  * Short-lived URLs for objects in the private bucket, keyed by storage path.
  *
  * Storage mints these only after checking its own policy against the caller's

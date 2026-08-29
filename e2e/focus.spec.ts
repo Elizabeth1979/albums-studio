@@ -73,6 +73,20 @@ test.describe('photos that are out of focus', () => {
     await expect(page.locator('section.soft .similar-item')).toHaveCount(1)
   })
 
+  test('says so when the photographs could not be read for measuring', async ({ page }) => {
+    // The failure mode that no earlier test could see. Reading an object's
+    // bytes is a different permission from drawing it in a tile, so the album
+    // can look perfectly normal while nothing in it is ever measured. Silence
+    // there is indistinguishable from "your photographs are fine".
+    await openAlbum(page, {
+      photos,
+      objectBytes: oneOfEach.objectBytes,
+      objectRead: { status: 403, body: { message: 'not allowed' } },
+    })
+
+    await expect(page.getByText(/could not be checked for focus/)).toBeVisible()
+  })
+
   test('says nothing about an album that is in focus', async ({ page }) => {
     await openAlbum(page, {
       photos: [photos[0]],

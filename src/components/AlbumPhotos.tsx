@@ -6,6 +6,7 @@ import {
   type TextVisibility,
   deletePhoto,
   listPhotos,
+  photoBytes,
   signedUrls,
   storePhoto,
   swapPhotoOrder,
@@ -26,7 +27,8 @@ import { SoftPhotos } from './SoftPhotos'
 import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
 import { mapWithConcurrency } from '../lib/concurrency'
-import { findSoftPhotos } from '../lib/focus'
+import type { FocusReading } from '../lib/imaging/measure'
+import { findSoftPhotos, unreadable } from '../lib/focus'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -45,7 +47,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map())
   // How well each photograph is focused, by photo id, filled in as the readings
   // arrive. A photo missing from this map has not been judged yet.
-  const [focusReadings, setFocusReadings] = useState<Map<string, number | null>>(new Map())
+  const [focusReadings, setFocusReadings] = useState<Map<string, FocusReading>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<UploadItem[]>([])
@@ -104,8 +106,8 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   }, [])
 
   /**
-   * Reads how well each photograph is focused, from the thumbnails the album has
-   * just signed.
+   * Reads how well each photograph is focused, from the thumbnails the album
+   * has already downloaded.
    *
    * Done here, on every album open, rather than stored at upload. Every
    * photograph that predates this feature carries no stored reading, and an
@@ -113,22 +115,32 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
    * so measuring only new uploads would help nobody who needs it. Four at a
    * time, because this is background work: the album is already on screen and
    * the advice appears underneath it a moment later.
+   *
+   * The bytes come through the Supabase client rather than by fetching the
+   * signed URL the tiles are drawn from. An `<img>` may display a URL that
+   * script is not allowed to read, so hand-fetching one is a way for every
+   * measurement to fail while every photograph looks perfectly fine.
    */
-  const measureFocus = useCallback(async (current: Photo[], urls: Map<string, string>) => {
+  const measureFocus = useCallback(async (current: Photo[]) => {
     const measurable = current.filter((photo) => photo.thumbnailPath)
     if (measurable.length === 0) return
 
     const processor = imageProcessor()
 
-    const results = await mapWithConcurrency(measurable, 4, (photo) => {
-      const url = urls.get(photo.thumbnailPath as string)
-      return url ? processor.measure(url) : Promise.resolve(null)
+    const results = await mapWithConcurrency(measurable, 4, async (photo) => {
+      const bytes = await photoBytes(photo.thumbnailPath as string)
+      return processor.measure(bytes)
     })
 
     setFocusReadings((known) => {
       const next = new Map(known)
       results.forEach((result, index) => {
-        next.set(measurable[index].id, result.status === 'fulfilled' ? result.value : null)
+        next.set(
+          measurable[index].id,
+          result.status === 'fulfilled'
+            ? result.value
+            : { kind: 'failed', detail: describe(result.reason, 'the photo could not be read') },
+        )
       })
       return next
     })
@@ -146,12 +158,12 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
         setPhotos(loaded)
         setError(null)
-        const urls = await refreshThumbnails(loaded)
-        if (!active || !urls) return
+        await refreshThumbnails(loaded)
+        if (!active) return
 
         // Deliberately not awaited: the album is drawable now, and the focus
         // advice is worth none of that wait.
-        void measureFocus(loaded, urls)
+        void measureFocus(loaded)
       } catch (caughtError) {
         if (active) setError(describe(caughtError, 'Could not load this album’s photos.'))
       } finally {
@@ -349,6 +361,12 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // handled a section above, where there is something to compare them against.
   const softPhotos = findSoftPhotos(photos, focusReadings, similarGroups)
 
+  // Photographs the focus check could not read at all. Said out loud rather
+  // than passed over in silence: an album with nothing to report and an album
+  // where nothing could be checked look identical otherwise, and the second one
+  // spent three rounds of debugging looking like the first.
+  const uncheckable = unreadable(photos, focusReadings)
+
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
     storyCounts.set(story.photoId, (storyCounts.get(story.photoId) ?? 0) + 1)
@@ -403,6 +421,16 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               thumbnails={thumbnails}
               onRemove={handleRemoveChosen}
             />
+
+            {uncheckable.length > 0 && (
+              <p className="album-note focus-unchecked">
+                {uncheckable.length === 1
+                  ? 'One photograph could not be checked for focus.'
+                  : `${uncheckable.length} photographs could not be checked for focus.`}{' '}
+                Nothing is wrong with them in the album — they simply could not be read for
+                measuring, so they are left out of any suggestion above.
+              </p>
+            )}
 
             <dialog
               className="editor-sheet"
