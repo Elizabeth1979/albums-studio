@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [The blur advice that shipped green and saw nothing](sessions/2026-08-29-focus-measured-wrong.md) —
+  why the first version flagged nothing in a real album: blur measured after the photograph
+  had been shrunk twice, and 8-bit rounding read as detail. Both faults are now guarded by
+  tests that go through the real reduction.
 - [Blurred photographs the cleanup could not see](sessions/2026-08-28-blurred-photos.md) —
   judged the sharpest part of each frame against its own contrast rather than averaging the
   whole picture, so a single out-of-focus photograph is offered for removal while fog and

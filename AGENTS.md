@@ -147,6 +147,14 @@ saying so.
   when the markup it belongs to is already on screen and tappable, and a handler that finds
   its dependency missing tends to return quietly. This is invisible on a fast machine and
   shows up on a slow phone or a loaded CI runner.
+- Test the input the real thing gets, not a convenient stand-in for it. Focus advice shipped
+  green and did nothing in a real album twice over: the scenes were blurred at the size they
+  were measured at, when a camera blurs a frame thousands of pixels wide that the app then
+  shrinks, and they were built from floating-point pixels, when every stored photograph holds
+  whole numbers. Both differences changed the answer by two to three times — enough to move
+  every photograph to the wrong side of the line — and no amount of passing tests said so.
+  Where a signal is destroyed by resizing, re-encoding or rounding, put those steps in the
+  test before measuring anything.
 - A new test that passes the first time has not been shown to test anything. Break the code
   it covers, watch it fail, then put the code back. Break the rule that actually holds the
   behaviour up, not one that merely looks related: a belt-and-braces fix means removing

@@ -1,5 +1,5 @@
 import { type Page, expect, test } from '@playwright/test'
-import { blurredPng, sharpPng } from './support/sample-image'
+import { blurredPng, sharpPng, softPng } from './support/sample-image'
 import { type StubOptions, albumRecord, photoRecord, stubSupabase } from './support/supabase-stub'
 
 /** Signs in and opens an album already holding `options.photos`. */
@@ -53,6 +53,24 @@ test.describe('photos that are out of focus', () => {
     await page.getByRole('button', { name: 'Yes, remove 1 blurred photo' }).click()
 
     await expect(page.getByRole('heading', { name: '1 photo' })).toBeVisible()
+  })
+
+  test('offers a photograph that is soft rather than ruined', async ({ page }) => {
+    // The guard for the fault that shipped. Focus is a property of the frame
+    // the camera wrote, and every reduction on the way here takes some of it
+    // away: measured one step smaller than the thumbnail, this same photograph
+    // reads as sharp enough to say nothing about, and a real album went quiet.
+    await openAlbum(page, {
+      photos,
+      objectBytes: {
+        'owner/album-1/photo-1-thumb.jpg': sharpPng(),
+        'owner/album-1/photo-2-thumb.jpg': softPng(),
+      },
+    })
+
+    await expect(page.getByRole('heading', { name: 'Photos that look out of focus' })).toBeVisible()
+    await expect(page.getByLabel(/Remove photo 2/)).toBeVisible()
+    await expect(page.locator('section.soft .similar-item')).toHaveCount(1)
   })
 
   test('says nothing about an album that is in focus', async ({ page }) => {
