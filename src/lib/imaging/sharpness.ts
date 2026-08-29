@@ -69,6 +69,24 @@ const MIN_CONTRAST = 9
 /** The share of squares, sharpest first, the reading is taken from. */
 const FOCUS_SHARE = 0.2
 
+/**
+ * The detail a perfectly smooth photograph still shows, because pixels are
+ * whole numbers.
+ *
+ * Rounding to 8 bits is itself a source of noise, with a variance of 1/12, and
+ * the Laplacian multiplies the variance of anything uncorrelated by the sum of
+ * its squared weights — four ones and a minus four, so twenty. Every square
+ * therefore carries about 20/12 of detail that is not detail.
+ *
+ * Left in, it lands hardest exactly where it does the most harm. A square with
+ * little contrast divides that fixed amount by a small number, and taking the
+ * sharpest squares then seeks those inflated readings out: a blurred photograph
+ * measured 0.21 in the browser against 0.07 on the same pixels in floating
+ * point. Subtracting it is what makes a reading taken on real 8-bit pixels
+ * agree with one taken on the arithmetic.
+ */
+const QUANTISATION_DETAIL = 20 / 12
+
 function variance(values: number[]): number {
   if (values.length === 0) return 0
 
@@ -136,7 +154,7 @@ export function focusScore(
       const contrast = variance(brightness)
       if (contrast < MIN_CONTRAST) continue
 
-      scores.push(variance(detail) / contrast)
+      scores.push(Math.max(0, variance(detail) - QUANTISATION_DETAIL) / contrast)
     }
   }
 

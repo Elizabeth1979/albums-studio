@@ -22,21 +22,31 @@ import type { SimilarGroup } from './similarity'
 /**
  * Below this reading, the sharpest part of the photograph is not sharp.
  *
- * Measured rather than guessed. Across scenes built to span the cases that
- * matter — textured landscapes, low-contrast fog, a portrait against a blurred
- * background, a small subject against a blurred background, and the same
- * scenes progressively blurred — everything in focus measured 0.72 and above
- * and everything blurred measured 0.17 and below. The line sits at 0.3: inside
- * that gap, and deliberately nearer the blurred end.
+ * Measured, and measured the way the photograph actually reaches us, which is
+ * the part the first version got wrong. Focus is a property of the frame the
+ * camera wrote, and everything downstream of that destroys it: the stored image
+ * is a fifth of the camera's width and the thumbnail a fifth of that again, and
+ * blur shrinks along with everything else. Calibrating against images that were
+ * blurred at the size they are measured at describes a photograph nobody owns,
+ * and produced a threshold that flagged nothing in a real album.
  *
- * Nearer the blurred end because the two mistakes are not equal. Missing a soft
- * photograph costs nothing — the owner scrolls past it exactly as she does
- * today. Calling a photograph she meant to keep blurred asks her to consider
- * deleting it, and a suggestion that does that twice stops being read.
- * `src/lib/focus.test.ts` holds the scenes; re-run it after changing anything
- * about how the reading is taken.
+ * `imaging/focusScore.test.ts` now blurs at camera size and then shrinks the
+ * way the app shrinks, which gives:
+ *
+ * - in focus: 0.86 and above
+ * - a sharp subject against a deliberately blurred background: 0.63 to 0.78
+ * - very slightly soft: 0.60 to 0.68
+ * - soft enough to be worth mentioning: 0.29 to 0.33
+ * - plainly blurred: 0.14 and below
+ * - fog, a blank wall: no reading at all
+ *
+ * The line sits at 0.4: below the softness nobody would complain about and the
+ * blurred-background case, above everything genuinely soft. Nearer the quiet
+ * end than the middle, because missing a soft photograph costs nothing while
+ * calling a photograph she meant to keep blurred asks her to consider deleting
+ * it.
  */
-export const SOFT_FOCUS = 0.3
+export const SOFT_FOCUS = 0.4
 
 export type SoftPhoto = {
   photo: Photo
