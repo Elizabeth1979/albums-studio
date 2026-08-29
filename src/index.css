@@ -2047,3 +2047,17 @@ textarea:focus-visible {
   flex-wrap: wrap;
   overflow-x: visible;
 }
+
+/*
+ * A quiet admission, not a warning. Nothing is broken about the photographs
+ * themselves, so this sits at the weight of a footnote — but it does have to
+ * be visible, because an album where nothing could be measured and an album
+ * with nothing to report used to look exactly alike.
+ */
+.focus-unchecked {
+  margin-top: 1.2rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #e6ded2;
+  color: #6f675c;
+  font-size: 0.85rem;
+}

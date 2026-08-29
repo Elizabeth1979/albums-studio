@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { measureFocus } from './measure'
+import { type FocusReading, measureFocus } from './measure'
 import { type ProcessedImage, detailOf, isPermanentFailure, processImage } from './process'
 
 export type ProcessRequest = {
@@ -11,7 +11,7 @@ export type ProcessRequest = {
 /** Judging the focus of a photograph the album already holds. */
 export type MeasureRequest = {
   id: string
-  measure: string
+  measure: Blob
 }
 
 export type WorkerRequest = ProcessRequest | MeasureRequest
@@ -19,7 +19,7 @@ export type WorkerRequest = ProcessRequest | MeasureRequest
 export type ProcessResponse =
   | ({ id: string; ok: true } & ProcessedImage)
   | { id: string; ok: false; message: string; detail: string; unreadable: boolean }
-  | { id: string; ok: true; focus: number | null }
+  | { id: string; ok: true; reading: FocusReading }
 
 function isMeasure(request: WorkerRequest): request is MeasureRequest {
   return 'measure' in request
@@ -33,7 +33,7 @@ function isMeasure(request: WorkerRequest): request is MeasureRequest {
 self.addEventListener('message', async (event: MessageEvent<WorkerRequest>) => {
   if (isMeasure(event.data)) {
     const { id, measure } = event.data
-    const response: ProcessResponse = { id, ok: true, focus: await measureFocus(measure) }
+    const response: ProcessResponse = { id, ok: true, reading: await measureFocus(measure) }
     self.postMessage(response)
     return
   }

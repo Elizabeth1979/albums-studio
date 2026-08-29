@@ -147,6 +147,15 @@ saying so.
   when the markup it belongs to is already on screen and tappable, and a handler that finds
   its dependency missing tends to return quietly. This is invisible on a fast machine and
   shows up on a slow phone or a loaded CI runner.
+- Never let a failure and a clean result look the same on screen. The focus check answered
+  "nothing to say" both when it had measured a photograph and when it could not read one at
+  all, so an album where nothing worked was indistinguishable from an album with nothing to
+  report — and three rounds of debugging chased thresholds that may never have run. Where a
+  check can fail, the interface has to be able to say so.
+- Drawing a picture and reading it are different permissions. An `<img>` renders a URL that
+  script may not be allowed to read back, so a hand-fetched signed URL can fail for every
+  photograph while every tile looks perfect. Go through the client that already holds the
+  session.
 - Test the input the real thing gets, not a convenient stand-in for it. Focus advice shipped
   green and did nothing in a real album twice over: the scenes were blurred at the size they
   were measured at, when a camera blurs a frame thousands of pixels wide that the app then

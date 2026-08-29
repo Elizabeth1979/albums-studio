@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [Silence that could not be told apart from success](sessions/2026-08-29-focus-failure-made-visible.md) —
+  the focus check reported "nothing to say" whether it had measured a photograph or failed to
+  read it at all, which made three rounds of debugging blind; failures are now named on
+  screen and the bytes come through the Supabase client rather than a hand-fetched URL.
 - [The blur advice that shipped green and saw nothing](sessions/2026-08-29-focus-measured-wrong.md) —
   why the first version flagged nothing in a real album: blur measured after the photograph
   had been shrunk twice, and 8-bit rounding read as detail. Both faults are now guarded by

@@ -1,5 +1,5 @@
 import { type ProcessedImage, processImage } from './process'
-import { measureFocus } from './measure'
+import { type FocusReading, measureFocus } from './measure'
 import type { MeasureRequest, ProcessRequest, ProcessResponse } from './worker'
 
 class RelayedUnreadableError extends Error {
@@ -16,9 +16,9 @@ export type ImageProcessor = {
   process: (file: File, fileName: string) => Promise<ProcessedImage>
   /**
    * How well the best-focused part of an already-stored photograph is focused,
-   * read from its thumbnail. Null when there is nothing to judge.
+   * read from thumbnail bytes the caller has already downloaded.
    */
-  measure: (url: string) => Promise<number | null>
+  measure: (thumbnail: Blob) => Promise<FocusReading>
   dispose: () => void
 }
 
@@ -30,7 +30,7 @@ function workersUsable(): boolean {
 function mainThreadProcessor(): ImageProcessor {
   return {
     process: (file, fileName) => processImage(file, fileName),
-    measure: (url) => measureFocus(url),
+    measure: (thumbnail) => measureFocus(thumbnail),
     dispose: () => {},
   }
 }
@@ -66,7 +66,7 @@ export function createImageProcessor(): ImageProcessor {
     if (response.ok) {
       const { id: _id, ok: _ok, ...result } = response
       ;(waiting.resolve as (value: unknown) => void)(
-        'focus' in result ? result.focus : result,
+        'reading' in result ? result.reading : result,
       )
       return
     }
@@ -102,8 +102,8 @@ export function createImageProcessor(): ImageProcessor {
     process(file, fileName) {
       return ask<ProcessedImage>((id) => ({ id, file, fileName }))
     },
-    measure(url) {
-      return ask<number | null>((id) => ({ id, measure: url }))
+    measure(thumbnail) {
+      return ask<FocusReading>((id) => ({ id, measure: thumbnail }))
     },
     dispose() {
       pending.clear()

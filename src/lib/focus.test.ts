@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { SOFT_FOCUS, findSoftPhotos } from './focus'
+import { SOFT_FOCUS, findSoftPhotos, unreadable } from './focus'
+import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
+
+/** A photograph the app looked at and got a number from. */
+function measured(focus: number): FocusReading {
+  return { kind: 'measured', focus }
+}
 
 function photo(overrides: Partial<Photo> & { id: string }): Photo {
   return {
@@ -26,8 +32,8 @@ describe('findSoftPhotos', () => {
     // against, which near-duplicate review is structurally unable to mention.
     const photos = [photo({ id: 'sharp', sortOrder: 0 }), photo({ id: 'blurry', sortOrder: 1 })]
     const readings = new Map([
-      ['sharp', 1.4],
-      ['blurry', 0.1],
+      ['sharp', measured(1.4)],
+      ['blurry', measured(0.1)],
     ])
 
     expect(
@@ -38,16 +44,39 @@ describe('findSoftPhotos', () => {
   it('leaves a photograph exactly at the line alone', () => {
     const photos = [photo({ id: 'borderline' })]
 
-    expect(findSoftPhotos(photos, new Map([['borderline', SOFT_FOCUS]]))).toEqual([])
+    expect(findSoftPhotos(photos, new Map([['borderline', measured(SOFT_FOCUS)]]))).toEqual([])
   })
 
-  it('says nothing about a photograph with no reading', () => {
-    // Two ways to have none: too little contrast anywhere to judge (fog, a
-    // blank wall), or a thumbnail that would not decode. Silence is the honest
-    // answer to both; a missing measurement is not evidence of blur.
-    const photos = [photo({ id: 'unmeasurable' }), photo({ id: 'not-yet-measured' })]
+  it('offers nothing for a photograph whose bytes could not be read', () => {
+    // The failure that hid for three rounds. A photograph nobody could measure
+    // must not be quietly counted as fine — it is reported separately instead.
+    const photos = [photo({ id: 'unreadable' })]
+    const readings = new Map<string, FocusReading>([
+      ['unreadable', { kind: 'failed', detail: 'network' }],
+    ])
 
-    expect(findSoftPhotos(photos, new Map([['unmeasurable', null]]))).toEqual([])
+    expect(findSoftPhotos(photos, readings)).toEqual([])
+    expect(unreadable(photos, readings).map((one) => one.id)).toEqual(['unreadable'])
+  })
+
+  it('counts a photograph with nothing to judge as checked, not as failed', () => {
+    // Fog and a blank wall were read perfectly well; there was simply nothing
+    // in them to judge. That is not the same as a failure and must not be
+    // reported as one.
+    const photos = [photo({ id: 'fog' })]
+    const readings = new Map<string, FocusReading>([['fog', { kind: 'unjudgeable' }]])
+
+    expect(findSoftPhotos(photos, readings)).toEqual([])
+    expect(unreadable(photos, readings)).toEqual([])
+  })
+
+  it('says nothing about a photograph not measured yet', () => {
+    // Readings arrive a moment after the album draws, so the map is incomplete
+    // for a beat. An absent measurement is not evidence of blur.
+    const photos = [photo({ id: 'not-yet-measured' })]
+
+    expect(findSoftPhotos(photos, new Map())).toEqual([])
+    expect(unreadable(photos, new Map())).toEqual([])
   })
 
   it('returns them in album order', () => {
@@ -56,8 +85,8 @@ describe('findSoftPhotos', () => {
       photo({ id: 'earlier', sortOrder: 2 }),
     ]
     const readings = new Map([
-      ['later', 0.05],
-      ['earlier', 0.05],
+      ['later', measured(0.05)],
+      ['earlier', measured(0.05)],
     ])
 
     expect(findSoftPhotos(photos, readings).map((entry) => entry.photo.id)).toEqual([
@@ -76,9 +105,9 @@ describe('findSoftPhotos', () => {
       photo({ id: 'alone', sortOrder: 2 }),
     ]
     const readings = new Map([
-      ['one', 1.2],
-      ['two', 0.04],
-      ['alone', 0.04],
+      ['one', measured(1.2)],
+      ['two', measured(0.04)],
+      ['alone', measured(0.04)],
     ])
 
     expect(

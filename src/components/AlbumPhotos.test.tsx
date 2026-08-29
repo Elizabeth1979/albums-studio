@@ -7,6 +7,7 @@ import type { Photo } from '../lib/photos'
 
 const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted(() => ({
   photosApi: {
+    photoBytes: vi.fn(),
     listPhotos: vi.fn(),
     storePhoto: vi.fn(),
     signedUrls: vi.fn(),
@@ -79,7 +80,8 @@ beforeEach(() => {
   photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue(1.4)
+  processorApi.measure.mockResolvedValue({ kind: 'measured', focus: 1.4 })
+  photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
   processorApi.process.mockResolvedValue({
     full: new Blob(['full']),
     thumbnail: new Blob(['thumb']),
@@ -241,7 +243,8 @@ describe('AlbumPhotos', () => {
     photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue(1.4)
+  processorApi.measure.mockResolvedValue({ kind: 'measured', focus: 1.4 })
+  photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
 
     renderPhotos()
 
@@ -469,7 +472,8 @@ describe('AlbumPhotos', () => {
       photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue(1.4)
+  processorApi.measure.mockResolvedValue({ kind: 'measured', focus: 1.4 })
+  photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
 
       renderPhotos()
       fireEvent.click(await screen.findByRole('button', { name: /^Edit photo 2/ }))
@@ -522,7 +526,8 @@ describe('AlbumPhotos', () => {
       photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue(1.4)
+  processorApi.measure.mockResolvedValue({ kind: 'measured', focus: 1.4 })
+  photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
 
       renderPhotos(overrides)
       fireEvent.click(await screen.findByRole('button', { name }))
@@ -562,7 +567,8 @@ describe('AlbumPhotos', () => {
       photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue(1.4)
+  processorApi.measure.mockResolvedValue({ kind: 'measured', focus: 1.4 })
+  photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
       photosApi.swapPhotoOrder.mockResolvedValue(undefined)
       photosApi.deletePhoto.mockResolvedValue(undefined)
 
@@ -682,9 +688,10 @@ describe('AlbumPhotos', () => {
       // The gap this closes: near-duplicate review can only rank a photograph
       // against its siblings, so a single soft frame was never mentioned.
       albumOf(2)
-      processorApi.measure.mockImplementation(async (url: string) =>
-        url.endsWith('photo-1') ? 0.05 : 1.4,
-      )
+      // The blurred one is the second: bytes are downloaded per photo, so the
+      // stub answers in the order the album asks.
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 1.4 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 0.05 })
 
       renderPhotos()
 
@@ -703,7 +710,7 @@ describe('AlbumPhotos', () => {
       renderPhotos()
 
       await waitFor(() => expect(processorApi.measure).toHaveBeenCalledTimes(2))
-      expect(processorApi.measure).toHaveBeenCalledWith('https://signed/photo-0')
+      expect(photosApi.photoBytes).toHaveBeenCalledWith('owner/album-1/photo-0-thumb.jpg')
     })
 
     it('says nothing when every photograph is in focus', async () => {
@@ -721,7 +728,7 @@ describe('AlbumPhotos', () => {
       // Fog, a blank wall, a thumbnail that would not decode: no reading is not
       // the same as a bad one.
       albumOf(1)
-      processorApi.measure.mockResolvedValue(null)
+      processorApi.measure.mockResolvedValue({ kind: 'unjudgeable' })
 
       renderPhotos()
 
@@ -731,11 +738,34 @@ describe('AlbumPhotos', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('says so when a photograph could not be checked at all', async () => {
+      // Reading the bytes is the step most likely to fail in a real browser and
+      // the one no test could see while failure looked like silence.
+      albumOf(1)
+      photosApi.photoBytes.mockRejectedValue(new Error('403'))
+
+      renderPhotos()
+
+      expect(
+        await screen.findByText(/could not be checked for focus/),
+      ).toBeInTheDocument()
+    })
+
+    it('stays quiet when every photograph was checked', async () => {
+      albumOf(1)
+
+      renderPhotos()
+
+      await waitFor(() => expect(processorApi.measure).toHaveBeenCalled())
+      expect(screen.queryByText(/could not be checked for focus/)).not.toBeInTheDocument()
+    })
+
     it('removes nothing until the owner ticks and then confirms', async () => {
       albumOf(2)
-      processorApi.measure.mockImplementation(async (url: string) =>
-        url.endsWith('photo-1') ? 0.05 : 1.4,
-      )
+      // The blurred one is the second: bytes are downloaded per photo, so the
+      // stub answers in the order the album asks.
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 1.4 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 0.05 })
 
       renderPhotos()
       fireEvent.click(await screen.findByLabelText(/Remove photo 2/))

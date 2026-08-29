@@ -150,6 +150,8 @@ export type StubOptions = {
    * the browser decodes. Anything unlisted gets the one-pixel stand-in.
    */
   objectBytes?: Record<string, Buffer>
+  /** Status and body returned when the client downloads an object's bytes. */
+  objectRead?: { status: number; body: object }
   /** Status and body returned by writes to `albums`, for failure cases. */
   albumWrite?: { status: number; body: object }
   /** Status and body returned by the magic-link and reset endpoints. */
@@ -301,6 +303,19 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       }
 
       const key = path.replace('/storage/v1/object/photos/', '')
+
+      if (method === 'GET') {
+        // What `storage.download()` asks for. Separate from the signed-URL
+        // route on purpose: an <img> and a script read the same object through
+        // different doors, and only one of them is how focus is measured.
+        const bytes = options.objectBytes?.[key]
+        if (options.objectRead) {
+          return json(options.objectRead.body, options.objectRead.status)
+        }
+        if (bytes) {
+          return route.fulfill({ status: 200, contentType: 'image/png', body: bytes })
+        }
+      }
 
       if (method === 'POST' || method === 'PUT') {
         objects = [...objects, key]
