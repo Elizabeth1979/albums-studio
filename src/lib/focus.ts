@@ -55,6 +55,52 @@ export type SoftPhoto = {
   focus: number
 }
 
+/**
+ * What the focus check actually managed to do, for saying so on screen.
+ *
+ * Reported plainly because three rounds of this feature were debugged blind:
+ * an album where the check never ran, one where every photograph failed to
+ * read, and one where everything was measured and judged fine all looked
+ * identical — nothing on screen distinguished them. A count and the softest
+ * reading tell those three apart at a glance.
+ */
+export type FocusSummary = {
+  total: number
+  measured: number
+  unjudgeable: number
+  failed: number
+  /** The lowest reading obtained, or null when nothing was measured. */
+  softest: number | null
+}
+
+export function summariseFocus(
+  photos: Photo[],
+  readings: Map<string, FocusReading>,
+): FocusSummary {
+  const summary: FocusSummary = {
+    total: photos.length,
+    measured: 0,
+    unjudgeable: 0,
+    failed: 0,
+    softest: null,
+  }
+
+  for (const photo of photos) {
+    const reading = readings.get(photo.id)
+    if (!reading) continue
+
+    if (reading.kind === 'failed') summary.failed += 1
+    else if (reading.kind === 'unjudgeable') summary.unjudgeable += 1
+    else {
+      summary.measured += 1
+      summary.softest =
+        summary.softest === null ? reading.focus : Math.min(summary.softest, reading.focus)
+    }
+  }
+
+  return summary
+}
+
 /** Photographs the app tried to judge and could not read at all. */
 export function unreadable(photos: Photo[], readings: Map<string, FocusReading>): Photo[] {
   return photos.filter((photo) => readings.get(photo.id)?.kind === 'failed')

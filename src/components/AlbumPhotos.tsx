@@ -28,7 +28,7 @@ import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
 import { mapWithConcurrency } from '../lib/concurrency'
 import type { FocusReading } from '../lib/imaging/measure'
-import { findSoftPhotos, unreadable } from '../lib/focus'
+import { SOFT_FOCUS, findSoftPhotos, summariseFocus } from '../lib/focus'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -125,25 +125,38 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     const measurable = current.filter((photo) => photo.thumbnailPath)
     if (measurable.length === 0) return
 
-    const processor = imageProcessor()
+    // Everything is inside the catch, including building the processor. A
+    // failure out here used to leave the readings empty, which reads on screen
+    // exactly like an album where every photograph is fine — the same silence
+    // that made this feature undebuggable three times over.
+    try {
+      const processor = imageProcessor()
 
-    const results = await mapWithConcurrency(measurable, 4, async (photo) => {
-      const bytes = await photoBytes(photo.thumbnailPath as string)
-      return processor.measure(bytes)
-    })
-
-    setFocusReadings((known) => {
-      const next = new Map(known)
-      results.forEach((result, index) => {
-        next.set(
-          measurable[index].id,
-          result.status === 'fulfilled'
-            ? result.value
-            : { kind: 'failed', detail: describe(result.reason, 'the photo could not be read') },
-        )
+      const results = await mapWithConcurrency(measurable, 4, async (photo) => {
+        const bytes = await photoBytes(photo.thumbnailPath as string)
+        return processor.measure(bytes)
       })
-      return next
-    })
+
+      setFocusReadings((known) => {
+        const next = new Map(known)
+        results.forEach((result, index) => {
+          next.set(
+            measurable[index].id,
+            result.status === 'fulfilled'
+              ? result.value
+              : { kind: 'failed', detail: describe(result.reason, 'the photo could not be read') },
+          )
+        })
+        return next
+      })
+    } catch (caught) {
+      const detail = describe(caught, 'the focus check could not run')
+      setFocusReadings((known) => {
+        const next = new Map(known)
+        for (const photo of measurable) next.set(photo.id, { kind: 'failed', detail })
+        return next
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -361,11 +374,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // handled a section above, where there is something to compare them against.
   const softPhotos = findSoftPhotos(photos, focusReadings, similarGroups)
 
-  // Photographs the focus check could not read at all. Said out loud rather
-  // than passed over in silence: an album with nothing to report and an album
-  // where nothing could be checked look identical otherwise, and the second one
-  // spent three rounds of debugging looking like the first.
-  const uncheckable = unreadable(photos, focusReadings)
+  // Temporary, and said so in the interface: the softest reading is the one
+  // number that would settle whether the threshold is wrong, and it is only
+  // obtainable from a real album. It comes out once that is settled.
+  const focusSummary = summariseFocus(photos, focusReadings)
 
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
@@ -422,13 +434,17 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               onRemove={handleRemoveChosen}
             />
 
-            {uncheckable.length > 0 && (
+            {focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 && (
               <p className="album-note focus-unchecked">
-                {uncheckable.length === 1
-                  ? 'One photograph could not be checked for focus.'
-                  : `${uncheckable.length} photographs could not be checked for focus.`}{' '}
-                Nothing is wrong with them in the album — they simply could not be read for
-                measuring, so they are left out of any suggestion above.
+                <strong>Focus check:</strong> read {focusSummary.measured} of{' '}
+                {focusSummary.total}
+                {focusSummary.failed > 0 && `, could not read ${focusSummary.failed}`}
+                {focusSummary.unjudgeable > 0 &&
+                  `, too little contrast to judge ${focusSummary.unjudgeable}`}
+                {focusSummary.softest !== null &&
+                  `. Softest reading ${focusSummary.softest.toFixed(2)} (anything under ${SOFT_FOCUS} is offered above)`}
+                . This line is here while the setting is being tuned and will come out
+                afterwards.
               </p>
             )}
 
