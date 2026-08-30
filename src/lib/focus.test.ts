@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SOFT_FOCUS, SOFT_SHARE_OF_ALBUM, findSoftPhotos, summariseFocus, unreadable } from './focus'
+import { SOFT_FOCUS, findSoftPhotos, summariseFocus, unreadable } from './focus'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
@@ -41,28 +41,29 @@ describe('findSoftPhotos', () => {
     ).toEqual(['blurry'])
   })
 
-  it('judges a photograph against its own album, not against a fixed number', () => {
-    // The reading is a ratio of detail to contrast, and how much fine detail a
-    // scene carries has nothing to do with focus. A real album of beach
-    // photographs read between 2 and 15 where synthetic scenes read about 1, so
-    // the plainly blurred frame at 2.23 cleared every absolute line and four
-    // rounds of this feature said nothing.
+  it('does not offer a sharp photograph for carrying less texture than its album', () => {
+    // The reason the album comparison was withdrawn. The reading counts fine
+    // detail, and a sharp close-up of two faces carries far less of it than a
+    // mediocre photograph of rippling water — so in an album of beach scenes
+    // the portrait is the outlier. Comparing against the album told the owner
+    // her sharp photograph of herself was out of focus, which is the one
+    // mistake this feature must not make.
     const album = [
-      photo({ id: 'a', sortOrder: 0 }),
-      photo({ id: 'b', sortOrder: 1 }),
-      photo({ id: 'c', sortOrder: 2 }),
-      photo({ id: 'd', sortOrder: 3 }),
-      photo({ id: 'blurred', sortOrder: 4 }),
+      photo({ id: 'water-a', sortOrder: 0 }),
+      photo({ id: 'water-b', sortOrder: 1 }),
+      photo({ id: 'water-c', sortOrder: 2 }),
+      photo({ id: 'water-d', sortOrder: 3 }),
+      photo({ id: 'sharp-portrait', sortOrder: 4 }),
     ]
     const readings = new Map([
-      ['a', measured(9.1)],
-      ['b', measured(6.4)],
-      ['c', measured(7.7)],
-      ['d', measured(5.2)],
-      ['blurred', measured(2.23)],
+      ['water-a', measured(9.1)],
+      ['water-b', measured(6.4)],
+      ['water-c', measured(7.7)],
+      ['water-d', measured(5.2)],
+      ['sharp-portrait', measured(2.4)],
     ])
 
-    expect(findSoftPhotos(album, readings).map((entry) => entry.photo.id)).toEqual(['blurred'])
+    expect(findSoftPhotos(album, readings)).toEqual([])
   })
 
   it('leaves an album alone when nothing in it stands out', () => {
@@ -93,7 +94,7 @@ describe('findSoftPhotos', () => {
     expect(findSoftPhotos(album, readings).map((entry) => entry.photo.id)).toEqual(['ruined'])
   })
 
-  it('reports the readings and the line the album settled on', () => {
+  it('reports every reading and the line photographs are judged against', () => {
     const album = [0, 1, 2, 3].map((index) => photo({ id: `photo-${index}`, sortOrder: index }))
     const readings = new Map(
       [4, 6, 8, 2].map((value, index) => [`photo-${index}`, measured(value)]),
@@ -102,8 +103,7 @@ describe('findSoftPhotos', () => {
     const summary = summariseFocus(album, readings)
 
     expect(summary.readings).toEqual([2, 4, 6, 8])
-    expect(summary.line).toBeCloseTo(5 * SOFT_SHARE_OF_ALBUM, 5)
-    expect(summary.line).toBeGreaterThan(SOFT_FOCUS)
+    expect(summary.line).toBe(SOFT_FOCUS)
   })
 
   it('leaves a photograph exactly at the floor alone', () => {

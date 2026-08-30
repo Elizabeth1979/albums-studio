@@ -132,7 +132,8 @@ export function summariseFocus(
 
   const middle =
     summary.readings.length >= ENOUGH_TO_COMPARE ? median(summary.readings) : null
-  summary.line = middle === null ? null : Math.max(SOFT_FOCUS, middle * SOFT_SHARE_OF_ALBUM)
+  void middle
+  summary.line = SOFT_FOCUS
 
   return summary
 }
@@ -168,8 +169,24 @@ export function findSoftPhotos(
     return reading?.kind === 'measured' ? [reading.focus] : []
   })
 
-  const middle = measured.length >= ENOUGH_TO_COMPARE ? median(measured) : null
-  const line = middle === null ? SOFT_FOCUS : Math.max(SOFT_FOCUS, middle * SOFT_SHARE_OF_ALBUM)
+  // Withdrawn, deliberately, and the reasoning is worth keeping.
+  //
+  // Comparing a photograph against its album fixed the scale problem and
+  // introduced a worse one: the reading counts fine detail, and a sharp
+  // close-up of two faces carries far less of it than a mediocre photograph of
+  // rippling water. In an album of beach scenes the portrait is the outlier, so
+  // the first thing this rule did in a real album was tell the owner her sharp
+  // photograph of herself was out of focus.
+  //
+  // Between missing a blurred photograph and condemning a good one, this
+  // product has always chosen to miss, so the comparison stays off until the
+  // reading measures how soft an edge is rather than how much texture a scene
+  // happens to contain. `ENOUGH_TO_COMPARE`, `SOFT_SHARE_OF_ALBUM` and
+  // `median` stay for that work.
+  void ENOUGH_TO_COMPARE
+  void SOFT_SHARE_OF_ALBUM
+  void measured
+  const line = SOFT_FOCUS
 
   return photos
     .filter((photo) => !grouped.has(photo.id))
