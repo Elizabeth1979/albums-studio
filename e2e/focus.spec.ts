@@ -84,7 +84,7 @@ test.describe('photos that are out of focus', () => {
       objectRead: { status: 403, body: { message: 'not allowed' } },
     })
 
-    await expect(page.getByText(/could not be checked for focus/)).toBeVisible()
+    await expect(page.getByText(/could not read 2/)).toBeVisible()
   })
 
   test('says nothing about an album that is in focus', async ({ page }) => {

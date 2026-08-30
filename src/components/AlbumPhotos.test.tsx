@@ -738,7 +738,7 @@ describe('AlbumPhotos', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('says so when a photograph could not be checked at all', async () => {
+    it('says so when a photograph could not be read', async () => {
       // Reading the bytes is the step most likely to fail in a real browser and
       // the one no test could see while failure looked like silence.
       albumOf(1)
@@ -746,18 +746,34 @@ describe('AlbumPhotos', () => {
 
       renderPhotos()
 
-      expect(
-        await screen.findByText(/could not be checked for focus/),
-      ).toBeInTheDocument()
+      expect(await screen.findByText(/could not read 1/)).toBeInTheDocument()
     })
 
-    it('stays quiet when every photograph was checked', async () => {
-      albumOf(1)
+    it('says so when the whole check could not run', async () => {
+      // A failure outside the per-photograph loop used to leave the readings
+      // empty, which on screen is indistinguishable from an album where every
+      // photograph is fine.
+      albumOf(2)
+      createImageProcessor.mockImplementation(() => {
+        throw new Error('no worker')
+      })
 
       renderPhotos()
 
-      await waitFor(() => expect(processorApi.measure).toHaveBeenCalled())
-      expect(screen.queryByText(/could not be checked for focus/)).not.toBeInTheDocument()
+      expect(await screen.findByText(/could not read 2/)).toBeInTheDocument()
+    })
+
+    it('reports what it managed to read, and the softest reading it found', async () => {
+      // The number that settles whether the threshold is wrong, from a real
+      // album rather than a synthetic one.
+      albumOf(2)
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 1.4 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 0.52 })
+
+      renderPhotos()
+
+      expect(await screen.findByText(/read 2 of 2/)).toBeInTheDocument()
+      expect(screen.getByText(/Softest reading 0\.52/)).toBeInTheDocument()
     })
 
     it('removes nothing until the owner ticks and then confirms', async () => {

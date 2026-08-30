@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [Making the focus check state its own result](sessions/2026-08-29-focus-check-says-what-it-did.md) —
+  per-photograph failures were reported but a failure of the whole pass was not, so three
+  different states still looked identical; the album now names what the check read and the
+  softest reading it found.
 - [Silence that could not be told apart from success](sessions/2026-08-29-focus-failure-made-visible.md) —
   the focus check reported "nothing to say" whether it had measured a photograph or failed to
   read it at all, which made three rounds of debugging blind; failures are now named on
