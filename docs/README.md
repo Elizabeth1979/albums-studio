@@ -142,6 +142,9 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
+  a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
+  was five times too low; photographs are now judged against their own album's median.
 - [Making the focus check state its own result](sessions/2026-08-29-focus-check-says-what-it-did.md) —
   per-photograph failures were reported but a failure of the whole pass was not, so three
   different states still looked identical; the album now names what the check read and the

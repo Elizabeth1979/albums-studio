@@ -147,6 +147,12 @@ saying so.
   when the markup it belongs to is already on screen and tappable, and a handler that finds
   its dependency missing tends to return quietly. This is invisible on a fast machine and
   shows up on a slow phone or a loaded CI runner.
+- A signal calibrated against generated data is calibrated against nothing until a real
+  example has been seen. Focus readings from synthetic texture landed around 1; the owner's
+  real beach photographs read 2 to 15, so the blurred one sat five times above a threshold
+  drawn from those scenes and four rounds of fixes changed nothing. Where a measure depends
+  on content — detail, texture, contrast, colour — either judge each item against its own
+  neighbours or get real examples before choosing a constant.
 - Never let a failure and a clean result look the same on screen. The focus check answered
   "nothing to say" both when it had measured a photograph and when it could not read one at
   all, so an album where nothing worked was indistinguishable from an album with nothing to

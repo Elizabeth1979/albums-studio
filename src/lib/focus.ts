@@ -21,33 +21,56 @@ import type { Photo } from './photos'
 import type { SimilarGroup } from './similarity'
 
 /**
- * Below this reading, the sharpest part of the photograph is not sharp.
+ * How far below its album a photograph has to read before it is worth
+ * mentioning.
  *
- * Measured, and measured the way the photograph actually reaches us, which is
- * the part the first version got wrong. Focus is a property of the frame the
- * camera wrote, and everything downstream of that destroys it: the stored image
- * is a fifth of the camera's width and the thumbnail a fifth of that again, and
- * blur shrinks along with everything else. Calibrating against images that were
- * blurred at the size they are measured at describes a photograph nobody owns,
- * and produced a threshold that flagged nothing in a real album.
+ * Relative, not absolute, and that is the correction. The reading is a ratio of
+ * detail to contrast, and how much fine detail a photograph carries is a fact
+ * about the scene rather than about the focus: water, sand, foliage and hair
+ * produce far more of it than a wall or a sky. Scenes built from synthetic
+ * texture read around 1 when sharp; a real album of beach photographs read
+ * between 2 and 15, with the plainly blurred frame at 2.23 — above every
+ * absolute line drawn from those synthetic scenes, and the reason four rounds
+ * of this feature said nothing.
  *
- * `imaging/focusScore.test.ts` now blurs at camera size and then shrinks the
- * way the app shrinks, which gives:
+ * What does hold across scenes is the comparison *within one album*: the same
+ * camera, the same sort of subject, mostly the same afternoon. A photograph
+ * reading well under what the rest of that album reads is the odd one out
+ * whatever the absolute numbers are.
  *
- * - in focus: 0.86 and above
- * - a sharp subject against a deliberately blurred background: 0.63 to 0.78
- * - very slightly soft: 0.60 to 0.68
- * - soft enough to be worth mentioning: 0.29 to 0.33
- * - plainly blurred: 0.14 and below
- * - fog, a blank wall: no reading at all
+ * At 0.6 a frame has to read under three fifths of its album's median. In the
+ * album this was calibrated against, the sharp photographs sit near the median
+ * and the blurred one sits far below it.
+ */
+export const SOFT_SHARE_OF_ALBUM = 0.6
+
+/**
+ * How many photographs must have been measured before a median means anything.
  *
- * The line sits at 0.4: below the softness nobody would complain about and the
- * blurred-background case, above everything genuinely soft. Nearer the quiet
- * end than the middle, because missing a soft photograph costs nothing while
- * calling a photograph she meant to keep blurred asks her to consider deleting
- * it.
+ * With three photographs a "median" is one photograph, and the softest of three
+ * is not evidence of anything.
+ */
+export const ENOUGH_TO_COMPARE = 4
+
+/**
+ * An absolute floor kept underneath the comparison, for the frame that is
+ * blurred beyond any argument.
+ *
+ * It cannot be the main rule — that was the mistake — but a reading this low
+ * means nothing in the frame has an edge, whatever the album around it looks
+ * like, and a one-photograph album has no album to be compared against.
  */
 export const SOFT_FOCUS = 0.4
+
+/** The middle reading of an album, which the rest are judged against. */
+export function median(values: number[]): number | null {
+  if (values.length === 0) return null
+
+  const sorted = [...values].sort((one, two) => one - two)
+  const middle = Math.floor(sorted.length / 2)
+
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
+}
 
 export type SoftPhoto = {
   photo: Photo
@@ -71,6 +94,10 @@ export type FocusSummary = {
   failed: number
   /** The lowest reading obtained, or null when nothing was measured. */
   softest: number | null
+  /** Every reading obtained, lowest first. */
+  readings: number[]
+  /** The line photographs were judged against, once the album set one. */
+  line: number | null
 }
 
 export function summariseFocus(
@@ -83,6 +110,8 @@ export function summariseFocus(
     unjudgeable: 0,
     failed: 0,
     softest: null,
+    readings: [],
+    line: null,
   }
 
   for (const photo of photos) {
@@ -93,10 +122,17 @@ export function summariseFocus(
     else if (reading.kind === 'unjudgeable') summary.unjudgeable += 1
     else {
       summary.measured += 1
+      summary.readings.push(reading.focus)
       summary.softest =
         summary.softest === null ? reading.focus : Math.min(summary.softest, reading.focus)
     }
   }
+
+  summary.readings.sort((one, two) => one - two)
+
+  const middle =
+    summary.readings.length >= ENOUGH_TO_COMPARE ? median(summary.readings) : null
+  summary.line = middle === null ? null : Math.max(SOFT_FOCUS, middle * SOFT_SHARE_OF_ALBUM)
 
   return summary
 }
@@ -127,14 +163,23 @@ export function findSoftPhotos(
 ): SoftPhoto[] {
   const grouped = new Set(groups.flatMap((group) => group.photos).map((photo) => photo.id))
 
+  const measured = photos.flatMap((photo) => {
+    const reading = readings.get(photo.id)
+    return reading?.kind === 'measured' ? [reading.focus] : []
+  })
+
+  const middle = measured.length >= ENOUGH_TO_COMPARE ? median(measured) : null
+  const line = middle === null ? SOFT_FOCUS : Math.max(SOFT_FOCUS, middle * SOFT_SHARE_OF_ALBUM)
+
   return photos
     .filter((photo) => !grouped.has(photo.id))
     .flatMap((photo) => {
       const reading = readings.get(photo.id)
 
-      return reading?.kind === 'measured' && reading.focus < SOFT_FOCUS
+      return reading?.kind === 'measured' && reading.focus < line
         ? [{ photo, focus: reading.focus }]
         : []
     })
     .sort((one, two) => one.photo.sortOrder - two.photo.sortOrder)
 }
+
