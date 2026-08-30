@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SOFT_FOCUS, findSoftPhotos, unreadable } from './focus'
+import { SOFT_FOCUS, SOFT_SHARE_OF_ALBUM, findSoftPhotos, summariseFocus, unreadable } from './focus'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
@@ -41,7 +41,72 @@ describe('findSoftPhotos', () => {
     ).toEqual(['blurry'])
   })
 
-  it('leaves a photograph exactly at the line alone', () => {
+  it('judges a photograph against its own album, not against a fixed number', () => {
+    // The reading is a ratio of detail to contrast, and how much fine detail a
+    // scene carries has nothing to do with focus. A real album of beach
+    // photographs read between 2 and 15 where synthetic scenes read about 1, so
+    // the plainly blurred frame at 2.23 cleared every absolute line and four
+    // rounds of this feature said nothing.
+    const album = [
+      photo({ id: 'a', sortOrder: 0 }),
+      photo({ id: 'b', sortOrder: 1 }),
+      photo({ id: 'c', sortOrder: 2 }),
+      photo({ id: 'd', sortOrder: 3 }),
+      photo({ id: 'blurred', sortOrder: 4 }),
+    ]
+    const readings = new Map([
+      ['a', measured(9.1)],
+      ['b', measured(6.4)],
+      ['c', measured(7.7)],
+      ['d', measured(5.2)],
+      ['blurred', measured(2.23)],
+    ])
+
+    expect(findSoftPhotos(album, readings).map((entry) => entry.photo.id)).toEqual(['blurred'])
+  })
+
+  it('leaves an album alone when nothing in it stands out', () => {
+    // Every photograph in focus, one of them inevitably the softest. Being last
+    // is not the same as being blurred.
+    const album = [0, 1, 2, 3, 4].map((index) =>
+      photo({ id: `photo-${index}`, sortOrder: index }),
+    )
+    const readings = new Map(
+      [7.4, 6.9, 8.1, 6.2, 7.0].map((value, index) => [`photo-${index}`, measured(value)]),
+    )
+
+    expect(findSoftPhotos(album, readings)).toEqual([])
+  })
+
+  it('falls back to the absolute floor when an album is too small to compare within', () => {
+    // Three photographs make no median worth the name, and one of them may
+    // still be blurred beyond argument.
+    const album = [
+      photo({ id: 'one', sortOrder: 0 }),
+      photo({ id: 'ruined', sortOrder: 1 }),
+    ]
+    const readings = new Map([
+      ['one', measured(6.0)],
+      ['ruined', measured(0.05)],
+    ])
+
+    expect(findSoftPhotos(album, readings).map((entry) => entry.photo.id)).toEqual(['ruined'])
+  })
+
+  it('reports the readings and the line the album settled on', () => {
+    const album = [0, 1, 2, 3].map((index) => photo({ id: `photo-${index}`, sortOrder: index }))
+    const readings = new Map(
+      [4, 6, 8, 2].map((value, index) => [`photo-${index}`, measured(value)]),
+    )
+
+    const summary = summariseFocus(album, readings)
+
+    expect(summary.readings).toEqual([2, 4, 6, 8])
+    expect(summary.line).toBeCloseTo(5 * SOFT_SHARE_OF_ALBUM, 5)
+    expect(summary.line).toBeGreaterThan(SOFT_FOCUS)
+  })
+
+  it('leaves a photograph exactly at the floor alone', () => {
     const photos = [photo({ id: 'borderline' })]
 
     expect(findSoftPhotos(photos, new Map([['borderline', measured(SOFT_FOCUS)]]))).toEqual([])

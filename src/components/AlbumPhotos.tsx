@@ -28,7 +28,7 @@ import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
 import { mapWithConcurrency } from '../lib/concurrency'
 import type { FocusReading } from '../lib/imaging/measure'
-import { SOFT_FOCUS, findSoftPhotos, summariseFocus } from '../lib/focus'
+import { findSoftPhotos, summariseFocus } from '../lib/focus'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -441,8 +441,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 {focusSummary.failed > 0 && `, could not read ${focusSummary.failed}`}
                 {focusSummary.unjudgeable > 0 &&
                   `, too little contrast to judge ${focusSummary.unjudgeable}`}
-                {focusSummary.softest !== null &&
-                  `. Softest reading ${focusSummary.softest.toFixed(2)} (anything under ${SOFT_FOCUS} is offered above)`}
+                {focusSummary.readings.length > 0 &&
+                  `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
+                {focusSummary.line !== null &&
+                  ` — anything under ${focusSummary.line.toFixed(2)} is offered above`}
                 . This line is here while the setting is being tuned and will come out
                 afterwards.
               </p>

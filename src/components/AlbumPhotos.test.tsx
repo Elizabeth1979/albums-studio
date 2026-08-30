@@ -763,9 +763,9 @@ describe('AlbumPhotos', () => {
       expect(await screen.findByText(/could not read 2/)).toBeInTheDocument()
     })
 
-    it('reports what it managed to read, and the softest reading it found', async () => {
-      // The number that settles whether the threshold is wrong, from a real
-      // album rather than a synthetic one.
+    it('reports every reading it obtained', async () => {
+      // The numbers that settle where the line belongs, from a real album
+      // rather than a synthetic one.
       albumOf(2)
       processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 1.4 })
       processorApi.measure.mockResolvedValueOnce({ kind: 'measured', focus: 0.52 })
@@ -773,7 +773,7 @@ describe('AlbumPhotos', () => {
       renderPhotos()
 
       expect(await screen.findByText(/read 2 of 2/)).toBeInTheDocument()
-      expect(screen.getByText(/Softest reading 0\.52/)).toBeInTheDocument()
+      expect(screen.getByText(/Readings 0\.52, 1\.40/)).toBeInTheDocument()
     })
 
     it('removes nothing until the owner ticks and then confirms', async () => {
