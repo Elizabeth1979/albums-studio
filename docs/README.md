@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [The measure was reading texture, not focus](sessions/2026-08-30-texture-is-not-focus.md) —
+  the album comparison offered a sharp portrait as blurred, because fine detail is a property
+  of the subject rather than of the focus; the suggestion is off until the reading measures
+  edge width instead.
 - [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
   a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
   was five times too low; photographs are now judged against their own album's median.
