@@ -334,7 +334,11 @@ Group photos by pHash Hamming distance and burst-like timing/order. Show cluster
 side with useful signals:
 
 - Near-duplicate score.
-- Sharpness / blur score.
+- Sharpness / blur score. Two measures, doing two different jobs: edge width for "is this
+  photograph out of focus", because blur widens edges whatever the subject is; local detail
+  relative to contrast for "which frame of this burst came out best", because counting detail
+  only tracks focus while the subject is held still. Using the second for the first put a
+  sharp portrait on the list for deletion.
 - Later: faces visible / eyes open.
 - App suggestion for best one or two photos.
 

@@ -21,61 +21,41 @@ import type { Photo } from './photos'
 import type { SimilarGroup } from './similarity'
 
 /**
- * How far below its album a photograph has to read before it is worth
- * mentioning.
+ * Above this width, in pixels, a photograph's edges are soft enough to mention.
  *
- * Relative, not absolute, and that is the correction. The reading is a ratio of
- * detail to contrast, and how much fine detail a photograph carries is a fact
- * about the scene rather than about the focus: water, sand, foliage and hair
- * produce far more of it than a wall or a sky. Scenes built from synthetic
- * texture read around 1 when sharp; a real album of beach photographs read
- * between 2 and 15, with the plainly blurred frame at 2.23 — above every
- * absolute line drawn from those synthetic scenes, and the reason four rounds
- * of this feature said nothing.
+ * Measured through the reduction a photograph really goes through — blurred at
+ * camera size, shrunk to a thumbnail, rounded to whole numbers — across two
+ * kinds of content chosen because they broke the measure this replaces: dense
+ * texture (water, sand) and smooth subjects (faces, sky).
  *
- * What does hold across scenes is the comparison *within one album*: the same
- * camera, the same sort of subject, mostly the same afternoon. A photograph
- * reading well under what the rest of that album reads is the odd one out
- * whatever the absolute numbers are.
+ * | | textured | faces |
+ * | --- | --- | --- |
+ * | in focus | 1.78 | 2.00 |
+ * | barely soft | 1.94 | 2.00 |
+ * | soft | 2.78 | 2.47 |
+ * | blurred | 3.11 | 3.00 |
+ * | plainly blurred | 5.7 | 5.9 |
+ * | sharp subject, blurred background | 1.73 | — |
  *
- * At 0.6 a frame has to read under three fifths of its album's median. In the
- * album this was calibrated against, the sharp photographs sit near the median
- * and the blurred one sits far below it.
+ * The two columns are the point. Subject matter moves the reading by about two
+ * tenths of a pixel; blur moves it from 1.8 to 5.9. The measure this replaces
+ * moved five-fold with subject matter, which is how a sharp close-up of two
+ * faces came to be offered for deletion beside an album of seascapes.
+ *
+ * 2.8 sits forty per cent above every in-focus reading of either kind — nothing
+ * sharp is offered, and a portrait against a deliberately blurred background is
+ * furthest of all from the line — while catching everything from a plainly
+ * blurred frame down to a mildly soft one. It errs towards saying nothing,
+ * deliberately: missing a blurred photograph costs nothing, while telling the
+ * owner her sharp photograph of her own face is out of focus costs her trust in
+ * every suggestion the studio makes.
  */
-export const SOFT_SHARE_OF_ALBUM = 0.6
-
-/**
- * How many photographs must have been measured before a median means anything.
- *
- * With three photographs a "median" is one photograph, and the softest of three
- * is not evidence of anything.
- */
-export const ENOUGH_TO_COMPARE = 4
-
-/**
- * An absolute floor kept underneath the comparison, for the frame that is
- * blurred beyond any argument.
- *
- * It cannot be the main rule — that was the mistake — but a reading this low
- * means nothing in the frame has an edge, whatever the album around it looks
- * like, and a one-photograph album has no album to be compared against.
- */
-export const SOFT_FOCUS = 0.4
-
-/** The middle reading of an album, which the rest are judged against. */
-export function median(values: number[]): number | null {
-  if (values.length === 0) return null
-
-  const sorted = [...values].sort((one, two) => one - two)
-  const middle = Math.floor(sorted.length / 2)
-
-  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
-}
+export const SOFT_EDGE_WIDTH = 2.8
 
 export type SoftPhoto = {
   photo: Photo
-  /** What the measurement said, kept so the interface can explain itself. */
-  focus: number
+  /** How wide this photograph's edges are, in pixels. */
+  edgeWidth: number
 }
 
 /**
@@ -92,11 +72,11 @@ export type FocusSummary = {
   measured: number
   unjudgeable: number
   failed: number
-  /** The lowest reading obtained, or null when nothing was measured. */
+  /** The widest edges found in the album, or null when nothing was measured. */
   softest: number | null
-  /** Every reading obtained, lowest first. */
+  /** Every reading obtained, narrowest edges first. */
   readings: number[]
-  /** The line photographs were judged against, once the album set one. */
+  /** The width photographs are judged against. */
   line: number | null
 }
 
@@ -122,18 +102,17 @@ export function summariseFocus(
     else if (reading.kind === 'unjudgeable') summary.unjudgeable += 1
     else {
       summary.measured += 1
-      summary.readings.push(reading.focus)
+      summary.readings.push(reading.edgeWidth)
       summary.softest =
-        summary.softest === null ? reading.focus : Math.min(summary.softest, reading.focus)
+        summary.softest === null
+          ? reading.edgeWidth
+          : Math.max(summary.softest, reading.edgeWidth)
     }
   }
 
   summary.readings.sort((one, two) => one - two)
 
-  const middle =
-    summary.readings.length >= ENOUGH_TO_COMPARE ? median(summary.readings) : null
-  void middle
-  summary.line = SOFT_FOCUS
+  summary.line = SOFT_EDGE_WIDTH
 
   return summary
 }
@@ -164,37 +143,13 @@ export function findSoftPhotos(
 ): SoftPhoto[] {
   const grouped = new Set(groups.flatMap((group) => group.photos).map((photo) => photo.id))
 
-  const measured = photos.flatMap((photo) => {
-    const reading = readings.get(photo.id)
-    return reading?.kind === 'measured' ? [reading.focus] : []
-  })
-
-  // Withdrawn, deliberately, and the reasoning is worth keeping.
-  //
-  // Comparing a photograph against its album fixed the scale problem and
-  // introduced a worse one: the reading counts fine detail, and a sharp
-  // close-up of two faces carries far less of it than a mediocre photograph of
-  // rippling water. In an album of beach scenes the portrait is the outlier, so
-  // the first thing this rule did in a real album was tell the owner her sharp
-  // photograph of herself was out of focus.
-  //
-  // Between missing a blurred photograph and condemning a good one, this
-  // product has always chosen to miss, so the comparison stays off until the
-  // reading measures how soft an edge is rather than how much texture a scene
-  // happens to contain. `ENOUGH_TO_COMPARE`, `SOFT_SHARE_OF_ALBUM` and
-  // `median` stay for that work.
-  void ENOUGH_TO_COMPARE
-  void SOFT_SHARE_OF_ALBUM
-  void measured
-  const line = SOFT_FOCUS
-
   return photos
     .filter((photo) => !grouped.has(photo.id))
     .flatMap((photo) => {
       const reading = readings.get(photo.id)
 
-      return reading?.kind === 'measured' && reading.focus < line
-        ? [{ photo, focus: reading.focus }]
+      return reading?.kind === 'measured' && reading.edgeWidth > SOFT_EDGE_WIDTH
+        ? [{ photo, edgeWidth: reading.edgeWidth }]
         : []
     })
     .sort((one, two) => one.photo.sortOrder - two.photo.sortOrder)

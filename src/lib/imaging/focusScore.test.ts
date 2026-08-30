@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { SOFT_FOCUS } from '../focus'
+import { SOFT_EDGE_WIDTH } from '../focus'
 import { fitWithin } from './process'
-import { focusScore } from './sharpness'
+import { edgeWidth, focusScore } from './sharpness'
 
 /**
  * Focus, judged the way a photograph actually reaches this code.
@@ -210,6 +210,42 @@ function subjectAgainstBackground(random: () => number): Float64Array {
   return out
 }
 
+/**
+ * A frame like a close-up of people: broad smooth areas, a few crisp
+ * boundaries, very little fine texture.
+ *
+ * This is the scene the previous measure could not handle. A sharp photograph
+ * of faces carries a fraction of the detail a sharp photograph of water does,
+ * so counting detail called it blurred. Every claim below is asserted for this
+ * scene as well as for the textured one.
+ */
+function smoothSubject(random: () => number): Float64Array {
+  const out = new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT)
+  const soft = octave(CAMERA_WIDTH, CAMERA_HEIGHT, 400, random)
+
+  for (let y = 0; y < CAMERA_HEIGHT; y += 1) {
+    for (let x = 0; x < CAMERA_WIDTH; x += 1) {
+      let value = 150 + 30 * soft[y * CAMERA_WIDTH + x]
+
+      const dx = (x - CAMERA_WIDTH * 0.42) / (CAMERA_WIDTH * 0.22)
+      const dy = (y - CAMERA_HEIGHT * 0.48) / (CAMERA_HEIGHT * 0.37)
+      if (dx * dx + dy * dy < 1) value = 196 + 12 * soft[y * CAMERA_WIDTH + x]
+
+      const inBar = (from: number, to: number) => x > from && x < to
+      if (y > CAMERA_HEIGHT * 0.36 && y < CAMERA_HEIGHT * 0.44) {
+        if (inBar(CAMERA_WIDTH * 0.27, CAMERA_WIDTH * 0.41)) value = 42
+        if (inBar(CAMERA_WIDTH * 0.44, CAMERA_WIDTH * 0.58)) value = 42
+      }
+
+      if (y > CAMERA_HEIGHT * 0.84) value = 96 + 20 * soft[y * CAMERA_WIDTH + x]
+
+      out[y * CAMERA_WIDTH + x] = value
+    }
+  }
+
+  return out
+}
+
 const SEEDS = [11, 23, 57]
 
 /**
@@ -235,75 +271,88 @@ function scene(seed: number): Float64Array {
   return remember(`sharp-${seed}`, () => texture(generator(seed)))
 }
 
+function faces(seed: number): Float64Array {
+  return remember(`faces-${seed}`, () => smoothSubject(generator(seed)))
+}
+
+function softenedFaces(seed: number, sigma: number): Float64Array {
+  return remember(`faces-blur-${seed}-${sigma}`, () => blur(faces(seed), sigma))
+}
+
 function softened(seed: number, sigma: number): Float64Array {
   return remember(`blur-${seed}-${sigma}`, () => blur(scene(seed), sigma))
 }
 
+/** The reading the blur advice acts on: how wide this photograph's edges are. */
 function read(camera: Float64Array): number | null {
+  const thumbnail = asThumbnail(camera)
+  return edgeWidth(thumbnail.luma, thumbnail.width, thumbnail.height)
+}
+
+/** The reading used only for ranking inside one burst. */
+function readDetail(camera: Float64Array): number | null {
   const thumbnail = asThumbnail(camera)
   return focusScore(thumbnail.luma, thumbnail.width, thumbnail.height)
 }
 
-describe('focusScore, through the reduction a photograph really goes through', () => {
-  it('reads a photograph that came out as in focus', () => {
+describe('edgeWidth, through the reduction a photograph really goes through', () => {
+  it('reads a photograph that came out as sharp, whatever it is a photograph of', () => {
+    // Both content types, because the previous measure passed this for textured
+    // scenes and failed it for faces — which is how a sharp close-up of two
+    // people came to be offered for deletion.
     for (const seed of SEEDS) {
-      const score = read(scene(seed))
+      for (const [what, frame] of [
+        ['textured', scene(seed)],
+        ['faces', faces(seed)],
+      ] as const) {
+        const width = read(frame)
 
-      expect(score, `seed ${seed}`).not.toBeNull()
-      expect(score as number, `seed ${seed}`).toBeGreaterThan(SOFT_FOCUS * 2)
-    }
-  })
-
-  it('leaves a sharp subject against a deliberately blurred background alone', () => {
-    // The photograph someone meant to take. Averaged over the whole frame this
-    // reads as a mistake, which is why the sharpest squares are what count.
-    for (const seed of SEEDS) {
-      const score = read(remember(`bokeh-${seed}`, () => subjectAgainstBackground(generator(seed))))
-
-      expect(score, `seed ${seed}`).not.toBeNull()
-      expect(score as number, `seed ${seed}`).toBeGreaterThan(SOFT_FOCUS)
-    }
-  })
-
-  it('leaves a barely soft photograph alone', () => {
-    for (const seed of SEEDS) {
-      const score = read(softened(seed, 1))
-
-      expect(score as number, `seed ${seed}`).toBeGreaterThan(SOFT_FOCUS)
-    }
-  })
-
-  it('draws the line between the softness worth mentioning and the softness that is not', () => {
-    // This is what pins `SOFT_FOCUS` to something measured. Rather than assert
-    // a reading against a number chosen to match it, it asserts the constant
-    // itself falls inside the gap these scenes leave, with room on both sides.
-    // The shipped 0.3 sat below the gap and flagged nothing in a real album.
-    const barelySoft = SEEDS.map((seed) => read(softened(seed, 1)) as number)
-    const worthMentioning = SEEDS.map((seed) => read(softened(seed, 1.5)) as number)
-
-    expect(SOFT_FOCUS).toBeGreaterThan(Math.max(...worthMentioning) * 1.1)
-    expect(SOFT_FOCUS).toBeLessThan(Math.min(...barelySoft) / 1.1)
-  })
-
-  it('offers a photograph the lens actually missed', () => {
-    // The case the whole feature exists for, and the one the first version of
-    // this suite could not see: blur applied at camera size, then reduced.
-    for (const seed of SEEDS) {
-      for (const sigma of [2, 3, 6]) {
-        const score = read(softened(seed, sigma))
-
-        expect(score, `${sigma}px blur, seed ${seed}`).not.toBeNull()
-        expect(score as number, `${sigma}px blur, seed ${seed}`).toBeLessThan(SOFT_FOCUS)
+        expect(width, `${what}, seed ${seed}`).not.toBeNull()
+        expect(width as number, `${what}, seed ${seed}`).toBeLessThan(SOFT_EDGE_WIDTH)
       }
     }
   })
 
-  it('declines to judge a frame with nothing in it to judge', () => {
-    // A misty lake is a sharp photograph of a smooth thing, and a measure that
-    // cannot tell those apart tells the owner to delete it.
+  it('leaves a sharp subject against a deliberately blurred background alone', () => {
+    for (const seed of SEEDS) {
+      const width = read(remember(`bokeh-${seed}`, () => subjectAgainstBackground(generator(seed))))
+
+      expect(width as number, `seed ${seed}`).toBeLessThan(SOFT_EDGE_WIDTH)
+    }
+  })
+
+  it('offers a photograph the lens actually missed, whatever it is a photograph of', () => {
+    for (const seed of SEEDS) {
+      for (const sigma of [3, 6]) {
+        expect(read(softened(seed, sigma)) as number, `textured ${sigma}px, seed ${seed}`)
+          .toBeGreaterThan(SOFT_EDGE_WIDTH)
+        expect(read(softenedFaces(seed, sigma)) as number, `faces ${sigma}px, seed ${seed}`)
+          .toBeGreaterThan(SOFT_EDGE_WIDTH)
+      }
+    }
+  })
+
+  it('moves far less with the subject than with the blur', () => {
+    // The property the whole change rests on. Content shifts the reading by
+    // about a pixel; blur shifts it by several. The measure it replaced moved
+    // five-fold with content, which is why a portrait could not be told from a
+    // blurred seascape.
+    for (const seed of SEEDS) {
+      const sharpTextured = read(scene(seed)) as number
+      const sharpFaces = read(faces(seed)) as number
+      const blurredFaces = read(softenedFaces(seed, 4)) as number
+
+      const bySubject = Math.abs(sharpTextured - sharpFaces)
+      const byBlur = blurredFaces - sharpFaces
+
+      expect(byBlur, `seed ${seed}`).toBeGreaterThan(bySubject * 1.5)
+    }
+  })
+
+  it('declines to judge a frame with no edges to measure', () => {
     for (const seed of SEEDS) {
       expect(
-        read(remember(`fog-${seed}`, () => texture(generator(seed), 0.1))),
+        read(remember(`fog-${seed}`, () => texture(generator(seed), 0.02))),
         `fog, seed ${seed}`,
       ).toBeNull()
       expect(
@@ -313,63 +362,31 @@ describe('focusScore, through the reduction a photograph really goes through', (
     }
   })
 
-  it('would miss the same photograph if it were shrunk further before measuring', () => {
-    // This is the bug that shipped, kept as a test so it cannot ship twice.
-    // Reducing the thumbnail again before measuring — which the first version
-    // did, to 256px — lifts a blurred photograph back above the line and the
-    // album goes quiet.
+  it('has nothing to say about a frame too small to hold an edge', () => {
+    expect(edgeWidth(new Float64Array(16), 4, 4)).toBeNull()
+  })
+})
+
+describe('focusScore, kept for ranking the frames of one burst', () => {
+  it('separates blur when the subject is held still', () => {
+    // Its remaining job. Inside a near-duplicate group every frame is the same
+    // picture, so the detail it counts varies only with how well each came out
+    // — which is the one condition under which this measure is trustworthy.
     for (const seed of SEEDS) {
-      const soft = softened(seed, 2)
-      const thumbnail = asThumbnail(soft)
-      const shrunkFurther = shrink(thumbnail, 256)
+      const sharp = readDetail(scene(seed)) as number
+      const soft = readDetail(softened(seed, 2)) as number
 
-      const atThumbnailSize = focusScore(thumbnail.luma, thumbnail.width, thumbnail.height)
-      const atSmallerSize = focusScore(
-        shrunkFurther.luma,
-        shrunkFurther.width,
-        shrunkFurther.height,
-      )
-
-      // Clearly blurred where it is measured now...
-      expect(atThumbnailSize as number, `seed ${seed}`).toBeLessThan(SOFT_FOCUS)
-
-      // ...and more than twice that reading once shrunk again, which is what
-      // lifted photographs like this over the line and emptied the section.
-      expect(atSmallerSize as number, `seed ${seed}`).toBeGreaterThan(
-        (atThumbnailSize as number) * 1.8,
-      )
+      expect(soft, `seed ${seed}`).toBeLessThan(sharp * 0.5)
     }
   })
 
-  it('finds no detail in a photograph that has none, whole-numbered pixels and all', () => {
-    // The second fault this feature shipped with. Every stored photograph holds
-    // whole numbers, and rounding to them is itself a source of detail that the
-    // Laplacian multiplies about twentyfold. It lands hardest on the squares
-    // with least contrast, which are exactly the ones the sharpest-fifth rule
-    // picks — so a frame with no detail at all read as though it had some, and
-    // blurred photographs read three times higher in a browser than the same
-    // pixels did in arithmetic.
-    //
-    // This frame is smooth by construction: plenty of contrast for a square to
-    // be judged, and nothing in it finer than the blur of a badly missed shot.
-    const smooth = new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT)
-    for (let y = 0; y < CAMERA_HEIGHT; y += 1) {
-      for (let x = 0; x < CAMERA_WIDTH; x += 1) {
-        // Gently lit rather than bold: enough contrast for a square to be
-        // judged, little enough that a fixed amount of false detail would
-        // dominate it — which is the case the correction exists for.
-        smooth[y * CAMERA_WIDTH + x] = 128 + 16 * Math.sin(x / 90) + 13 * Math.cos(y / 70)
-      }
-    }
+  // Not asserted here: that this measure swings more with subject matter than
+  // edge width does. It is true — a real album read a sharp portrait five times
+  // below sharp seascapes, which is what put the portrait on the list for
+  // deletion — but these synthetic scenes do not reproduce it. Fractal texture
+  // is not as dense as water and the smooth scene is not as smooth as skin, so
+  // the two measures swing about equally here. The evidence for that claim is
+  // the album in `docs/sessions/2026-08-30-texture-is-not-focus.md`, and a
+  // scene invented to demonstrate it would be a scene fitted to the conclusion.
 
-    const plane = asThumbnail(smooth)
-    const score = focusScore(plane.luma, plane.width, plane.height)
-
-    expect(score).not.toBeNull()
-    expect(score as number).toBeLessThan(0.05)
-  })
-
-  it('has nothing to say about a frame smaller than one square', () => {
-    expect(focusScore(new Float64Array(16 * 16), 16, 16)).toBeNull()
-  })
 })

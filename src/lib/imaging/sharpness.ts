@@ -168,3 +168,103 @@ export function focusScore(
 
   return total / counted
 }
+
+/**
+ * How many pixels a transition takes: the width of the picture's strong edges.
+ *
+ * This is what `focusScore` above could not do, and the difference matters
+ * enough to justify a second measure. That one counts how much fine detail a
+ * frame carries, and **how much detail a photograph carries is a property of
+ * its subject rather than of its focus**: rippling water and wet sand are dense
+ * with it, skin and sky are not. Measured on a real album, sharp seascapes read
+ * five times higher than a sharp close-up of two faces, so the portrait looked
+ * like the blurred one and was offered for deletion.
+ *
+ * Blur does something a subject cannot fake: it widens edges. A sharp
+ * photograph crosses from one side of an edge to the other in a pixel or two
+ * whether the edge is a face against the sky or a wave against sand; a blurred
+ * one takes four, six, ten. Measuring that width is what the no-reference blur
+ * literature settled on — Marziliano's edge-width metric, and CPBD and JNB
+ * after it — and across scenes built from very different content it moves by
+ * about one pixel, where the detail ratio moves five-fold.
+ *
+ * Returns null when the frame holds too few strong edges to judge: a photograph
+ * of fog has no transitions to measure the width of.
+ */
+export function edgeWidth(luma: Float64Array, width: number, height: number): number | null {
+  if (width < 8 || height < 8) return null
+
+  // What counts as a strong edge is decided by the picture itself. A fixed
+  // threshold would mean something different in a seascape and in a portrait,
+  // which is the mistake the other measure makes.
+  const magnitudes: number[] = []
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const across = Math.abs(luma[y * width + x + 1] - luma[y * width + x - 1]) / 2
+      const down = Math.abs(luma[(y + 1) * width + x] - luma[(y - 1) * width + x]) / 2
+      magnitudes.push(Math.max(across, down))
+    }
+  }
+
+  magnitudes.sort((one, two) => one - two)
+  const strong = Math.max(2, magnitudes[Math.floor(magnitudes.length * 0.95)])
+
+  /** How far a transition may run before the picture has simply moved on. */
+  const MAX_REACH = 10
+  /** The slope still counts as part of this edge above this share of its peak. */
+  const STILL_THIS_EDGE = 0.35
+
+  const widths: number[] = []
+
+  const scan = (horizontal: boolean) => {
+    const outer = horizontal ? height : width
+    const inner = horizontal ? width : height
+    const at = (along: number, across: number) =>
+      horizontal ? luma[across * width + along] : luma[along * width + across]
+    const slope = (along: number, across: number) =>
+      Math.abs(at(along + 1, across) - at(along - 1, across)) / 2
+
+    for (let across = 1; across < outer - 1; across += 1) {
+      for (let along = 2; along < inner - 2; along += 1) {
+        const peak = slope(along, across)
+        if (peak < strong) continue
+        // Only the crest of the slope, so one edge is counted once.
+        if (peak < slope(along - 1, across) || peak <= slope(along + 1, across)) continue
+
+        const floor = peak * STILL_THIS_EDGE
+
+        let start = along
+        while (start > 2 && along - start < MAX_REACH && slope(start - 1, across) >= floor) {
+          start -= 1
+        }
+
+        let end = along
+        while (end < inner - 3 && end - along < MAX_REACH && slope(end + 1, across) >= floor) {
+          end += 1
+        }
+
+        widths.push(end - start + 1)
+      }
+    }
+  }
+
+  scan(true)
+  scan(false)
+
+  if (widths.length < 30) return null
+
+  // The crispest quarter of the edges, not the average of all of them.
+  //
+  // Same reasoning that protects a portrait against a deliberately blurred
+  // background: most of that frame's edges belong to the background and are
+  // wide on purpose, so an average calls the photograph blurred. What decides
+  // whether a photograph came out is how crisp its crispest edges are. Averaged
+  // over the whole frame, that portrait measured exactly on the line.
+  widths.sort((one, two) => one - two)
+  const counted = Math.max(1, Math.round(widths.length * 0.25))
+
+  let total = 0
+  for (let index = 0; index < counted; index += 1) total += widths[index]
+
+  return total / counted
+}
