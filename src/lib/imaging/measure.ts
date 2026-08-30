@@ -1,6 +1,6 @@
 import { toLuma } from './luma'
 import { fitWithin } from './process'
-import { focusScore } from './sharpness'
+import { edgeWidth, focusScore } from './sharpness'
 
 /**
  * A ceiling on the size focus is judged at, not a target.
@@ -30,7 +30,22 @@ const ANALYSIS_CEILING = 512
  * looked at. Silence is only honest when something was actually measured.
  */
 export type FocusReading =
-  | { kind: 'measured'; focus: number }
+  | {
+      kind: 'measured'
+      /**
+       * How many pixels a transition takes. Higher is blurrier, and it means
+       * roughly the same thing whatever the photograph is of, which is what
+       * the blur advice needs.
+       */
+      edgeWidth: number
+      /**
+       * How much fine detail the frame carries, relative to its contrast.
+       * Depends heavily on the subject, so it is worthless for comparing a
+       * portrait against a seascape — and good for ranking the frames of one
+       * burst, where the subject is held still.
+       */
+      texture: number | null
+    }
   /** Fog, a blank wall: real pixels, nothing in them to judge. */
   | { kind: 'unjudgeable' }
   /** The bytes could not be read or decoded. Nothing was measured. */
@@ -70,9 +85,15 @@ export async function measureFocus(source: Blob): Promise<FocusReading> {
 
     context.drawImage(bitmap, 0, 0, size.width, size.height)
     const pixels = context.getImageData(0, 0, size.width, size.height)
-    const focus = focusScore(toLuma(pixels.data), size.width, size.height)
+    const luma = toLuma(pixels.data)
 
-    return focus === null ? { kind: 'unjudgeable' } : { kind: 'measured', focus }
+    const width = edgeWidth(luma, size.width, size.height)
+
+    // No strong edges anywhere is not a verdict: a photograph of fog has no
+    // transitions whose width could be measured.
+    return width === null
+      ? { kind: 'unjudgeable' }
+      : { kind: 'measured', edgeWidth: width, texture: focusScore(luma, size.width, size.height) }
   } catch (error) {
     return { kind: 'failed', detail: describe(error) }
   } finally {

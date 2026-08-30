@@ -115,6 +115,7 @@ function alike(one: Photo, two: Photo, distance: number): boolean {
 export function groupSimilar(
   photos: Photo[],
   distance: number = NEAR_DUPLICATE_DISTANCE,
+  readings: Map<string, number> = new Map(),
 ): SimilarGroup[] {
   const usable = photos.filter((photo) => isHash(photo.phash))
   const parent = usable.map((_, index) => index)
@@ -150,23 +151,44 @@ export function groupSimilar(
     .filter((group) => group.length > 1)
     .map((group) => ({
       photos: group,
-      suggested: sharpest(group),
+      suggested: sharpest(group, readings),
       spread: widestGap(group),
     }))
     .sort((one, two) => one.photos[0].sortOrder - two.photos[0].sortOrder)
 }
 
 /**
+ * How sharp one photograph is, for ranking it against the others in its group.
+ *
+ * Prefers the reading measured from the thumbnail when the album has one, and
+ * falls back to the whole-frame variance stored at upload.
+ *
+ * The measured reading counts fine detail relative to contrast, which is a
+ * property of the subject as much as of the focus — useless for judging a
+ * portrait against a seascape, and it was withdrawn from the blur advice for
+ * exactly that reason. **Inside one group it is the right measure**, because a
+ * group is the same picture taken more than once: the subject is held still, so
+ * the only thing left varying is how well it came out. It reads local squares
+ * rather than the whole frame, so a face sharp against a blurred background is
+ * ranked on the face, and it discounts the false detail that 8-bit rounding
+ * adds — neither of which the stored number does.
+ */
+function detail(photo: Photo, readings: Map<string, number>): number {
+  const measured = readings.get(photo.id)
+
+  return measured ?? photo.sharpness ?? -1
+}
+
+/**
  * The sharpest of a group, as a suggestion only.
  *
- * Laplacian variance is a decent proxy for focus and a poor one for whether a
- * photograph is any good, so this is offered as a starting point and never
- * acted on without the owner saying so. Ties keep album order, which makes the
- * suggestion stable rather than dependent on how the rows arrived.
+ * Offered as a starting point and never acted on without the owner saying so.
+ * Ties keep album order, which makes the suggestion stable rather than
+ * dependent on how the rows arrived.
  */
-export function sharpest(photos: Photo[]): Photo {
+export function sharpest(photos: Photo[], readings: Map<string, number> = new Map()): Photo {
   return photos.reduce((best, photo) =>
-    (photo.sharpness ?? -1) > (best.sharpness ?? -1) ? photo : best,
+    detail(photo, readings) > detail(best, readings) ? photo : best,
   )
 }
 
@@ -198,13 +220,18 @@ function widestGap(photos: Photo[]): number {
 export type SharpnessReading = 'unmeasured' | 'sharpest' | 'close' | 'softer' | 'blurrier'
 
 /** Where `photo` sits against the sharpest of `group`. */
-export function compareSharpness(photo: Photo, group: SimilarGroup): SharpnessReading {
-  const best = group.suggested.sharpness
+export function compareSharpness(
+  photo: Photo,
+  group: SimilarGroup,
+  readings: Map<string, number> = new Map(),
+): SharpnessReading {
+  const best = readings.get(group.suggested.id) ?? group.suggested.sharpness
+  const mine = readings.get(photo.id) ?? photo.sharpness
 
-  if (photo.sharpness === null || best === null || best <= 0) return 'unmeasured'
+  if (mine === null || mine === undefined || best === null || best <= 0) return 'unmeasured'
   if (photo.id === group.suggested.id) return 'sharpest'
 
-  const share = photo.sharpness / best
+  const share = mine / best
 
   // Two frames within a tenth of each other are, in practice, the same photo
   // twice: worth saying so, because "sharpest" would otherwise imply a

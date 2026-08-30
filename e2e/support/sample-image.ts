@@ -264,7 +264,7 @@ export function sharpPng(size = 400): Buffer {
  * prop.
  */
 export function blurredPng(size = 400): Buffer {
-  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 3), size))
+  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 6), size))
 }
 
 /**
@@ -275,11 +275,12 @@ export function blurredPng(size = 400): Buffer {
  * size, which makes it a poor guard: the bug that shipped measured photographs
  * at 256px instead of the thumbnail's own 400px, and that fixture would have
  * been caught either way. This one is blurred to the level a lens actually
- * misses by. At the size the app measures it reads about 0.3 and is offered;
- * shrink it again first and it reads about 0.7 and the album says nothing.
+ * misses by, and sits just past the line. Shrinking a photograph narrows its
+ * edges along with everything else, so measured one step smaller this one reads
+ * as sharp and the album says nothing about it.
  */
 export function softPng(size = 400): Buffer {
-  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 1.5), size))
+  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 3), size))
 }
 
 export function sampleFile(name = 'reef.png', width = 96, height = width) {

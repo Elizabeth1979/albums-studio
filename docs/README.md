@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [Measuring blur properly, and a home for the old measure](sessions/2026-08-30-edge-width-and-a-home-for-the-old-measure.md) —
+  blur advice rebuilt on edge width, which moves by two tenths of a pixel with subject matter
+  where the old reading moved five-fold; the old reading now ranks frames inside a
+  near-duplicate group, where counting detail is sound.
 - [The measure was reading texture, not focus](sessions/2026-08-30-texture-is-not-focus.md) —
   the album comparison offered a sharp portrait as blurred, because fine detail is a property
   of the subject rather than of the focus; the suggestion is off until the reading measures

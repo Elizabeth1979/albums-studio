@@ -6,6 +6,13 @@ type SimilarPhotosProps = {
   groups: SimilarGroup[]
   /** Signed thumbnail URLs, by storage path. */
   thumbnails: Map<string, string>
+  /**
+   * Detail readings measured from the thumbnails, by photo id.
+   *
+   * Used only to rank within a group, where every frame is the same picture and
+   * the reading therefore says something about focus rather than about subject.
+   */
+  readings?: Map<string, number>
   onRemove: (photos: Photo[]) => Promise<void>
 }
 
@@ -32,7 +39,12 @@ const READING_TEXT: Record<SharpnessReading, string> = {
  * comparison ("nearly as sharp") instead of the raw variance, which read as a
  * score nobody could act on.
  */
-export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosProps) {
+export function SimilarPhotos({
+  groups,
+  thumbnails,
+  readings = new Map(),
+  onRemove,
+}: SimilarPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -110,7 +122,7 @@ export function SimilarPhotos({ groups, thumbnails, onRemove }: SimilarPhotosPro
           <ul className="similar-row">
             {group.photos.map((photo) => {
               const url = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
-              const reading = compareSharpness(photo, group)
+              const reading = compareSharpness(photo, group, readings)
               const isMarked = marked.has(photo.id)
 
               return (

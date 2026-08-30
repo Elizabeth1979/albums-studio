@@ -368,7 +368,16 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
   // Recomputed from the photos themselves, so removing one re-groups the rest
   // without another round trip.
-  const similarGroups = groupSimilar(photos)
+  // The measured detail readings, for ranking the frames of one burst against
+  // each other. Only meaningful inside a group, where the subject is the same
+  // picture taken twice — which is exactly where this is used.
+  const detailReadings = new Map(
+    [...focusReadings].flatMap(([id, reading]) =>
+      reading.kind === 'measured' && reading.texture !== null ? [[id, reading.texture]] : [],
+    ),
+  )
+
+  const similarGroups = groupSimilar(photos, undefined, detailReadings)
 
   // Blurred photographs that no group already speaks for. Grouped ones are
   // handled a section above, where there is something to compare them against.
@@ -426,6 +435,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
             <SimilarPhotos
               groups={similarGroups}
               thumbnails={thumbnails}
+              readings={detailReadings}
               onRemove={handleRemoveChosen}
             />
             <SoftPhotos
@@ -442,9 +452,9 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 {focusSummary.unjudgeable > 0 &&
                   `, too little contrast to judge ${focusSummary.unjudgeable}`}
                 {focusSummary.readings.length > 0 &&
-                  `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
+                  `. Edge widths ${focusSummary.readings.map((one) => one.toFixed(1)).join(', ')}`}
                 {focusSummary.line !== null &&
-                  ` — anything under ${focusSummary.line.toFixed(2)} is offered above`}
+                  ` — anything over ${focusSummary.line.toFixed(1)} is offered above`}
                 . This line is here while the setting is being tuned and will come out
                 afterwards.
               </p>

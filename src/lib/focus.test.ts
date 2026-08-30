@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { SOFT_FOCUS, findSoftPhotos, summariseFocus, unreadable } from './focus'
+import { SOFT_EDGE_WIDTH, findSoftPhotos, summariseFocus, unreadable } from './focus'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
 
-/** A photograph the app looked at and got a number from. */
-function measured(focus: number): FocusReading {
-  return { kind: 'measured', focus }
+/** A photograph the app looked at and measured the edges of. */
+function measured(edgeWidth: number, texture: number | null = 4): FocusReading {
+  return { kind: 'measured', edgeWidth, texture }
 }
 
 function photo(overrides: Partial<Photo> & { id: string }): Photo {
@@ -32,8 +32,8 @@ describe('findSoftPhotos', () => {
     // against, which near-duplicate review is structurally unable to mention.
     const photos = [photo({ id: 'sharp', sortOrder: 0 }), photo({ id: 'blurry', sortOrder: 1 })]
     const readings = new Map([
-      ['sharp', measured(1.4)],
-      ['blurry', measured(0.1)],
+      ['sharp', measured(1.9)],
+      ['blurry', measured(5.2)],
     ])
 
     expect(
@@ -42,12 +42,11 @@ describe('findSoftPhotos', () => {
   })
 
   it('does not offer a sharp photograph for carrying less texture than its album', () => {
-    // The reason the album comparison was withdrawn. The reading counts fine
-    // detail, and a sharp close-up of two faces carries far less of it than a
-    // mediocre photograph of rippling water — so in an album of beach scenes
-    // the portrait is the outlier. Comparing against the album told the owner
-    // her sharp photograph of herself was out of focus, which is the one
-    // mistake this feature must not make.
+    // Built from the false positive this feature actually produced: a sharp
+    // close-up of two faces in an album of seascapes, offered for deletion
+    // because it carried less fine detail than rippling water. Edge width is
+    // what stops that — the portrait's edges are as crisp as the water's, which
+    // is the question that was always being asked.
     const album = [
       photo({ id: 'water-a', sortOrder: 0 }),
       photo({ id: 'water-b', sortOrder: 1 }),
@@ -55,25 +54,28 @@ describe('findSoftPhotos', () => {
       photo({ id: 'water-d', sortOrder: 3 }),
       photo({ id: 'sharp-portrait', sortOrder: 4 }),
     ]
+    // Edge widths, and the portrait's are barely wider than the seascapes'
+    // even though it carries a fraction of their detail. The measure this
+    // replaced read the same photographs five-fold apart.
     const readings = new Map([
-      ['water-a', measured(9.1)],
-      ['water-b', measured(6.4)],
-      ['water-c', measured(7.7)],
-      ['water-d', measured(5.2)],
-      ['sharp-portrait', measured(2.4)],
+      ['water-a', measured(1.8, 9.1)],
+      ['water-b', measured(1.9, 6.4)],
+      ['water-c', measured(1.8, 7.7)],
+      ['water-d', measured(2.0, 5.2)],
+      ['sharp-portrait', measured(2.0, 2.4)],
     ])
 
     expect(findSoftPhotos(album, readings)).toEqual([])
   })
 
-  it('leaves an album alone when nothing in it stands out', () => {
-    // Every photograph in focus, one of them inevitably the softest. Being last
-    // is not the same as being blurred.
+  it('leaves an album alone when every photograph is sharp', () => {
+    // One of them is inevitably the softest. Being last is not being blurred,
+    // and nothing here is judged by comparison with its neighbours.
     const album = [0, 1, 2, 3, 4].map((index) =>
       photo({ id: `photo-${index}`, sortOrder: index }),
     )
     const readings = new Map(
-      [7.4, 6.9, 8.1, 6.2, 7.0].map((value, index) => [`photo-${index}`, measured(value)]),
+      [1.9, 2.1, 1.8, 2.2, 2.0].map((value, index) => [`photo-${index}`, measured(value)]),
     )
 
     expect(findSoftPhotos(album, readings)).toEqual([])
@@ -87,8 +89,8 @@ describe('findSoftPhotos', () => {
       photo({ id: 'ruined', sortOrder: 1 }),
     ]
     const readings = new Map([
-      ['one', measured(6.0)],
-      ['ruined', measured(0.05)],
+      ['one', measured(1.9)],
+      ['ruined', measured(6.0)],
     ])
 
     expect(findSoftPhotos(album, readings).map((entry) => entry.photo.id)).toEqual(['ruined'])
@@ -97,19 +99,21 @@ describe('findSoftPhotos', () => {
   it('reports every reading and the line photographs are judged against', () => {
     const album = [0, 1, 2, 3].map((index) => photo({ id: `photo-${index}`, sortOrder: index }))
     const readings = new Map(
-      [4, 6, 8, 2].map((value, index) => [`photo-${index}`, measured(value)]),
+      [1.9, 2.4, 3.6, 1.7].map((value, index) => [`photo-${index}`, measured(value)]),
     )
 
     const summary = summariseFocus(album, readings)
 
-    expect(summary.readings).toEqual([2, 4, 6, 8])
-    expect(summary.line).toBe(SOFT_FOCUS)
+    // Narrowest edges first, and the softest is the widest.
+    expect(summary.readings).toEqual([1.7, 1.9, 2.4, 3.6])
+    expect(summary.softest).toBe(3.6)
+    expect(summary.line).toBe(SOFT_EDGE_WIDTH)
   })
 
-  it('leaves a photograph exactly at the floor alone', () => {
+  it('leaves a photograph exactly at the line alone', () => {
     const photos = [photo({ id: 'borderline' })]
 
-    expect(findSoftPhotos(photos, new Map([['borderline', measured(SOFT_FOCUS)]]))).toEqual([])
+    expect(findSoftPhotos(photos, new Map([['borderline', measured(SOFT_EDGE_WIDTH)]]))).toEqual([])
   })
 
   it('offers nothing for a photograph whose bytes could not be read', () => {
@@ -150,8 +154,8 @@ describe('findSoftPhotos', () => {
       photo({ id: 'earlier', sortOrder: 2 }),
     ]
     const readings = new Map([
-      ['later', measured(0.05)],
-      ['earlier', measured(0.05)],
+      ['later', measured(6.0)],
+      ['earlier', measured(6.0)],
     ])
 
     expect(findSoftPhotos(photos, readings).map((entry) => entry.photo.id)).toEqual([
@@ -170,9 +174,9 @@ describe('findSoftPhotos', () => {
       photo({ id: 'alone', sortOrder: 2 }),
     ]
     const readings = new Map([
-      ['one', measured(1.2)],
-      ['two', measured(0.04)],
-      ['alone', measured(0.04)],
+      ['one', measured(1.8)],
+      ['two', measured(4.4)],
+      ['alone', measured(4.4)],
     ])
 
     expect(
