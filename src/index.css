@@ -1307,6 +1307,22 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+/* Temporary, alongside the focus tuning line: the reading for this photograph,
+   on the photograph, so a number can be matched to a picture at a glance. */
+.photo-focus-mark {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  color: #fffdf9;
+  background: rgb(28 32 38 / 82%);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
 .photo-editor-form {
   display: grid;
   gap: 0.9rem;

@@ -718,7 +718,10 @@ describe('AlbumPhotos', () => {
       renderPhotos()
 
       await waitFor(() => expect(processorApi.measure).toHaveBeenCalledTimes(2))
-      expect(photosApi.photoBytes).toHaveBeenCalledWith('owner/album-1/photo-0-thumb.jpg')
+      // The stored image, not the thumbnail. The thumbnail is a tenfold
+      // reduction of what the camera wrote, and blur shrinks with it: a whole
+      // album measured there landed within a pixel of itself.
+      expect(photosApi.photoBytes).toHaveBeenCalledWith('owner/album-1/photo-0.jpg')
     })
 
     it('says nothing when every photograph is in focus', async () => {
