@@ -14,6 +14,17 @@ type PhotoGalleryProps = {
   coverPhotoId: string | null
   selectedId: string | null
   onSelect: (photoId: string) => void
+  /**
+   * What the focus check read for each photograph, by photo id, shown on the
+   * tile itself.
+   *
+   * Temporary, and here because of how long this took without it. The album
+   * printed its readings as a sorted list — 2.9, 3.0, 3.2, 3.3 — with no way to
+   * tell which number belonged to which picture, so the one question that
+   * settles where the line goes ("what does the blurred one read?") could not
+   * be answered from the screen. It comes out with the rest of the tuning line.
+   */
+  focusNotes?: Map<string, string>
 }
 
 /**
@@ -40,6 +51,7 @@ export function PhotoGallery({
   coverPhotoId,
   selectedId,
   onSelect,
+  focusNotes,
 }: PhotoGalleryProps) {
   return (
     <ul className="photo-gallery">
@@ -94,6 +106,11 @@ export function PhotoGallery({
               {isCover && (
                 <span className="photo-cover-mark" aria-hidden="true" title="Album cover">
                   Cover
+                </span>
+              )}
+              {focusNotes?.get(photo.id) && (
+                <span className="photo-focus-mark" aria-hidden="true" title="Focus reading">
+                  {focusNotes.get(photo.id)}
                 </span>
               )}
               {written && (

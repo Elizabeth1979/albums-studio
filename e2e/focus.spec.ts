@@ -15,6 +15,15 @@ async function openAlbum(page: Page, options: StubOptions = {}) {
   return calls
 }
 
+/**
+ * The size the fixtures are served at.
+ *
+ * The stored image, not the thumbnail — that is what the album now measures,
+ * because a 400px thumbnail is a tenfold reduction of what the camera wrote and
+ * blur shrinks along with everything else in it.
+ */
+const STORED = 800
+
 const photos = [
   photoRecord({ id: 'photo-1', sort_order: 0 }),
   photoRecord({
@@ -29,8 +38,8 @@ const photos = [
 const oneOfEach = {
   photos,
   objectBytes: {
-    'owner/album-1/photo-1-thumb.jpg': sharpPng(),
-    'owner/album-1/photo-2-thumb.jpg': blurredPng(),
+    'owner/album-1/photo-1.jpg': sharpPng(STORED),
+    'owner/album-1/photo-2.jpg': blurredPng(STORED),
   },
 }
 
@@ -63,8 +72,8 @@ test.describe('photos that are out of focus', () => {
     await openAlbum(page, {
       photos,
       objectBytes: {
-        'owner/album-1/photo-1-thumb.jpg': sharpPng(),
-        'owner/album-1/photo-2-thumb.jpg': softPng(),
+        'owner/album-1/photo-1.jpg': sharpPng(STORED),
+        'owner/album-1/photo-2.jpg': softPng(STORED),
       },
     })
 
@@ -90,7 +99,7 @@ test.describe('photos that are out of focus', () => {
   test('says nothing about an album that is in focus', async ({ page }) => {
     await openAlbum(page, {
       photos: [photos[0]],
-      objectBytes: { 'owner/album-1/photo-1-thumb.jpg': sharpPng() },
+      objectBytes: { 'owner/album-1/photo-1.jpg': sharpPng(STORED) },
     })
 
     await expect(page.getByText('Choose a photo to add a caption')).toBeVisible()

@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [The album was measuring the wrong copy of every photograph](sessions/2026-08-31-measured-the-wrong-copy.md) —
+  the focus check read the 400px thumbnail while the tiles were drawn from the 2000px stored
+  image already in the browser; a whole album landed within a pixel of itself. It now measures
+  the stored image at 800px, and each photograph shows its own reading on its tile.
 - [The camera's own noise read as sharpness](sessions/2026-08-31-noise-read-as-sharpness.md) —
   a trace of sensor noise made a badly blurred frame measure *sharper* than a sharp one,
   because noise spikes became the only edges left to find; the picture is now smoothed before

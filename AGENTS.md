@@ -231,3 +231,10 @@ blurred frame read *sharper* than a sharp one, and every synthetic test passed t
 
 When a measure gives the wrong answer, find out why before changing what it looks at. A good
 fix aimed at a real fault will still ship on top of a broken foundation.
+
+Measure the best copy already in hand. Two rounds went into tuning a threshold against a
+picture that had been reduced tenfold before anyone looked at it, while a five-times better
+copy sat in the same page, already downloaded.
+
+A diagnostic that reports a set of numbers cannot be acted on. Attach each number to the thing
+it describes.

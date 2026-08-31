@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Album } from '../lib/albums'
 import { createImageProcessor } from '../lib/imaging/processor'
 import {
@@ -122,7 +122,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
    * measurement to fail while every photograph looks perfectly fine.
    */
   const measureFocus = useCallback(async (current: Photo[]) => {
-    const measurable = current.filter((photo) => photo.thumbnailPath)
+    const measurable = current.filter((photo) => photo.storagePath)
     if (measurable.length === 0) return
 
     // Everything is inside the catch, including building the processor. A
@@ -133,7 +133,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       const processor = imageProcessor()
 
       const results = await mapWithConcurrency(measurable, 4, async (photo) => {
-        const bytes = await photoBytes(photo.thumbnailPath as string)
+        const bytes = await photoBytes(photo.storagePath)
         return processor.measure(bytes)
       })
 
@@ -388,6 +388,33 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // obtainable from a real album. It comes out once that is settled.
   const focusSummary = summariseFocus(photos, focusReadings)
 
+  /**
+   * One reading per photograph, for the tile it belongs to.
+   *
+   * Temporary, with the tuning line below. A sorted list of readings cannot
+   * answer the only question that matters — what does the blurred one read? —
+   * because it does not say which picture each number came from.
+   */
+  const focusNotes = useMemo(() => {
+    const notes = new Map<string, string>()
+
+    for (const photo of photos) {
+      const reading = focusReadings.get(photo.id)
+      if (!reading) continue
+
+      notes.set(
+        photo.id,
+        reading.kind === 'measured'
+          ? reading.edgeWidth.toFixed(1)
+          : reading.kind === 'unjudgeable'
+            ? 'no edges'
+            : 'unread',
+      )
+    }
+
+    return notes
+  }, [photos, focusReadings])
+
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
     storyCounts.set(story.photoId, (storyCounts.get(story.photoId) ?? 0) + 1)
@@ -431,6 +458,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               onSelect={(photoId) =>
                 setSelectedId((current) => (current === photoId ? null : photoId))
               }
+              focusNotes={focusNotes}
             />
             <SimilarPhotos
               groups={similarGroups}

@@ -3,22 +3,30 @@ import { fitWithin } from './process'
 import { edgeWidth, focusScore } from './sharpness'
 
 /**
- * A ceiling on the size focus is judged at, not a target.
+ * The size focus is judged at.
  *
- * The thumbnail is 400px, so in practice it is measured exactly as it arrived.
- * That "exactly" is the whole point, and it was got wrong the first time: this
- * shrank the thumbnail to 256px first, and **shrinking a photograph destroys
- * the evidence of blur**. A camera blurs a frame thousands of pixels wide; every
- * halving of the size halves the blur along with it, so a photograph that is
- * plainly soft at full size arrives at 256px looking almost sharp. Measured
- * there, a genuinely soft frame read 0.65 against 1.23 for a sharp one — the
- * two are barely told apart, and nothing was ever flagged. Measured at 400px
- * the same pair reads 0.33 against 0.98.
+ * Twice wrong before, in opposite directions, and the owner's own album settled
+ * it. This first shrank the 400px thumbnail to 256px, which hides blur —
+ * **every reduction of a photograph halves its blur along with everything
+ * else**, so a frame that is plainly soft on a phone arrives at 256px looking
+ * almost sharp. That was fixed by measuring the thumbnail at its own size. But
+ * the thumbnail is itself a tenfold reduction of what the camera wrote, and at
+ * that size the whole of a real album lands within a pixel of itself: eight
+ * photographs, one of them plainly blurred, read 2.9, 3.0, 3.2, 3.3, 3.5, 3.6,
+ * 3.7, 3.8. Nothing can be drawn across a spread like that.
  *
- * The ceiling exists only so an unexpectedly large image cannot make this
- * expensive; `fitWithin` never enlarges, so a smaller thumbnail is left alone.
+ * So the stored image is measured instead of the thumbnail — the browser is
+ * already downloading it for the tiles, so this costs no extra round trip — and
+ * at 800px rather than 400. On the same scenes that separation doubles: a
+ * lightly softened frame reads 5.65 against a sharp 4.73, where at 400px it
+ * read 5.22 against 4.73.
+ *
+ * 800 and not larger: the transition search reaches sixteen pixels, and past
+ * that a badly blurred frame's edges run off the end of the search and it
+ * measures *narrow* again — at 1200px an 8px blur read 4.65, below a sharp
+ * frame. The measure and the size it is used at go together.
  */
-const ANALYSIS_CEILING = 512
+const ANALYSIS_CEILING = 800
 
 /**
  * What came back from trying to judge one photograph.
@@ -59,7 +67,7 @@ function describe(error: unknown): string {
 
 /**
  * Measures how well the best-focused part of an already-stored photograph is
- * focused, from the thumbnail the album has already downloaded.
+ * focused, from the stored image the album has already downloaded.
  *
  * Measured at whatever size the thumbnail arrived at, and measured when the
  * album opens rather than kept in the database, both on purpose. Every
