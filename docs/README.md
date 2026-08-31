@@ -142,6 +142,11 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [The camera's own noise read as sharpness](sessions/2026-08-31-noise-read-as-sharpness.md) —
+  a trace of sensor noise made a badly blurred frame measure *sharper* than a sharp one,
+  because noise spikes became the only edges left to find; the picture is now smoothed before
+  its edges are measured and the edge threshold anchored to its own contrast, and the
+  calibration scenes carry noise.
 - [The blurriest photographs were the ones it could not judge](sessions/2026-08-31-the-blurriest-photographs-said-nothing.md) —
   heavy blur destroys the edges the measure looks for, so the worst photographs produced no
   reading at all and were reported as impossible to judge; a frame with real tone and no

@@ -2,8 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AlbumPhotos } from './AlbumPhotos'
 import type { Album } from '../lib/albums'
+import { SOFT_EDGE_WIDTH } from '../lib/focus'
 import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import type { Photo } from '../lib/photos'
+
+/**
+ * Readings named for what they mean rather than for a number, so that moving
+ * the line does not fail tests about ticking boxes and confirming removals.
+ */
+const SHARP = SOFT_EDGE_WIDTH - 2
+const BLURRED = SOFT_EDGE_WIDTH + 2
 
 const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted(() => ({
   photosApi: {
@@ -80,7 +88,7 @@ beforeEach(() => {
   photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
+  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
   photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
   processorApi.process.mockResolvedValue({
     full: new Blob(['full']),
@@ -243,7 +251,7 @@ describe('AlbumPhotos', () => {
     photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
+  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
   photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
 
     renderPhotos()
@@ -472,7 +480,7 @@ describe('AlbumPhotos', () => {
       photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
+  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
   photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
 
       renderPhotos()
@@ -526,7 +534,7 @@ describe('AlbumPhotos', () => {
       photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
+  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
   photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
 
       renderPhotos(overrides)
@@ -567,7 +575,7 @@ describe('AlbumPhotos', () => {
       photosApi.signedUrls.mockResolvedValue(new Map())
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
-  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
+  processorApi.measure.mockResolvedValue({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
   photosApi.photoBytes.mockResolvedValue(new Blob(['thumb']))
       photosApi.swapPhotoOrder.mockResolvedValue(undefined)
       photosApi.deletePhoto.mockResolvedValue(undefined)
@@ -690,8 +698,8 @@ describe('AlbumPhotos', () => {
       albumOf(2)
       // The blurred one is the second: bytes are downloaded per photo, so the
       // stub answers in the order the album asks.
-      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
-      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: 5.2, texture: 1 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: BLURRED, texture: 1 })
 
       renderPhotos()
 
@@ -780,8 +788,8 @@ describe('AlbumPhotos', () => {
       albumOf(2)
       // The blurred one is the second: bytes are downloaded per photo, so the
       // stub answers in the order the album asks.
-      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: 1.9, texture: 5 })
-      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: 5.2, texture: 1 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: SHARP, texture: 5 })
+      processorApi.measure.mockResolvedValueOnce({ kind: 'measured', edgeWidth: BLURRED, texture: 1 })
 
       renderPhotos()
       fireEvent.click(await screen.findByLabelText(/Remove photo 2/))

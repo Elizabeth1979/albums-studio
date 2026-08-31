@@ -4,6 +4,16 @@ import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
 
+/**
+ * Readings named for what they mean rather than for a number.
+ *
+ * The line has moved three times as the measure improved, and each time these
+ * tests failed for a reason that had nothing to do with what they check. A
+ * reading is interesting here only as "comfortably sharp" or "past the line".
+ */
+const SHARP = SOFT_EDGE_WIDTH - 2
+const BLURRED = SOFT_EDGE_WIDTH + 2
+
 /** A photograph the app looked at and measured the edges of. */
 function measured(edgeWidth: number, texture: number | null = 4): FocusReading {
   return { kind: 'measured', edgeWidth, texture }
@@ -32,8 +42,8 @@ describe('findSoftPhotos', () => {
     // against, which near-duplicate review is structurally unable to mention.
     const photos = [photo({ id: 'sharp', sortOrder: 0 }), photo({ id: 'blurry', sortOrder: 1 })]
     const readings = new Map([
-      ['sharp', measured(1.9)],
-      ['blurry', measured(5.2)],
+      ['sharp', measured(SHARP)],
+      ['blurry', measured(BLURRED)],
     ])
 
     expect(
@@ -58,11 +68,11 @@ describe('findSoftPhotos', () => {
     // even though it carries a fraction of their detail. The measure this
     // replaced read the same photographs five-fold apart.
     const readings = new Map([
-      ['water-a', measured(1.8, 9.1)],
-      ['water-b', measured(1.9, 6.4)],
-      ['water-c', measured(1.8, 7.7)],
-      ['water-d', measured(2.0, 5.2)],
-      ['sharp-portrait', measured(2.0, 2.4)],
+      ['water-a', measured(SHARP - 0.1, 9.1)],
+      ['water-b', measured(SHARP, 6.4)],
+      ['water-c', measured(SHARP - 0.1, 7.7)],
+      ['water-d', measured(SHARP + 0.1, 5.2)],
+      ['sharp-portrait', measured(SHARP + 0.1, 2.4)],
     ])
 
     expect(findSoftPhotos(album, readings)).toEqual([])
@@ -75,7 +85,10 @@ describe('findSoftPhotos', () => {
       photo({ id: `photo-${index}`, sortOrder: index }),
     )
     const readings = new Map(
-      [1.9, 2.1, 1.8, 2.2, 2.0].map((value, index) => [`photo-${index}`, measured(value)]),
+      [0, 0.2, -0.1, 0.3, 0.1].map((offset, index) => [
+        `photo-${index}`,
+        measured(SHARP + offset),
+      ]),
     )
 
     expect(findSoftPhotos(album, readings)).toEqual([])
@@ -89,8 +102,8 @@ describe('findSoftPhotos', () => {
       photo({ id: 'ruined', sortOrder: 1 }),
     ]
     const readings = new Map([
-      ['one', measured(1.9)],
-      ['ruined', measured(6.0)],
+      ['one', measured(SHARP)],
+      ['ruined', measured(BLURRED)],
     ])
 
     expect(findSoftPhotos(album, readings).map((entry) => entry.photo.id)).toEqual(['ruined'])
@@ -154,8 +167,8 @@ describe('findSoftPhotos', () => {
       photo({ id: 'earlier', sortOrder: 2 }),
     ]
     const readings = new Map([
-      ['later', measured(6.0)],
-      ['earlier', measured(6.0)],
+      ['later', measured(BLURRED)],
+      ['earlier', measured(BLURRED)],
     ])
 
     expect(findSoftPhotos(photos, readings).map((entry) => entry.photo.id)).toEqual([
@@ -174,9 +187,9 @@ describe('findSoftPhotos', () => {
       photo({ id: 'alone', sortOrder: 2 }),
     ]
     const readings = new Map([
-      ['one', measured(1.8)],
-      ['two', measured(4.4)],
-      ['alone', measured(4.4)],
+      ['one', measured(SHARP)],
+      ['two', measured(BLURRED)],
+      ['alone', measured(BLURRED)],
     ])
 
     expect(

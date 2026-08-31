@@ -224,3 +224,10 @@ saying so.
   to anyone, and the whole apparatus — a deploy step, a project secret, an environment
   variable — was deleted a week later. The question "how strong should this gate be" is worth
   nothing until "is this worth gating" has an answer.
+
+Every real photograph carries noise, and a calibration scene built from arithmetic does not.
+A measure checked only against clean generated data is unchecked: sensor noise made a badly
+blurred frame read *sharper* than a sharp one, and every synthetic test passed throughout.
+
+When a measure gives the wrong answer, find out why before changing what it looks at. A good
+fix aimed at a real fault will still ship on top of a broken foundation.
