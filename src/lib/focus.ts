@@ -7,14 +7,12 @@
  * case — a phone fired while someone was still moving, and one soft frame sits
  * in the album with nothing to compare it to. This module is the other half.
  *
- * The reading it works from is `focusScore` in `imaging/sharpness`: how well the
- * best-focused part of the frame is focused, divided by that part's own
- * contrast. Both halves matter here. Judging the sharpest part rather than the
- * average is what lets a portrait with a deliberately blurred background pass,
- * and dividing by contrast is what stops a misty lake from being called a
- * mistake. Between them they make one number that means the same thing for a
- * landscape, a portrait and a close-up — which is what allows a single line to
- * be drawn at all.
+ * The reading it works from is `edgeWidth` in `imaging/sharpness`: how many
+ * pixels the picture's crispest transitions take to cross. That is the one
+ * property of a photograph that moves with focus and barely at all with what
+ * the photograph is of — a wave against sand and a cheek against the sky both
+ * cross in a pixel or two when the lens found them — which is what allows a
+ * single line to be drawn across a whole album at all.
  */
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
@@ -23,34 +21,32 @@ import type { SimilarGroup } from './similarity'
 /**
  * Above this width, in pixels, a photograph's edges are soft enough to mention.
  *
- * Measured through the reduction a photograph really goes through — blurred at
- * camera size, shrunk to a thumbnail, rounded to whole numbers — across two
- * kinds of content chosen because they broke the measure this replaces: dense
- * texture (water, sand) and smooth subjects (faces, sky).
+ * Measured through everything a photograph really goes through before this sees
+ * it — blurred at camera size, shrunk to a thumbnail, rounded to whole numbers,
+ * and carrying sensor noise — across the kinds of content that have broken this
+ * feature before: dense texture (water, sand), smooth subjects (faces), and a
+ * sharp subject against a deliberately blurred background.
  *
- * | | textured | faces |
- * | --- | --- | --- |
- * | in focus | 1.78 | 2.00 |
- * | barely soft | 1.94 | 2.00 |
- * | soft | 2.78 | 2.47 |
- * | blurred | 3.11 | 3.00 |
- * | plainly blurred | 5.7 | 5.9 |
- * | sharp subject, blurred background | 1.73 | — |
+ * | | in focus | 3px | 6px | 12px | 20px |
+ * | --- | --- | --- | --- | --- | --- |
+ * | textured, clean | 4.72 | 5.57 | 7.60 | 12.00 | 19.03 |
+ * | textured, noisy | 4.63 | 5.23 | 6.55 | 9.35 | 7.52 |
+ * | faces | 4.32 | — | 7.00 | 11.70 | — |
+ * | sharp subject, blurred background | 4.37 | — | — | — | — |
  *
- * The two columns are the point. Subject matter moves the reading by about two
- * tenths of a pixel; blur moves it from 1.8 to 5.9. The measure this replaces
- * moved five-fold with subject matter, which is how a sharp close-up of two
- * faces came to be offered for deletion beside an album of seascapes.
+ * Two things to read off it. Every in-focus reading, whatever the subject and
+ * whatever the noise, lands between 4.3 and 4.8 — a spread of half a pixel,
+ * where the measure this replaced moved five-fold with subject matter. And
+ * every reading of a photograph the lens actually missed by six pixels or more
+ * is at least 6.5, in the noisiest case as much as in the cleanest.
  *
- * 2.8 sits forty per cent above every in-focus reading of either kind — nothing
- * sharp is offered, and a portrait against a deliberately blurred background is
- * furthest of all from the line — while catching everything from a plainly
- * blurred frame down to a mildly soft one. It errs towards saying nothing,
- * deliberately: missing a blurred photograph costs nothing, while telling the
- * owner her sharp photograph of her own face is out of focus costs her trust in
- * every suggestion the studio makes.
+ * 6.0 sits in that gap. It errs towards saying nothing, deliberately: a frame
+ * softened by three pixels at camera size — one pixel by the time it is a
+ * thumbnail — goes unmentioned, and that is the right trade. Missing a blurred
+ * photograph costs nothing, while telling the owner her sharp photograph of her
+ * own face is out of focus costs her trust in every suggestion the studio makes.
  */
-export const SOFT_EDGE_WIDTH = 2.8
+export const SOFT_EDGE_WIDTH = 6.0
 
 export type SoftPhoto = {
   photo: Photo

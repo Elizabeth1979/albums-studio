@@ -36,6 +36,23 @@ const THUMBNAIL = 400
 
 type Plane = { luma: Float64Array; width: number; height: number }
 
+/**
+ * The noise every camera writes, added after the blur the way a camera adds it.
+ *
+ * Absent from these scenes for the first five rounds of this feature, and its
+ * absence is what let a measure that collapses on every real photograph pass
+ * every test here. Amounts are in grey levels either side of the true value:
+ * two is a bright daylight frame, ten is a dim one.
+ */
+function noisy(source: Float64Array, levels: number, random: () => number): Float64Array {
+  if (levels <= 0) return source
+
+  const out = Float64Array.from(source)
+  for (let i = 0; i < out.length; i += 1) out[i] += levels * (random() * 2 - 1)
+
+  return out
+}
+
 function generator(seed: number) {
   let state = seed
   return () => {
@@ -322,8 +339,11 @@ describe('edgeWidth, through the reduction a photograph really goes through', ()
   })
 
   it('offers a photograph the lens actually missed, whatever it is a photograph of', () => {
+    // Six pixels at camera size, not three. Three is one pixel by the time the
+    // frame is a 400px thumbnail, and reading that as soft would mean drawing
+    // the line where an in-focus photograph of dense texture already sits.
     for (const seed of SEEDS) {
-      for (const sigma of [3, 6]) {
+      for (const sigma of [6, 12]) {
         expect(read(softened(seed, sigma)) as number, `textured ${sigma}px, seed ${seed}`)
           .toBeGreaterThan(SOFT_EDGE_WIDTH)
         expect(read(softenedFaces(seed, sigma)) as number, `faces ${sigma}px, seed ${seed}`)
@@ -365,14 +385,45 @@ describe('edgeWidth, through the reduction a photograph really goes through', ()
     }
   })
 
+  it('is not fooled by the noise every camera writes', () => {
+    // The fault that made this useless on real photographs, and the one that
+    // took longest to find because it cannot happen in a scene built from
+    // arithmetic. Noise is one-pixel spikes; a blurred frame has no slopes of
+    // its own left, so the spikes became its strongest gradients, were found
+    // as edges, and each one is a pixel wide. A frame blurred twenty pixels
+    // with a trace of noise read *sharper than a sharp one*.
+    for (const seed of SEEDS) {
+      for (const levels of [2, 5, 10]) {
+        const grain = generator(seed + 7)
+
+        expect(
+          read(noisy(scene(seed), levels, generator(seed + 7))) as number,
+          `sharp, noise ${levels}, seed ${seed}`,
+        ).toBeLessThan(SOFT_EDGE_WIDTH)
+
+        for (const sigma of [6, 12, 20]) {
+          expect(
+            read(noisy(softened(seed, sigma), levels, grain)) as number,
+            `${sigma}px, noise ${levels}, seed ${seed}`,
+          ).toBeGreaterThan(SOFT_EDGE_WIDTH)
+        }
+      }
+    }
+  })
+
   it('still declines to judge a frame that has no tone either', () => {
     // The other picture with no edges. Fog and a blank wall carry no dark and
     // light to have a transition between, so there is nothing to be wrong
     // about — unlike a blurred photograph, which has both.
     for (const seed of SEEDS) {
+      const fog = remember(`fog-${seed}`, () => texture(generator(seed), 0.02))
+
+      expect(read(fog), `fog, seed ${seed}`).toBeNull()
+      // Grainy fog is still fog. Before the smoothing step, noise in a frame
+      // with nothing in it produced a confident reading of 1.00 — "sharp".
       expect(
-        read(remember(`fog-${seed}`, () => texture(generator(seed), 0.02))),
-        `fog, seed ${seed}`,
+        read(noisy(fog, 5, generator(seed + 7))),
+        `grainy fog, seed ${seed}`,
       ).toBeNull()
       expect(
         read(new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT).fill(128)),

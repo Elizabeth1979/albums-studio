@@ -264,7 +264,7 @@ export function sharpPng(size = 400): Buffer {
  * prop.
  */
 export function blurredPng(size = 400): Buffer {
-  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 6), size))
+  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 12), size))
 }
 
 /**
@@ -280,7 +280,7 @@ export function blurredPng(size = 400): Buffer {
  * as sharp and the album says nothing about it.
  */
 export function softPng(size = 400): Buffer {
-  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 3), size))
+  return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 5), size))
 }
 
 export function sampleFile(name = 'reef.png', width = 96, height = width) {
