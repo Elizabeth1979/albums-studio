@@ -349,7 +349,26 @@ describe('edgeWidth, through the reduction a photograph really goes through', ()
     }
   })
 
-  it('declines to judge a frame with no edges to measure', () => {
+  it('offers a photograph so blurred it has almost no edges left', () => {
+    // The fault the owner kept reporting, and the nastiest one in this feature:
+    // heavy blur destroys the very transitions the measure looks for, so the
+    // blurriest photographs found too few edges and were reported as
+    // impossible to judge — which reads on screen as "nothing to say". The
+    // worse the photograph, the more certain the silence.
+    for (const seed of SEEDS) {
+      for (const sigma of [10, 16]) {
+        const width = read(softened(seed, sigma))
+
+        expect(width, `${sigma}px, seed ${seed}`).not.toBeNull()
+        expect(width as number, `${sigma}px, seed ${seed}`).toBeGreaterThan(SOFT_EDGE_WIDTH)
+      }
+    }
+  })
+
+  it('still declines to judge a frame that has no tone either', () => {
+    // The other picture with no edges. Fog and a blank wall carry no dark and
+    // light to have a transition between, so there is nothing to be wrong
+    // about — unlike a blurred photograph, which has both.
     for (const seed of SEEDS) {
       expect(
         read(remember(`fog-${seed}`, () => texture(generator(seed), 0.02))),
