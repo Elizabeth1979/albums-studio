@@ -207,10 +207,21 @@ export function edgeWidth(luma: Float64Array, width: number, height: number): nu
   }
 
   magnitudes.sort((one, two) => one - two)
-  const strong = Math.max(2, magnitudes[Math.floor(magnitudes.length * 0.95)])
 
-  /** How far a transition may run before the picture has simply moved on. */
-  const MAX_REACH = 10
+  // The floor is low on purpose. A badly blurred photograph has no steep
+  // slopes left anywhere, and a floor of two grey levels excluded every
+  // transition it had — so the blurriest frames found no edges at all and were
+  // reported as impossible to judge, which is the opposite of the truth.
+  const strong = Math.max(0.6, magnitudes[Math.floor(magnitudes.length * 0.95)])
+
+  /**
+   * How far a transition may run before the picture has simply moved on.
+   *
+   * Generous, because the whole point is to measure transitions that have been
+   * smeared wide. At ten pixels a badly blurred frame ran off the end of every
+   * edge and produced nothing.
+   */
+  const MAX_REACH = 16
   /** The slope still counts as part of this edge above this share of its peak. */
   const STILL_THIS_EDGE = 0.35
 
@@ -229,7 +240,9 @@ export function edgeWidth(luma: Float64Array, width: number, height: number): nu
         const peak = slope(along, across)
         if (peak < strong) continue
         // Only the crest of the slope, so one edge is counted once.
-        if (peak < slope(along - 1, across) || peak <= slope(along + 1, across)) continue
+        // Allowing a plateau: blur flattens the crest of a slope, and
+        // demanding a strict maximum threw those away.
+        if (peak < slope(along - 1, across) || peak < slope(along + 1, across)) continue
 
         const floor = peak * STILL_THIS_EDGE
 
@@ -251,7 +264,15 @@ export function edgeWidth(luma: Float64Array, width: number, height: number): nu
   scan(true)
   scan(false)
 
-  if (widths.length < 30) return null
+  if (widths.length < 30) {
+    // Almost no edges. Two very different pictures look like this, and telling
+    // them apart is what stops the blurriest photographs going unmentioned: fog
+    // and a blank wall carry no tonal range either, while a badly blurred
+    // photograph still has dark and light in it — it simply has no crisp
+    // transition between them. A frame with real tone and no measurable edge is
+    // as blurred as this can report.
+    return strong > 1.5 ? MAX_REACH : null
+  }
 
   // The crispest quarter of the edges, not the average of all of them.
   //

@@ -147,6 +147,12 @@ saying so.
   when the markup it belongs to is already on screen and tappable, and a handler that finds
   its dependency missing tends to return quietly. This is invisible on a fast machine and
   shows up on a slow phone or a loaded CI runner.
+- Check what a measure does on the worst instances of what it looks for, not only on the good
+  ones and the near misses. Every guard in the focus measure was written while looking at
+  sharp photographs: a floor on edge strength, a strict crest, a limit on how far a transition
+  could be followed. Heavy blur destroys exactly what such a measure hunts for, so the
+  blurriest photographs found nothing to measure and were reported as impossible to judge —
+  and a measure that fails silently on its worst cases always looks like it is working.
 - A signal calibrated against generated data is calibrated against nothing until a real
   example has been seen. Focus readings from synthetic texture landed around 1; the owner's
   real beach photographs read 2 to 15, so the blurred one sat five times above a threshold
