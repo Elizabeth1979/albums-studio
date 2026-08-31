@@ -200,6 +200,15 @@ const DENOISE = 1.5
  */
 const CONTRAST_ANCHOR = 0.05
 
+/**
+ * How far a transition may run before the picture has simply moved on.
+ *
+ * Generous, because the whole point is to measure transitions that have been
+ * smeared wide. At ten pixels a badly blurred frame ran off the end of every
+ * edge and produced nothing, and was reported as impossible to judge.
+ */
+const MAX_REACH = 16
+
 /** A separable Gaussian, the cheap way. */
 function smooth(source: Float64Array, width: number, height: number, sigma: number): Float64Array {
   const radius = Math.max(1, Math.ceil(sigma * 3))
@@ -268,7 +277,11 @@ function spread(values: Float64Array): number {
  * Returns null when the frame holds too few strong edges to judge: a photograph
  * of fog has no transitions to measure the width of.
  */
-export function edgeWidth(raw: Float64Array, width: number, height: number): number | null {
+function transitionWidths(
+  raw: Float64Array,
+  width: number,
+  height: number,
+): number[] | 'blurred' | null {
   if (width < 8 || height < 8) return null
 
   const luma = smooth(raw, width, height, DENOISE)
@@ -301,14 +314,6 @@ export function edgeWidth(raw: Float64Array, width: number, height: number): num
     magnitudes[Math.floor(magnitudes.length * 0.95)],
   )
 
-  /**
-   * How far a transition may run before the picture has simply moved on.
-   *
-   * Generous, because the whole point is to measure transitions that have been
-   * smeared wide. At ten pixels a badly blurred frame ran off the end of every
-   * edge and produced nothing.
-   */
-  const MAX_REACH = 16
   /** The slope still counts as part of this edge above this share of its peak. */
   const STILL_THIS_EDGE = 0.35
 
@@ -358,21 +363,70 @@ export function edgeWidth(raw: Float64Array, width: number, height: number): num
     // photograph still has dark and light in it — it simply has no crisp
     // transition between them. A frame with real tone and no measurable edge is
     // as blurred as this can report.
-    return strong > 1.5 ? MAX_REACH : null
+    return strong > 1.5 ? 'blurred' : null
   }
 
-  // The crispest quarter of the edges, not the average of all of them.
-  //
-  // Same reasoning that protects a portrait against a deliberately blurred
-  // background: most of that frame's edges belong to the background and are
-  // wide on purpose, so an average calls the photograph blurred. What decides
-  // whether a photograph came out is how crisp its crispest edges are. Averaged
-  // over the whole frame, that portrait measured exactly on the line.
   widths.sort((one, two) => one - two)
+
+  return widths
+}
+
+/**
+ * How wide the crispest quarter of the picture's transitions are.
+ *
+ * The reasoning was that a portrait against a deliberately blurred background is
+ * a photograph that came out right, so the frame should be judged by its
+ * crispest part rather than its average. That reasoning is sound and the
+ * statistic is not, and a real album is what showed it: five photographs read
+ * 3.0, 3.1, 3.6, 3.8, 3.9 — and the 3.9 was a tack-sharp selfie of two faces
+ * while the 3.8 was the blurred one the owner had been reporting for a week.
+ *
+ * **Every real photograph has crisp edges somewhere** — a glint on water, a
+ * compression artefact, a scrap of distant high-contrast detail — so the
+ * crispest quarter bottoms out at the same floor whatever the subject did. What
+ * moves it after that is how much smooth content the frame holds, which is a
+ * fact about faces and sky, not about focus.
+ *
+ * Kept because it is still the honest answer to "how crisp is the crispest part
+ * of this frame", which is what ranking the frames of one burst wants.
+ */
+export function edgeWidth(raw: Float64Array, width: number, height: number): number | null {
+  const widths = transitionWidths(raw, width, height)
+
+  if (widths === null) return null
+  if (widths === 'blurred') return MAX_REACH
+
   const counted = Math.max(1, Math.round(widths.length * 0.25))
 
   let total = 0
   for (let index = 0; index < counted; index += 1) total += widths[index]
 
   return total / counted
+}
+
+/**
+ * How wide a typical transition in the picture is: the median of them all.
+ *
+ * Where the measure above asks "did any part of this come out?", this asks "did
+ * most of it?" — and most of a photograph coming out is much closer to what a
+ * person means when they call one blurred. A frame the camera missed is soft
+ * nearly everywhere, so most of its transitions are wide; a frame that came out
+ * is crisp nearly everywhere, however smooth its subject happens to be.
+ *
+ * The median rather than the mean, so that a handful of very wide or very
+ * narrow edges cannot carry the reading on their own.
+ */
+export function typicalEdgeWidth(
+  raw: Float64Array,
+  width: number,
+  height: number,
+): number | null {
+  const widths = transitionWidths(raw, width, height)
+
+  if (widths === null) return null
+  if (widths === 'blurred') return MAX_REACH
+
+  const middle = Math.floor(widths.length / 2)
+
+  return widths.length % 2 === 0 ? (widths[middle - 1] + widths[middle]) / 2 : widths[middle]
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { SOFT_EDGE_WIDTH } from '../focus'
 import { fitWithin } from './process'
-import { edgeWidth, focusScore } from './sharpness'
+import { edgeWidth, focusScore, typicalEdgeWidth } from './sharpness'
 
 /**
  * Focus, judged the way a photograph actually reaches this code.
@@ -429,6 +429,31 @@ describe('edgeWidth, through the reduction a photograph really goes through', ()
         read(new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT).fill(128)),
         `blank wall, seed ${seed}`,
       ).toBeNull()
+    }
+  })
+
+  it('reads a typical transition as well as the crispest ones', () => {
+    // Two questions, and a real album showed they are different ones. The
+    // crispest quarter asks whether *any* part of the frame came out, and every
+    // photograph has crisp edges somewhere — a glint, a compression artefact —
+    // so it bottoms out at the same floor whatever the camera did. The median
+    // asks whether *most* of it came out, which is nearer what a person means.
+    for (const seed of SEEDS) {
+      const sharp = asThumbnail(scene(seed))
+      const blurred = asThumbnail(softened(seed, 6))
+
+      const sharpTypical = typicalEdgeWidth(sharp.luma, sharp.width, sharp.height) as number
+      const blurredTypical = typicalEdgeWidth(blurred.luma, blurred.width, blurred.height) as number
+
+      expect(blurredTypical, `seed ${seed}`).toBeGreaterThan(sharpTypical)
+    }
+  })
+
+  it('says nothing about a frame with no transitions to measure, either way', () => {
+    for (const seed of SEEDS) {
+      const fog = asThumbnail(remember(`fog-${seed}`, () => texture(generator(seed), 0.02)))
+
+      expect(typicalEdgeWidth(fog.luma, fog.width, fog.height), `seed ${seed}`).toBeNull()
     }
   })
 

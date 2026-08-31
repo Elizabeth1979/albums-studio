@@ -238,3 +238,10 @@ copy sat in the same page, already downloaded.
 
 A diagnostic that reports a set of numbers cannot be acted on. Attach each number to the thing
 it describes.
+
+A statistic that behaves on generated scenes may be measuring an artefact of how they were
+generated. Real photographs carry compression, specular glints and grain; scenes built from
+arithmetic carry none of it, and every one of those absences has broken a measure here.
+
+When a signal is not trusted yet, show it without acting on it. Numbers displayed beside the
+thing they describe settle in one round what argument cannot settle at all.
