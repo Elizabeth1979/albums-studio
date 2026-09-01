@@ -405,7 +405,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       notes.set(
         photo.id,
         reading.kind === 'measured'
-          ? reading.edgeWidth.toFixed(1)
+          ? `${reading.edgeWidth.toFixed(1)} · ${reading.typical?.toFixed(1) ?? '—'}`
           : reading.kind === 'unjudgeable'
             ? 'no edges'
             : 'unread',
@@ -483,7 +483,8 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                   `. Edge widths ${focusSummary.readings.map((one) => one.toFixed(1)).join(', ')}`}
                 {focusSummary.line !== null &&
                   ` — anything over ${focusSummary.line.toFixed(1)} is offered above`}
-                . This line is here while the setting is being tuned and will come out
+                . Each photograph shows two readings: the crispest quarter of its edges, then a
+                typical one. This line is here while the setting is being tuned and will come out
                 afterwards.
               </p>
             )}

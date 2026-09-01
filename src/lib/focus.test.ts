@@ -16,7 +16,7 @@ const BLURRED = SOFT_EDGE_WIDTH + 2
 
 /** A photograph the app looked at and measured the edges of. */
 function measured(edgeWidth: number, texture: number | null = 4): FocusReading {
-  return { kind: 'measured', edgeWidth, texture }
+  return { kind: 'measured', edgeWidth, typical: edgeWidth, texture }
 }
 
 function photo(overrides: Partial<Photo> & { id: string }): Photo {
