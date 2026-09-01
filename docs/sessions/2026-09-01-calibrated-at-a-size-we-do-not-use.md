@@ -74,6 +74,24 @@ dangerous frame this feature will ever see. At 0.42 the line sat one hundredth a
 now sits five hundredths above it, which is the invariant applied literally rather than
 narrowly survived.
 
+## Why no test caught it, including the one written to
+
+There is an end-to-end test whose whole purpose is to catch the analysis size going wrong. It
+serves `softPng` — a frame blurred to the level a lens actually misses by — and asserts the
+album offers it. Measured at the sizes in question that fixture reads:
+
+| | 800px (served) | 400px | 256px |
+| --- | --- | --- | --- |
+| `sharpPng` | 0.366 | 0.357 | 0.353 |
+| `softPng` | 0.559 | **0.429** | 0.386 |
+| `blurredPng` | 0.781 | 0.600 | 0.486 |
+
+Against the old line of 0.42, `softPng` counted as offered at 800px *and* at 400px. So the one
+test written to catch a reduction going wrong passed on both sides of the fault, and would have
+gone on passing whichever size the app used. Moving the line to 0.46 puts the 400px reading
+below it, which is what makes the fixture a guard rather than a prop — its own comment claimed
+that property for two rounds without having it.
+
 ## What this does not fix
 
 Nothing on her site changes. Her blurred photograph reads 0.32, mid-pack among four sharp

@@ -275,9 +275,15 @@ export function blurredPng(size = 400): Buffer {
  * size, which makes it a poor guard: the bug that shipped measured photographs
  * at 256px instead of the thumbnail's own 400px, and that fixture would have
  * been caught either way. This one is blurred to the level a lens actually
- * misses by, and sits just past the line. Shrinking a photograph narrows its
- * edges along with everything else, so measured one step smaller this one reads
- * as sharp and the album says nothing about it.
+ * misses by. Served at `STORED` it reads 0.559 and is offered; measured one
+ * step smaller it reads 0.429 at 400px and 0.386 at 256px, and the album says
+ * nothing about it. That gap is the guard.
+ *
+ * It only became a guard when the line moved to 0.46. Against the old 0.42 the
+ * 400px reading of 0.429 still counted as offered, so this fixture passed at
+ * either size and the one test written to catch a reduction going wrong could
+ * not have caught the reduction that was wrong for two rounds. A fixture that
+ * passes on both sides of the fault it guards is not guarding it.
  */
 export function softPng(size = 400): Buffer {
   return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 5), size))
