@@ -24,35 +24,58 @@ import type { SimilarGroup } from './similarity'
  * Above this reading, a photograph is soft enough to mention.
  *
  * How much of the frame's detail survives being blurred again: between 0 and 1,
- * higher being blurrier. Measured through everything a photograph really goes
- * through — blurred at camera size, stored, rounded to whole numbers, and
- * carrying sensor noise.
+ * higher being blurrier. Measured through the chain the app really performs —
+ * blurred at camera size, stored at `FULL_SIZE`, rounded to whole numbers, read
+ * at `ANALYSIS_CEILING`, and carrying sensor noise.
  *
- * | | in focus | 3px | 6px | 12px | 20px |
- * | --- | --- | --- | --- | --- | --- |
- * | textured | 0.358 | 0.390 | 0.458 | 0.612 | 0.768 |
- * | textured, noisy | 0.354 | 0.384 | 0.446 | 0.573 | 0.657 |
- * | faces | 0.363 | 0.396 | 0.474 | 0.654 | — |
- * | faces, noisy | 0.375 | 0.407 | 0.472 | 0.646 | — |
+ * Blur is named here in pixels of the *stored* image, which is what the check is
+ * handed. A phone frame is roughly halved on its way into storage, so double
+ * these to picture what the lens did.
  *
- * The columns are what matters, and they are why this measure replaced three
- * others. Subject matter moves an in-focus reading by two hundredths — dense
- * water against smooth skin, the pair that defeated every previous attempt —
- * and sensor noise by four thousandths, while blur moves it by four tenths.
+ * | blur in the stored image | textured | + noise | faces | + noise |
+ * | --- | --- | --- | --- | --- |
+ * | in focus | 0.362–0.381 | 0.344–0.380 | 0.338–0.353 | 0.344–0.358 |
+ * | 1.5px | 0.374–0.393 | 0.354–0.392 | 0.354–0.368 | 0.357–0.371 |
+ * | 3px | 0.404–0.424 | 0.377–0.423 | 0.393–0.405 | 0.389–0.402 |
+ * | 6px | 0.487–0.508 | 0.433–0.505 | 0.502–0.504 | 0.486–0.489 |
+ * | 10px | 0.603–0.623 | 0.488–0.616 | 0.641–0.646 | 0.618–0.620 |
+ * | 15px | 0.716–0.740 | 0.507–0.717 | 0.763–0.769 | 0.731–0.732 |
  *
- * 0.42 sits in the gap: above every in-focus reading of either subject at any
- * noise level, below every frame the lens missed by six pixels or more. A frame
- * softened by three pixels at camera size goes unmentioned on purpose, as it
- * always has — missing a blurred photograph costs nothing, while telling the
- * owner her sharp photograph of her own face is out of focus costs her trust in
- * every suggestion the studio makes.
+ * Subject matter moves an in-focus reading by about four hundredths and sensor
+ * noise by rather less, while a blur the lens would be ashamed of moves it by
+ * three tenths. That is what makes one line across a whole album possible, and
+ * it is the property every earlier measure lacked.
  *
- * The one thing it can still get wrong is a portrait shot deliberately against a
- * thrown-out background: with the whole background blurred by eight pixels that
- * reads 0.474. It is on the list of things to fix by finding the people in the
- * frame and judging them rather than the frame.
+ * **0.46, and set from her album rather than from this table.** The table only
+ * says where the line *may* go: anywhere above 0.424, which is the blurriest an
+ * in-focus or mildly softened synthetic frame reads, and below 0.488, which is
+ * the sharpest a 10px one reads. Where it *should* go inside that range is a
+ * question no generated scene can answer, and her Eilat album answers it — five
+ * photographs reading 0.23, 0.27, 0.32, 0.32 and 0.41, every one of which she
+ * considers a photograph that came out. The highest is her selfie: sharp faces
+ * against a beach thrown deliberately soft, which is a good photograph and the
+ * single most dangerous frame this feature will ever see. The line sits five
+ * hundredths above it.
+ *
+ * That is the invariant applied literally. Missing a blurred photograph costs
+ * nothing; telling her that her own sharp face is out of focus costs her trust
+ * in every suggestion the studio makes. It was previously 0.42, one hundredth
+ * above that selfie, and calibrated at a size the app had stopped using.
+ *
+ * What it buys, and what it gives up: a photograph the lens missed by 10px in
+ * storage — twenty on the camera's frame — is offered at any noise level. One
+ * softened by 6px is not reliably caught, and one softened by 3px is not caught
+ * at all, on purpose. Both are recorded as assertions rather than left to be
+ * rediscovered.
+ *
+ * The one thing it still cannot do is the thing the album most needs. Her
+ * blurred photograph reads 0.32, mid-pack among four sharp ones, because its
+ * near foreground is genuinely sharp and only the subject is soft. No line
+ * across this reading reaches it. That is not a threshold to tune; it is the
+ * case for finding the people in the frame and judging them instead, which is
+ * the next piece of work.
  */
-export const BLURRED_ENOUGH = 0.42
+export const BLURRED_ENOUGH = 0.46
 
 export type SoftPhoto = {
   photo: Photo

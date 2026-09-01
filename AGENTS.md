@@ -176,6 +176,18 @@ saying so.
   every photograph to the wrong side of the line — and no amount of passing tests said so.
   Where a signal is destroyed by resizing, re-encoding or rounding, put those steps in the
   test before measuring anything.
+- A calibration harness must import the size, and every other constant, that production uses.
+  Reading the analysis size moved from a 400px thumbnail to an 800px stored image and the
+  harness went on building 400px frames, so the threshold, the denoise width and the re-blur
+  span were all fitted at a size the app had stopped using — the same frame reads 0.390 at
+  400px and 0.458 at 800px. Nothing failed, because the function that picks the size had no
+  test at all and the harness called the measure directly. Where a number decides what a
+  measurement means, export it from the code that uses it and import it in the test; a
+  restated copy is a mismatch waiting for someone to notice on a live site.
+- When a signal fails on real data, check that what shipped is what was calibrated before
+  concluding the signal cannot work. Five whole-frame measures were abandoned here on the
+  strength of readings from an album, and the fifth was judged against a threshold that had
+  never been derived for the pipeline that produced those readings.
 - A new test that passes the first time has not been shown to test anything. Break the code
   it covers, watch it fail, then put the code back. Break the rule that actually holds the
   behaviour up, not one that merely looks related: a belt-and-braces fix means removing

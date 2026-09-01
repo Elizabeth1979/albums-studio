@@ -25,14 +25,14 @@ windsurf board behind him — has never been detected, across seven merged pull 
 
 | file | what it holds |
 | --- | --- |
-| `src/lib/imaging/reblur.ts` | `blurRatio` — the live signal. `DENOISE = 1.5`, `REBLUR_SPAN = 25`. |
+| `src/lib/imaging/reblur.ts` | `blurRatio` — the live signal. `DENOISE = 1.5`, `REBLUR_SPAN = 25`, both re-checked at 800px. |
 | `src/lib/imaging/sharpness.ts` | `edgeWidth` (superseded, still reported), `focusScore` (used only to rank frames inside a near-duplicate group), `laplacianVariance` (stored at upload). |
-| `src/lib/imaging/measure.ts` | `measureFocus(blob)` → `{kind:'measured', blur, edgeWidth, texture}` \| `{kind:'unjudgeable'}` \| `{kind:'failed', detail}`. `ANALYSIS_CEILING = 800`. |
-| `src/lib/focus.ts` | `BLURRED_ENOUGH = 0.42`, `findSoftPhotos`, `summariseFocus`, `unreadable`. |
+| `src/lib/imaging/measure.ts` | `measureFocus(blob)` → `{kind:'measured', blur, edgeWidth, texture}` \| `{kind:'unjudgeable'}` \| `{kind:'failed', detail}`. Exports `ANALYSIS_CEILING = 800`; the harness imports it. |
+| `src/lib/focus.ts` | `BLURRED_ENOUGH = 0.46`, `findSoftPhotos`, `summariseFocus`, `unreadable`. |
 | `src/components/AlbumPhotos.tsx` | downloads bytes via `photoBytes(photo.storagePath)`, 4 at a time; builds `focusNotes`; renders the temporary tuning line. |
 | `src/components/PhotoGallery.tsx` | `focusNotes` prop → the per-tile number badge (`.photo-focus-mark` in `src/index.css`). |
 | `src/components/SoftPhotos.tsx` | the "Photos that look out of focus" review section. |
-| `src/lib/imaging/focusScore.test.ts` | the calibration harness: builds 1200×900 scenes, blurs at camera size, shrinks, rounds to 8-bit, adds noise. |
+| `src/lib/imaging/focusScore.test.ts` | the calibration harness: builds 2000×1500 stored-size scenes, blurs, rounds to 8-bit, reduces to `ANALYSIS_CEILING`, rounds again, adds noise. |
 | `docs/sessions/*` | one write-up per round, with the numbers. |
 
 **Temporary and must be removed when the feature is finished:** the per-tile number badge, and
@@ -61,8 +61,14 @@ Every one was calibrated on synthetic scenes, shipped, and then killed by her re
    edges, not the blur. Her album read 5.0, 5.0, 4.0, 5.0, 4.0 — two values, both whole numbers.
    She spotted it: *"the numbers look off."*
 5. **`blurRatio`** (Crété-Roffet: re-blur the frame and see how much detail it loses; higher =
-   blurrier). Genuinely subject-independent and noise-immune in the harness — sharp texture 0.358
-   vs sharp faces 0.363, while blur moves it to 0.77. **Still does not separate her album.**
+   blurrier). Genuinely subject-independent and noise-immune — in-focus texture 0.362–0.381 vs
+   in-focus faces 0.338–0.353, while a blur the lens would be ashamed of moves it past 0.6.
+   **Still does not separate her album.**
+
+   Read the correction below before trusting any earlier number for this one: the readings that
+   condemned it were taken through a pipeline whose constants had been fitted at 400px while the
+   app measured at 800px. The measure has since been re-calibrated at the size it actually runs
+   at, and the verdict is unchanged — but it is now a verdict about the code that ships.
 
 Two faults were also found that were not about the statistic:
 
@@ -71,6 +77,14 @@ Two faults were also found that were not about the statistic:
   wrote and the blur shrinks with it. Fixed — it now measures `storagePath` at 800px.
 - The calibration scenes carried **no sensor noise and no compression artefacts**, which is why
   measures that collapse on every real photograph passed every test.
+- The calibration harness **reduced to 400px while the app measured at 800px**, for the whole
+  life of `blurRatio`. `THUMBNAIL = 400` was right when written; #53 moved production to the
+  stored image at 800px and did not move the harness, and #55 recalibrated on top of the stale
+  size. The threshold, the denoise width and the re-blur span were all fitted at a size the app
+  had stopped using, and nothing failed, because `measureFocus` — the only function that picks
+  the size — had no test at all. The same frame reads 0.390 at 400px and 0.458 at 800px. Fixed:
+  the harness models the real chain and imports `ANALYSIS_CEILING`, so moving the size fails the
+  suite in both directions.
 
 ## The decisive real data
 
@@ -85,8 +99,15 @@ Her Eilat album, five photographs, read on the live site.
 | boy on the shore, sharp | 3.1 | 0.23 |
 
 Read the two right-hand columns. **Under every measure, her sharpest photograph scores as the
-blurriest, and the blurred one sits mid-pack, indistinguishable from two sharp frames.** The line
-is at 0.42 and the sharp selfie is at 0.41 — one hundredth from being wrongly accused.
+blurriest, and the blurred one sits mid-pack, indistinguishable from two sharp frames.** That is
+the finding, and re-calibration does not touch it: no line anywhere reaches 0.32 without taking
+0.41 and 0.32 with it.
+
+The line was at 0.42 when these were read, one hundredth above the sharp selfie — and that line
+had been derived for a 400px pipeline, not the 800px one that produced these numbers. It is now
+**0.46**, set from these five readings rather than from generated scenes: five hundredths above
+the selfie, which is the invariant applied literally. Her album still shows nothing, as it did
+before. The blurred photograph is still not found.
 
 ## The conclusion — this is the thing to act on
 
@@ -103,7 +124,8 @@ work.** A good portrait and a badly focused snapshot contain the same mixture of
 pixels. What separates them is *which part* is sharp. Five measures failed because they all
 asked "how sharp is this frame?" when the question is "is the subject sharp?"
 
-Stop trying whole-frame statistics. There is nothing left to tune.
+Stop trying whole-frame statistics. There is nothing left to tune — and that is now a claim
+about the code that ships, not about a configuration it never ran.
 
 ## What to build next
 
@@ -155,3 +177,7 @@ Written into `AGENTS.md` over the session:
 - When a measure has a known failure, write the test that asserts the true behaviour and name the
   gap. A test that pretends the failure does not happen is worse than no test.
 - Measure the best copy already in hand.
+- A calibration harness must import the size, and every other constant, that production uses. A
+  restated copy is a mismatch waiting for someone to notice on a live site.
+- When a signal fails on real data, check that what shipped is what was calibrated before
+  concluding the signal cannot work.
