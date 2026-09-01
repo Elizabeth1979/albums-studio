@@ -245,3 +245,10 @@ arithmetic carry none of it, and every one of those absences has broken a measur
 
 When a signal is not trusted yet, show it without acting on it. Numbers displayed beside the
 thing they describe settle in one round what argument cannot settle at all.
+
+Prefer a measure that compares a photograph against itself over one that compares it against a
+number. Four measures here needed a constant that held across subjects, and no such constant
+exists: dense water and smooth skin defeat every one of them.
+
+When a measure has a known failure, write the test that asserts the true behaviour and name the
+gap in it. A test that pretends the failure does not happen is worse than no test.

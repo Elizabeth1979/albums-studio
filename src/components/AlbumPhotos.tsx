@@ -405,7 +405,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       notes.set(
         photo.id,
         reading.kind === 'measured'
-          ? `${reading.edgeWidth.toFixed(1)} · ${reading.typical?.toFixed(1) ?? '—'}`
+          ? (reading.blur?.toFixed(2) ?? 'no reading')
           : reading.kind === 'unjudgeable'
             ? 'no edges'
             : 'unread',
@@ -480,12 +480,12 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 {focusSummary.unjudgeable > 0 &&
                   `, too little contrast to judge ${focusSummary.unjudgeable}`}
                 {focusSummary.readings.length > 0 &&
-                  `. Edge widths ${focusSummary.readings.map((one) => one.toFixed(1)).join(', ')}`}
+                  `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
                 {focusSummary.line !== null &&
-                  ` — anything over ${focusSummary.line.toFixed(1)} is offered above`}
-                . Each photograph shows two readings: the crispest quarter of its edges, then a
-                typical one. This line is here while the setting is being tuned and will come out
-                afterwards.
+                  ` — anything over ${focusSummary.line.toFixed(2)} is offered above`}
+                . Each photograph shows how much of its detail survives being blurred again;
+                higher is blurrier. This line is here while the setting is being tuned and will
+                come out afterwards.
               </p>
             )}
 

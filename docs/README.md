@@ -142,6 +142,10 @@ AI cost.
 - [Phase 4 captions, story notes, and alt text](sessions/2026-08-17-phase-4-text.md) — the
   photo editor, per-photo visibility choices, and the grant and share-function fixes that
   had to land before any text could be called hidden.
+- [Ask the photograph about itself](sessions/2026-09-01-ask-the-photograph-about-itself.md) —
+  edge width saturates at the spacing between neighbouring edges, so every busy photograph read
+  the same. Replaced by a ratio of the frame against a re-blurred copy of itself, which moves
+  two hundredths with the subject and four tenths with the blur.
 - [The crispest quarter measures the subject, not the focus](sessions/2026-08-31-the-crispest-quarter-measures-the-subject.md) —
   the owner's tack-sharp selfie read higher than her blurred photograph, because every real
   photograph has crisp edges somewhere and what moves the reading above that floor is how much
