@@ -7,51 +7,57 @@
  * case — a phone fired while someone was still moving, and one soft frame sits
  * in the album with nothing to compare it to. This module is the other half.
  *
- * The reading it works from is `edgeWidth` in `imaging/sharpness`: how many
- * pixels the picture's crispest transitions take to cross. That is the one
- * property of a photograph that moves with focus and barely at all with what
- * the photograph is of — a wave against sand and a cheek against the sky both
- * cross in a pixel or two when the lens found them — which is what allows a
- * single line to be drawn across a whole album at all.
+ * The reading it works from is `blurRatio` in `imaging/reblur`: how much of the
+ * picture's detail survives being blurred again. Measures that asked a question
+ * *about* a photograph — how much detail, how wide an edge — all failed the same
+ * way, because those are properties of the subject rather than of the focus, and
+ * a real album proved it: a tack-sharp selfie read 3.9 where the blurred frame
+ * beside it read 3.8. This one asks a question the photograph answers about
+ * itself, so whatever the subject brought divides out and one line can be drawn
+ * across a whole album.
  */
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import type { SimilarGroup } from './similarity'
 
 /**
- * Above this width, in pixels, a photograph's edges are soft enough to mention.
+ * Above this reading, a photograph is soft enough to mention.
  *
- * Measured through everything a photograph really goes through before this sees
- * it — blurred at camera size, shrunk to a thumbnail, rounded to whole numbers,
- * and carrying sensor noise — across the kinds of content that have broken this
- * feature before: dense texture (water, sand), smooth subjects (faces), and a
- * sharp subject against a deliberately blurred background.
+ * How much of the frame's detail survives being blurred again: between 0 and 1,
+ * higher being blurrier. Measured through everything a photograph really goes
+ * through — blurred at camera size, stored, rounded to whole numbers, and
+ * carrying sensor noise.
  *
  * | | in focus | 3px | 6px | 12px | 20px |
  * | --- | --- | --- | --- | --- | --- |
- * | textured, clean | 4.72 | 5.57 | 7.60 | 12.00 | 19.03 |
- * | textured, noisy | 4.63 | 5.23 | 6.55 | 9.35 | 7.52 |
- * | faces | 4.32 | — | 7.00 | 11.70 | — |
- * | sharp subject, blurred background | 4.37 | — | — | — | — |
+ * | textured | 0.358 | 0.390 | 0.458 | 0.612 | 0.768 |
+ * | textured, noisy | 0.354 | 0.384 | 0.446 | 0.573 | 0.657 |
+ * | faces | 0.363 | 0.396 | 0.474 | 0.654 | — |
+ * | faces, noisy | 0.375 | 0.407 | 0.472 | 0.646 | — |
  *
- * Two things to read off it. Every in-focus reading, whatever the subject and
- * whatever the noise, lands between 4.3 and 4.8 — a spread of half a pixel,
- * where the measure this replaced moved five-fold with subject matter. And
- * every reading of a photograph the lens actually missed by six pixels or more
- * is at least 6.5, in the noisiest case as much as in the cleanest.
+ * The columns are what matters, and they are why this measure replaced three
+ * others. Subject matter moves an in-focus reading by two hundredths — dense
+ * water against smooth skin, the pair that defeated every previous attempt —
+ * and sensor noise by four thousandths, while blur moves it by four tenths.
  *
- * 6.0 sits in that gap. It errs towards saying nothing, deliberately: a frame
- * softened by three pixels at camera size — one pixel by the time it is a
- * thumbnail — goes unmentioned, and that is the right trade. Missing a blurred
- * photograph costs nothing, while telling the owner her sharp photograph of her
- * own face is out of focus costs her trust in every suggestion the studio makes.
+ * 0.42 sits in the gap: above every in-focus reading of either subject at any
+ * noise level, below every frame the lens missed by six pixels or more. A frame
+ * softened by three pixels at camera size goes unmentioned on purpose, as it
+ * always has — missing a blurred photograph costs nothing, while telling the
+ * owner her sharp photograph of her own face is out of focus costs her trust in
+ * every suggestion the studio makes.
+ *
+ * The one thing it can still get wrong is a portrait shot deliberately against a
+ * thrown-out background: with the whole background blurred by eight pixels that
+ * reads 0.474. It is on the list of things to fix by finding the people in the
+ * frame and judging them rather than the frame.
  */
-export const SOFT_EDGE_WIDTH = 6.0
+export const BLURRED_ENOUGH = 0.42
 
 export type SoftPhoto = {
   photo: Photo
-  /** How wide this photograph's edges are, in pixels. */
-  edgeWidth: number
+  /** How much of this photograph's detail survived being blurred again. */
+  blur: number
 }
 
 /**
@@ -68,11 +74,11 @@ export type FocusSummary = {
   measured: number
   unjudgeable: number
   failed: number
-  /** The widest edges found in the album, or null when nothing was measured. */
+  /** The blurriest reading in the album, or null when nothing was measured. */
   softest: number | null
-  /** Every reading obtained, narrowest edges first. */
+  /** Every reading obtained, sharpest first. */
   readings: number[]
-  /** The width photographs are judged against. */
+  /** The reading photographs are judged against. */
   line: number | null
 }
 
@@ -98,17 +104,17 @@ export function summariseFocus(
     else if (reading.kind === 'unjudgeable') summary.unjudgeable += 1
     else {
       summary.measured += 1
-      summary.readings.push(reading.edgeWidth)
+      if (reading.blur === null) continue
+
+      summary.readings.push(reading.blur)
       summary.softest =
-        summary.softest === null
-          ? reading.edgeWidth
-          : Math.max(summary.softest, reading.edgeWidth)
+        summary.softest === null ? reading.blur : Math.max(summary.softest, reading.blur)
     }
   }
 
   summary.readings.sort((one, two) => one - two)
 
-  summary.line = SOFT_EDGE_WIDTH
+  summary.line = BLURRED_ENOUGH
 
   return summary
 }
@@ -144,8 +150,10 @@ export function findSoftPhotos(
     .flatMap((photo) => {
       const reading = readings.get(photo.id)
 
-      return reading?.kind === 'measured' && reading.edgeWidth > SOFT_EDGE_WIDTH
-        ? [{ photo, edgeWidth: reading.edgeWidth }]
+      return reading?.kind === 'measured' &&
+        reading.blur !== null &&
+        reading.blur > BLURRED_ENOUGH
+        ? [{ photo, blur: reading.blur }]
         : []
     })
     .sort((one, two) => one.photo.sortOrder - two.photo.sortOrder)

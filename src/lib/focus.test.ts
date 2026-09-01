@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SOFT_EDGE_WIDTH, findSoftPhotos, summariseFocus, unreadable } from './focus'
+import { BLURRED_ENOUGH, findSoftPhotos, summariseFocus, unreadable } from './focus'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
@@ -11,12 +11,12 @@ import { groupSimilar } from './similarity'
  * tests failed for a reason that had nothing to do with what they check. A
  * reading is interesting here only as "comfortably sharp" or "past the line".
  */
-const SHARP = SOFT_EDGE_WIDTH - 2
-const BLURRED = SOFT_EDGE_WIDTH + 2
+const SHARP = BLURRED_ENOUGH - 0.06
+const BLURRED = BLURRED_ENOUGH + 0.2
 
 /** A photograph the app looked at and measured the edges of. */
-function measured(edgeWidth: number, texture: number | null = 4): FocusReading {
-  return { kind: 'measured', edgeWidth, typical: edgeWidth, texture }
+function measured(blur: number, texture: number | null = 4): FocusReading {
+  return { kind: 'measured', blur, edgeWidth: 2, texture }
 }
 
 function photo(overrides: Partial<Photo> & { id: string }): Photo {
@@ -68,11 +68,11 @@ describe('findSoftPhotos', () => {
     // even though it carries a fraction of their detail. The measure this
     // replaced read the same photographs five-fold apart.
     const readings = new Map([
-      ['water-a', measured(SHARP - 0.1, 9.1)],
+      ['water-a', measured(SHARP - 0.01, 9.1)],
       ['water-b', measured(SHARP, 6.4)],
-      ['water-c', measured(SHARP - 0.1, 7.7)],
-      ['water-d', measured(SHARP + 0.1, 5.2)],
-      ['sharp-portrait', measured(SHARP + 0.1, 2.4)],
+      ['water-c', measured(SHARP - 0.01, 7.7)],
+      ['water-d', measured(SHARP + 0.01, 5.2)],
+      ['sharp-portrait', measured(SHARP + 0.01, 2.4)],
     ])
 
     expect(findSoftPhotos(album, readings)).toEqual([])
@@ -85,7 +85,7 @@ describe('findSoftPhotos', () => {
       photo({ id: `photo-${index}`, sortOrder: index }),
     )
     const readings = new Map(
-      [0, 0.2, -0.1, 0.3, 0.1].map((offset, index) => [
+      [0, 0.02, -0.01, 0.03, 0.01].map((offset, index) => [
         `photo-${index}`,
         measured(SHARP + offset),
       ]),
@@ -120,13 +120,13 @@ describe('findSoftPhotos', () => {
     // Narrowest edges first, and the softest is the widest.
     expect(summary.readings).toEqual([1.7, 1.9, 2.4, 3.6])
     expect(summary.softest).toBe(3.6)
-    expect(summary.line).toBe(SOFT_EDGE_WIDTH)
+    expect(summary.line).toBe(BLURRED_ENOUGH)
   })
 
   it('leaves a photograph exactly at the line alone', () => {
     const photos = [photo({ id: 'borderline' })]
 
-    expect(findSoftPhotos(photos, new Map([['borderline', measured(SOFT_EDGE_WIDTH)]]))).toEqual([])
+    expect(findSoftPhotos(photos, new Map([['borderline', measured(BLURRED_ENOUGH)]]))).toEqual([])
   })
 
   it('offers nothing for a photograph whose bytes could not be read', () => {

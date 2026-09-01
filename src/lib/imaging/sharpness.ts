@@ -404,29 +404,3 @@ export function edgeWidth(raw: Float64Array, width: number, height: number): num
   return total / counted
 }
 
-/**
- * How wide a typical transition in the picture is: the median of them all.
- *
- * Where the measure above asks "did any part of this come out?", this asks "did
- * most of it?" — and most of a photograph coming out is much closer to what a
- * person means when they call one blurred. A frame the camera missed is soft
- * nearly everywhere, so most of its transitions are wide; a frame that came out
- * is crisp nearly everywhere, however smooth its subject happens to be.
- *
- * The median rather than the mean, so that a handful of very wide or very
- * narrow edges cannot carry the reading on their own.
- */
-export function typicalEdgeWidth(
-  raw: Float64Array,
-  width: number,
-  height: number,
-): number | null {
-  const widths = transitionWidths(raw, width, height)
-
-  if (widths === null) return null
-  if (widths === 'blurred') return MAX_REACH
-
-  const middle = Math.floor(widths.length / 2)
-
-  return widths.length % 2 === 0 ? (widths[middle - 1] + widths[middle]) / 2 : widths[middle]
-}

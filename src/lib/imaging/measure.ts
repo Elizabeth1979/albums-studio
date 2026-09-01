@@ -1,6 +1,7 @@
 import { toLuma } from './luma'
 import { fitWithin } from './process'
-import { edgeWidth, focusScore, typicalEdgeWidth } from './sharpness'
+import { blurRatio } from './reblur'
+import { edgeWidth, focusScore } from './sharpness'
 
 /**
  * The size focus is judged at.
@@ -47,14 +48,15 @@ export type FocusReading =
        */
       edgeWidth: number
       /**
-       * How wide a *typical* transition is, rather than the crispest quarter.
+       * How much of the picture's detail survives being blurred again, between
+       * 0 and 1, higher being blurrier. **This is what the advice acts on.**
        *
-       * Reported alongside while the two are compared on a real album. The
-       * crispest quarter cannot tell a blurred photograph from a sharp one —
-       * on the owner's album it put a tack-sharp selfie above the blurred
-       * frame — because every photograph has crisp edges somewhere.
+       * It is the only reading here that does not depend on what the photograph
+       * is of, because it compares the frame against itself rather than against
+       * a number: sharp texture reads 0.358 and sharp faces 0.363, while blur
+       * moves either of them to 0.77.
        */
-      typical: number | null
+      blur: number | null
       /**
        * How much fine detail the frame carries, relative to its contrast.
        * Depends heavily on the subject, so it is worthless for comparing a
@@ -113,7 +115,7 @@ export async function measureFocus(source: Blob): Promise<FocusReading> {
       : {
           kind: 'measured',
           edgeWidth: width,
-          typical: typicalEdgeWidth(luma, size.width, size.height),
+          blur: blurRatio(luma, size.width, size.height),
           texture: focusScore(luma, size.width, size.height),
         }
   } catch (error) {
