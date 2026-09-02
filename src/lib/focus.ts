@@ -16,6 +16,7 @@
  * itself, so whatever the subject brought divides out and one line can be drawn
  * across a whole album.
  */
+import type { FaceReading } from './imaging/faces'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import type { SimilarGroup } from './similarity'
@@ -182,3 +183,66 @@ export function findSoftPhotos(
     .sort((one, two) => one.photo.sortOrder - two.photo.sortOrder)
 }
 
+
+/**
+ * What looking for faces managed to do, for saying so on screen.
+ *
+ * The whole point of the first round of this work. Whether BlazeFace can see a
+ * small boy in a hat at some distance in a real beach photograph is a question
+ * no scene built here can answer, and her album is the only place it can be
+ * answered — so the album has to say what happened, plainly, before anything is
+ * built on top of it.
+ *
+ * Four numbers rather than a yes or no, because "no face in this photograph"
+ * and "the detector never loaded" are different facts and this feature has
+ * already been debugged blind three times by letting outcomes like those look
+ * identical.
+ */
+export type FaceSummary = {
+  total: number
+  /** Photographs with at least one face found. */
+  withFaces: number
+  /** Photographs looked at, where the detector found nobody. */
+  withoutFaces: number
+  /** Photographs where the detector could not run at all. */
+  unavailable: number
+  /** Why it could not run, when it could not. */
+  detail: string | null
+  /** How sure the detector was, surest first, for the photographs where it found someone. */
+  confidences: number[]
+}
+
+export function summariseFaces(
+  photos: Photo[],
+  readings: Map<string, FaceReading>,
+): FaceSummary {
+  const summary: FaceSummary = {
+    total: photos.length,
+    withFaces: 0,
+    withoutFaces: 0,
+    unavailable: 0,
+    detail: null,
+    confidences: [],
+  }
+
+  for (const photo of photos) {
+    const reading = readings.get(photo.id)
+    if (!reading) continue
+
+    if (reading.kind === 'faces') {
+      summary.withFaces += 1
+      summary.confidences.push(Math.max(...reading.boxes.map((one) => one.confidence)))
+    } else if (reading.kind === 'none') {
+      summary.withoutFaces += 1
+    } else {
+      summary.unavailable += 1
+      // The first reason is as good as the last and they are almost always the
+      // same one; a list of identical sentences says nothing extra.
+      summary.detail ??= reading.detail
+    }
+  }
+
+  summary.confidences.sort((one, two) => two - one)
+
+  return summary
+}

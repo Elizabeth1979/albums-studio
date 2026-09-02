@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BLURRED_ENOUGH, findSoftPhotos, summariseFocus, unreadable } from './focus'
+import type { FaceReading } from './imaging/faces'
+import { BLURRED_ENOUGH, findSoftPhotos, summariseFaces, summariseFocus, unreadable } from './focus'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
@@ -195,5 +196,74 @@ describe('findSoftPhotos', () => {
     expect(
       findSoftPhotos(photos, readings, groupSimilar(photos)).map((entry) => entry.photo.id),
     ).toEqual(['alone'])
+  })
+})
+
+describe('summariseFaces', () => {
+  const withFaces = (confidence: number): FaceReading => ({
+    kind: 'faces',
+    boxes: [{ x: 10, y: 10, width: 40, height: 40, confidence }],
+  })
+
+  it('tells apart a photograph with nobody in it from one that could not be looked at', () => {
+    // The distinction the whole round rests on. An album where the detector
+    // never loaded and an album of landscapes are different facts, and this
+    // feature has already been debugged blind three times by letting outcomes
+    // like those look identical on screen.
+    const photos = [photo({ id: 'a' }), photo({ id: 'b' }), photo({ id: 'c' })]
+    const summary = summariseFaces(
+      photos,
+      new Map<string, FaceReading>([
+        ['a', withFaces(0.91)],
+        ['b', { kind: 'none' }],
+        ['c', { kind: 'unavailable', detail: 'the model could not be fetched' }],
+      ]),
+    )
+
+    expect(summary).toMatchObject({
+      total: 3,
+      withFaces: 1,
+      withoutFaces: 1,
+      unavailable: 1,
+      detail: 'the model could not be fetched',
+    })
+  })
+
+  it('reports how sure the detector was, surest first', () => {
+    // A count alone cannot say whether a detection is worth believing. The
+    // owner's blurred photograph has her son small, hatted and some way off; if
+    // he is found at all it will be near the line, and that has to be visible.
+    const photos = [photo({ id: 'a' }), photo({ id: 'b' })]
+    const summary = summariseFaces(
+      photos,
+      new Map<string, FaceReading>([['a', withFaces(0.81)], ['b', withFaces(0.96)]]),
+    )
+
+    expect(summary.confidences).toEqual([0.96, 0.81])
+  })
+
+  it('takes the surest face when a photograph holds several', () => {
+    const summary = summariseFaces(
+      [photo({ id: 'a' })],
+      new Map<string, FaceReading>([
+        ['a', {
+          kind: 'faces',
+          boxes: [
+            { x: 0, y: 0, width: 10, height: 10, confidence: 0.83 },
+            { x: 20, y: 0, width: 10, height: 10, confidence: 0.94 },
+          ],
+        }],
+      ]),
+    )
+
+    expect(summary.confidences).toEqual([0.94])
+  })
+
+  it('says nothing about a photograph it has not looked at yet', () => {
+    // An album mid-check must not read as an album with nobody in it.
+    const summary = summariseFaces([photo({ id: 'a' }), photo({ id: 'b' })], new Map())
+
+    expect(summary).toMatchObject({ total: 2, withFaces: 0, withoutFaces: 0, unavailable: 0 })
+    expect(summary.detail).toBeNull()
   })
 })

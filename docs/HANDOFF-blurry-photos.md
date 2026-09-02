@@ -29,7 +29,9 @@ windsurf board behind him — has never been detected, across seven merged pull 
 | `src/lib/imaging/sharpness.ts` | `edgeWidth` (superseded, still reported), `focusScore` (used only to rank frames inside a near-duplicate group), `laplacianVariance` (stored at upload). |
 | `src/lib/imaging/measure.ts` | `measureFocus(blob)` → `{kind:'measured', blur, edgeWidth, texture}` \| `{kind:'unjudgeable'}` \| `{kind:'failed', detail}`. Exports `ANALYSIS_CEILING = 800`; the harness imports it. |
 | `src/lib/focus.ts` | `BLURRED_ENOUGH = 0.46`, `findSoftPhotos`, `summariseFocus`, `unreadable`. |
-| `src/components/AlbumPhotos.tsx` | downloads bytes via `photoBytes(photo.storagePath)`, 4 at a time; builds `focusNotes`; renders the temporary tuning line. |
+| `src/components/AlbumPhotos.tsx` | downloads bytes via `photoBytes(photo.storagePath)`, 4 at a time; measures blur in the worker and finds faces on the main thread; builds `focusNotes`; renders the two temporary tuning lines. |
+| `src/lib/imaging/faces.ts` | `detectFaces`, `findFacesIn`, `forgetDetector`. `CONFIDENCE = 0.8`, measured rather than taken from the library. |
+| `scripts/vendor-mediapipe.mjs` | copies the vision runtime out of `node_modules` into `public/mediapipe/` before every build. |
 | `src/components/PhotoGallery.tsx` | `focusNotes` prop → the per-tile number badge (`.photo-focus-mark` in `src/index.css`). |
 | `src/components/SoftPhotos.tsx` | the "Photos that look out of focus" review section. |
 | `src/lib/imaging/focusScore.test.ts` | the calibration harness: builds 2000×1500 stored-size scenes, blurs, rounds to 8-bit, reduces to `ANALYSIS_CEILING`, rounds again, adds noise. |
@@ -37,7 +39,8 @@ windsurf board behind him — has never been detected, across seven merged pull 
 
 **Temporary and must be removed when the feature is finished:** the per-tile number badge, and
 the "Focus check: read N of M …" line in `AlbumPhotos.tsx` that ends "This line is here while the
-setting is being tuned and will come out afterwards."
+setting is being tuned and will come out afterwards." The "People: found someone in N of M …"
+line beside it comes out with them.
 
 ## The five measures tried, and how each died
 
@@ -142,11 +145,20 @@ Recommended shape:
 1. **Face detection locally, in the browser** — BlazeFace via `@mediapipe/tasks-vision`
    (`FaceDetector`). Self-host the wasm and the `blaze_face_short_range.tflite` model from
    `node_modules` into `public/` at build time; do not load from a CDN. Load it lazily, only when
-   the focus check runs. Package unpacked size is ~36MB but only the vision wasm (~3MB) and the
-   model (~230KB) are fetched at runtime.
+   the focus check runs. **Done — and every detail in this paragraph was wrong.** The model is
+   not in `node_modules` at all (MediaPipe publishes it separately; it is now committed at
+   `public/mediapipe/blaze_face_short_range.tflite`, 224 KB). The wasm is 11.8 MB on disk rather
+   than 3, gzipping to 3.3 MB over the wire, and both the SIMD and nosimd variants must be
+   vendored because the browser chooses between them. And it cannot run in this app's module
+   worker (`ModuleFactory not set`), so detection runs on the main thread. See
+   `docs/sessions/2026-09-02-find-the-people-first.md`.
 2. **Measure `blurRatio` on the face region** (padded, taken from the 2000px stored image so the
    crop has enough pixels), not on the frame. `blurRatio` is the right measure for this — it is
    subject-independent and noise-immune; it was only ever being pointed at the wrong region.
+   **Not started, on purpose** — step 5 has to answer first. Note when it is: `BLURRED_ENOUGH` is
+   calibrated for a whole frame reduced to `ANALYSIS_CEILING`, and a face crop taken at stored
+   resolution carries its blur at a different scale entirely. That line will not transfer, and
+   inheriting it would repeat the mistake #57 fixed.
 3. **Decide from the subject**: face sharp → the photograph came out, whatever the background is
    doing. Face soft → offer it.
 4. **No face found → say nothing.** Do not fall back to the whole-frame reading; five rounds
@@ -154,12 +166,21 @@ Recommended shape:
    and photographs of people are the ones anyone actually minds losing.
 5. Report failures distinctly on screen: *found a face and measured it* / *no face found* /
    *detector failed to load* must not all look like silence. This feature was debugged blind
-   three times because they did.
+   three times because they did. **Done, and it is where this now stands:** the album says what
+   the detector managed on every photograph, per tile and in a summary line, and acts on none of
+   it. Two end-to-end tests hold "found nobody" and "could not run" apart.
 
 **The known risk to check first:** in her blurred photograph the boy is small, wearing a hat, and
 some distance away; in another he faces away entirely. BlazeFace may not detect either. Test that
 before building the rest — if faces are not found in her album, this approach dies too, and the
 next option is a saliency or subject-region model rather than a face detector.
+
+**This is now the open question, and the mechanism is worse than supposed.** BlazeFace resizes
+the whole frame to 128x128 before it looks at anything, so a boy filling a twentieth of the frame
+is about six pixels across by the time the model sees him. The detector is shipped and reporting;
+her album is the only thing that can answer it. If it comes back saying no face was found, the
+answer is not a different threshold — it is to run the detector over tiles so a small face
+arrives larger, or to drop faces and find the subject another way.
 
 ## Do not repeat these
 
@@ -174,6 +195,10 @@ Written into `AGENTS.md` over the session:
   constant. No constant holds across dense water and smooth skin.
 - Never let a failure and a clean result look the same on screen.
 - When a signal is not trusted yet, display it without acting on it.
+- A plan written from documentation is a hypothesis. The face-detection plan above was wrong
+  about where the model lives, how large the runtime is, and where it can run.
+- Where a library ships a default that decides whether a photograph is accused, measure it
+  rather than take it. MediaPipe's default confidence finds faces in random rectangles.
 - When a measure has a known failure, write the test that asserts the true behaviour and name the
   gap. A test that pretends the failure does not happen is worse than no test.
 - Measure the best copy already in hand.

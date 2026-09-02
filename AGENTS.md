@@ -188,6 +188,14 @@ saying so.
   concluding the signal cannot work. Five whole-frame measures were abandoned here on the
   strength of readings from an album, and the fifth was judged against a threshold that had
   never been derived for the pipeline that produced those readings.
+- A plan written from documentation is a hypothesis, and the cheapest way to test it is to run
+  the thing. The face-detection plan was wrong about three checkable facts — the model is not in
+  the npm package, the runtime is 11.8 MB rather than 3, and it cannot start in a module worker
+  at all — and each would have been a round of surprise if built on rather than tried.
+- Where a library ships a default that decides whether something is accused, measure it rather
+  than take it. MediaPipe's default face confidence of 0.5 finds a face in random rectangles
+  about one draw in sixty, which here would point the blur measurement at a patch of nothing and
+  condemn a photograph that came out.
 - A new test that passes the first time has not been shown to test anything. Break the code
   it covers, watch it fail, then put the code back. Break the rule that actually holds the
   behaviour up, not one that merely looks related: a belt-and-braces fix means removing

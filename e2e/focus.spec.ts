@@ -1,5 +1,5 @@
 import { type Page, expect, test } from '@playwright/test'
-import { blurredPng, sharpPng, softPng } from './support/sample-image'
+import { blurredPng, facePng, sharpPng, softPng } from './support/sample-image'
 import { type StubOptions, albumRecord, photoRecord, stubSupabase } from './support/supabase-stub'
 
 /** Signs in and opens an album already holding `options.photos`. */
@@ -42,6 +42,59 @@ const oneOfEach = {
     'owner/album-1/photo-2.jpg': blurredPng(STORED),
   },
 }
+
+test.describe('finding the people in a photograph', () => {
+  test('says who it found, and tells that apart from not being able to look', async ({ page }) => {
+    // The one question this round exists to answer, and the only place it can
+    // be answered honestly is a browser: the detector is a WebAssembly runtime
+    // and a model served from this app's own origin, and nothing below the
+    // browser can prove those load, start, and run.
+    //
+    // Both halves are asserted on purpose. "Found nobody in this photograph"
+    // and "the detector never loaded" are different facts, and this feature has
+    // been debugged blind three times by letting outcomes like those look the
+    // same on screen. A test that only checked the count would pass just as
+    // happily with a detector that had never started.
+    await openAlbum(page, {
+      photos,
+      objectBytes: {
+        'owner/album-1/photo-1.jpg': facePng(STORED),
+        'owner/album-1/photo-2.jpg': sharpPng(STORED),
+      },
+    })
+
+    const line = page.locator('p.focus-unchecked', { hasText: 'People:' })
+
+    await expect(line).toContainText('found someone in 1 of 2', { timeout: 30_000 })
+    await expect(line).toContainText('found nobody in 1')
+    await expect(line).not.toContainText('could not run')
+
+    // Displayed and not acted on. Judging the subject rather than the frame is
+    // the next piece of work, and until it exists no photograph may be offered
+    // or held back on the strength of a face.
+    await expect(page.getByRole('heading', { name: 'Photos that look out of focus' })).toBeHidden()
+  })
+
+  test('names the failure when the detector cannot be loaded', async ({ page }) => {
+    // The fault that must never look like silence. With the model unreachable
+    // every photograph is unjudgeable, and an album that says nothing would be
+    // indistinguishable from an album full of landscapes.
+    await page.route('**/mediapipe/**', (route) => route.abort())
+
+    await openAlbum(page, {
+      photos,
+      objectBytes: {
+        'owner/album-1/photo-1.jpg': facePng(STORED),
+        'owner/album-1/photo-2.jpg': sharpPng(STORED),
+      },
+    })
+
+    const line = page.locator('p.focus-unchecked', { hasText: 'People:' })
+
+    await expect(line).toContainText('could not run on 2', { timeout: 30_000 })
+    await expect(line).toContainText('found someone in 0 of 2')
+  })
+})
 
 test.describe('photos that are out of focus', () => {
   test('judges the photographs the album already held, from what the browser decodes', async ({

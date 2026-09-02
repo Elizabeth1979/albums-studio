@@ -289,6 +289,123 @@ export function softPng(size = 400): Buffer {
   return greyPng(toThumbnail(blurAtCameraSize(cameraFrame(), 5), size))
 }
 
+/** Blends between two colours, softly, the way a lens renders an edge. */
+function mix(a: number[], b: number[], t: number): number[] {
+  const s = Math.max(0, Math.min(1, t))
+  const e = s * s * (3 - 2 * s)
+  return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e]
+}
+
+/** A PNG built from a per-pixel colour, for scenes where colour is the point. */
+function colourPngFrom(
+  width: number,
+  height: number,
+  shade: (x: number, y: number) => number[],
+): Buffer {
+  const raw = Buffer.alloc(height * (width * 3 + 1))
+  let offset = 0
+
+  for (let y = 0; y < height; y += 1) {
+    raw[offset] = 0
+    offset += 1
+
+    for (let x = 0; x < width; x += 1) {
+      const rgb = shade(x, y)
+      for (let channel = 0; channel < 3; channel += 1) {
+        raw[offset + channel] = Math.max(0, Math.min(255, Math.round(rgb[channel])))
+      }
+      offset += 3
+    }
+  }
+
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
+  header[8] = 8
+  header[9] = 2
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+/**
+ * A photograph with a person in it, for proving the face check runs in the app.
+ *
+ * Drawn from arithmetic rather than shipped as a photograph of somebody: a
+ * fixture that is a picture of a real person is a picture of a real person, and
+ * it would live in this repository forever.
+ *
+ * Skin colour and soft edges are both load-bearing. A grey version of exactly
+ * this geometry, with hard edges, is not detected at all — BlazeFace is trained
+ * on photographs and wants something that looks like one. That is worth knowing
+ * before anyone simplifies this.
+ *
+ * What it proves is narrow and worth being plain about: that the detector
+ * loads, runs, and reports inside the real app. Whether it can find a small
+ * hatted boy at some distance on a beach is not a question any arithmetic here
+ * can answer. Only the owner's album can.
+ */
+export function facePng(size = 480): Buffer {
+  const width = size
+  const height = Math.round(size * 0.75)
+  const cx = width / 2
+  const cy = height * 0.52
+  const rx = width * 0.20
+  const ry = height * 0.34
+
+  const BACKDROP = [107, 125, 140]
+  const HAIR = [59, 43, 34]
+  const SCLERA = [251, 251, 248]
+  const IRIS = [74, 53, 36]
+  const PUPIL = [23, 18, 20]
+  const MOUTH = [142, 77, 70]
+
+  return colourPngFrom(width, height, (x, y) => {
+    const dx = (x - cx) / rx
+    const dy = (y - cy) / ry
+    const grain = ((x * 7 + y * 13) % 9) - 4
+
+    // Skin, lit from the upper left the way a face usually is.
+    const lit = Math.hypot(dx + 0.30, dy + 0.35)
+    let rgb = mix([240, 208, 180], [185, 143, 112], (lit - 0.15) / 1.05)
+
+    const face = Math.hypot(dx, dy)
+    const hairY = (y - (cy - ry * 0.72)) / (ry * 0.42)
+    const inHair = Math.hypot(dx / 1.04, hairY) < 1 && y < cy - ry * 0.28
+
+    for (const side of [-1, 1]) {
+      const ex = cx + side * rx * 0.38
+      const ey = cy - ry * 0.16
+      const eye = Math.hypot((x - ex) / (rx * 0.19), (y - ey) / (ry * 0.105))
+      if (eye < 1.15) {
+        const iris = Math.hypot((x - ex) / (rx * 0.088), (y - ey) / (ry * 0.088))
+        const inner = iris < 0.48 ? PUPIL : iris < 1 ? IRIS : SCLERA
+        rgb = mix(rgb, inner, (1.15 - eye) / 0.16)
+      }
+
+      const brow = Math.hypot((x - ex) / (rx * 0.26), (y - (ey - ry * 0.24)) / (ry * 0.062))
+      if (brow < 1.3) rgb = mix(rgb, HAIR, (1.3 - brow) / 0.35)
+    }
+
+    // Nose shadow, then the mouth.
+    const nose = Math.hypot((x - (cx - rx * 0.06)) / (rx * 0.12), (y - (cy + ry * 0.17)) / (ry * 0.11))
+    if (nose < 1.2) rgb = mix(rgb, [163, 118, 90], (1.2 - nose) / 0.5)
+
+    const smile = cy + ry * 0.45 + (ry * 0.10) * ((x - cx) / rx) * ((x - cx) / rx)
+    const mouth = Math.hypot((x - cx) / (rx * 0.30), (y - smile) / (ry * 0.062))
+    if (mouth < 1.25) rgb = mix(rgb, MOUTH, (1.25 - mouth) / 0.4)
+
+    if (inHair) rgb = mix(rgb, HAIR, 1)
+    else rgb = mix(rgb, BACKDROP, (face - 0.97) / 0.06)
+
+    return [rgb[0] + grain, rgb[1] + grain, rgb[2] + grain]
+  })
+}
+
 export function sampleFile(name = 'reef.png', width = 96, height = width) {
   return { name, mimeType: 'image/png', buffer: samplePng(width, height) }
 }
