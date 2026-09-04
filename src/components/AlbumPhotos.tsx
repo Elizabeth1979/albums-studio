@@ -28,7 +28,8 @@ import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
 import { mapWithConcurrency } from '../lib/concurrency'
 import type { FocusReading } from '../lib/imaging/measure'
-import { findSoftPhotos, summariseFocus } from '../lib/focus'
+import { type FaceReading, findFacesIn, forgetDetector } from '../lib/imaging/faces'
+import { findSoftPhotos, summariseFaces, summariseFocus } from '../lib/focus'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -48,6 +49,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // How well each photograph is focused, by photo id, filled in as the readings
   // arrive. A photo missing from this map has not been judged yet.
   const [focusReadings, setFocusReadings] = useState<Map<string, FocusReading>>(new Map())
+  // Whether each photograph has anyone in it, by photo id. Displayed and not
+  // acted on: this is the first round of judging the subject rather than the
+  // frame, and the only album that can say whether the detector finds her son
+  // is hers.
+  const [faceReadings, setFaceReadings] = useState<Map<string, FaceReading>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<UploadItem[]>([])
@@ -73,6 +79,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     return () => {
       processorRef.current?.dispose()
       processorRef.current = null
+      forgetDetector()
     }
   }, [])
 
@@ -134,7 +141,16 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
       const results = await mapWithConcurrency(measurable, 4, async (photo) => {
         const bytes = await photoBytes(photo.storagePath)
-        return processor.measure(bytes)
+
+        // The blur reading goes to the worker; finding the faces cannot, and
+        // has to happen here. Both read the same downloaded bytes, so the
+        // second costs no extra round trip. Sequential rather than parallel
+        // because they would otherwise decode the same photograph twice at
+        // once, and a phone has only so much memory for bitmaps.
+        const blur = await processor.measure(bytes)
+        const faces = await findFacesIn(bytes)
+
+        return { blur, faces }
       })
 
       setFocusReadings((known) => {
@@ -143,8 +159,21 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
           next.set(
             measurable[index].id,
             result.status === 'fulfilled'
-              ? result.value
+              ? result.value.blur
               : { kind: 'failed', detail: describe(result.reason, 'the photo could not be read') },
+          )
+        })
+        return next
+      })
+
+      setFaceReadings((known) => {
+        const next = new Map(known)
+        results.forEach((result, index) => {
+          next.set(
+            measurable[index].id,
+            result.status === 'fulfilled'
+              ? result.value.faces
+              : { kind: 'unavailable', detail: describe(result.reason, 'the photo could not be read') },
           )
         })
         return next
@@ -154,6 +183,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       setFocusReadings((known) => {
         const next = new Map(known)
         for (const photo of measurable) next.set(photo.id, { kind: 'failed', detail })
+        return next
+      })
+      setFaceReadings((known) => {
+        const next = new Map(known)
+        for (const photo of measurable) next.set(photo.id, { kind: 'unavailable', detail })
         return next
       })
     }
@@ -388,6 +422,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // obtainable from a real album. It comes out once that is settled.
   const focusSummary = summariseFocus(photos, focusReadings)
 
+  // Temporary, with the line below. The one question this round exists to
+  // answer: does the detector find the people in her album at all?
+  const faceSummary = summariseFaces(photos, faceReadings)
+
   /**
    * One reading per photograph, for the tile it belongs to.
    *
@@ -402,18 +440,31 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       const reading = focusReadings.get(photo.id)
       if (!reading) continue
 
-      notes.set(
-        photo.id,
+      const blur =
         reading.kind === 'measured'
           ? (reading.blur?.toFixed(2) ?? 'no reading')
           : reading.kind === 'unjudgeable'
             ? 'no edges'
-            : 'unread',
-      )
+            : 'unread'
+
+      // Which photograph each outcome belongs to is the whole value of this
+      // badge: a list of results that does not say which picture it came from
+      // cannot answer "did it find my son?".
+      const face = faceReadings.get(photo.id)
+      const who =
+        face === undefined
+          ? ''
+          : face.kind === 'faces'
+            ? ` · ${face.boxes.length === 1 ? 'face' : `${face.boxes.length} faces`}`
+            : face.kind === 'none'
+              ? ' · no face'
+              : ' · no detector'
+
+      notes.set(photo.id, `${blur}${who}`)
     }
 
     return notes
-  }, [photos, focusReadings])
+  }, [photos, focusReadings, faceReadings])
 
   const storyCounts = new Map<string, number>()
   for (const story of stories) {
@@ -486,6 +537,29 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 . Each photograph shows how much of its detail survives being blurred again;
                 higher is blurrier. This line is here while the setting is being tuned and will
                 come out afterwards.
+              </p>
+            )}
+
+            {faceSummary.withFaces + faceSummary.withoutFaces + faceSummary.unavailable > 0 && (
+              <p className="album-note focus-unchecked">
+                <strong>People:</strong> found someone in {faceSummary.withFaces} of{' '}
+                {faceSummary.total}
+                {faceSummary.withoutFaces > 0 &&
+                  `, found nobody in ${faceSummary.withoutFaces}`}
+                {faceSummary.unavailable > 0 &&
+                  `, and the detector could not run on ${faceSummary.unavailable}`}
+                {faceSummary.detail && ` (${faceSummary.detail})`}
+                {faceSummary.confidences.length > 0 &&
+                  `. How sure it was: ${faceSummary.confidences
+                    .map((one) => one.toFixed(2))
+                    .join(', ')}`}
+                {faceSummary.smallestFace !== null &&
+                  `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
+                   the frame's width — this stops working below about 2%`}
+                . Nothing here is acted on yet — no photograph is offered or held back because
+                of it. It is on screen to answer one question before anything is built on it:
+                are the people in these photographs found at all? This line comes out either
+                way.
               </p>
             )}
 

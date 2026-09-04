@@ -25,19 +25,22 @@ windsurf board behind him — has never been detected, across seven merged pull 
 
 | file | what it holds |
 | --- | --- |
-| `src/lib/imaging/reblur.ts` | `blurRatio` — the live signal. `DENOISE = 1.5`, `REBLUR_SPAN = 25`. |
+| `src/lib/imaging/reblur.ts` | `blurRatio` — the live signal. `DENOISE = 1.5`, `REBLUR_SPAN = 25`, both re-checked at 800px. |
 | `src/lib/imaging/sharpness.ts` | `edgeWidth` (superseded, still reported), `focusScore` (used only to rank frames inside a near-duplicate group), `laplacianVariance` (stored at upload). |
-| `src/lib/imaging/measure.ts` | `measureFocus(blob)` → `{kind:'measured', blur, edgeWidth, texture}` \| `{kind:'unjudgeable'}` \| `{kind:'failed', detail}`. `ANALYSIS_CEILING = 800`. |
-| `src/lib/focus.ts` | `BLURRED_ENOUGH = 0.42`, `findSoftPhotos`, `summariseFocus`, `unreadable`. |
-| `src/components/AlbumPhotos.tsx` | downloads bytes via `photoBytes(photo.storagePath)`, 4 at a time; builds `focusNotes`; renders the temporary tuning line. |
+| `src/lib/imaging/measure.ts` | `measureFocus(blob)` → `{kind:'measured', blur, edgeWidth, texture}` \| `{kind:'unjudgeable'}` \| `{kind:'failed', detail}`. Exports `ANALYSIS_CEILING = 800`; the harness imports it. |
+| `src/lib/focus.ts` | `BLURRED_ENOUGH = 0.46`, `findSoftPhotos`, `summariseFocus`, `unreadable`. |
+| `src/components/AlbumPhotos.tsx` | downloads bytes via `photoBytes(photo.storagePath)`, 4 at a time; measures blur in the worker and finds faces on the main thread; builds `focusNotes`; renders the two temporary tuning lines. |
+| `src/lib/imaging/faces.ts` | `detectFaces`, `findFacesIn`, `forgetDetector`. `CONFIDENCE = 0.8`, `TILE_GRIDS = [3, 4]`, `TILE_OVERLAP = 0.25` — all measured, with the tables in the comments. |
+| `scripts/vendor-mediapipe.mjs` | copies the vision runtime out of `node_modules` into `public/mediapipe/` before every build. |
 | `src/components/PhotoGallery.tsx` | `focusNotes` prop → the per-tile number badge (`.photo-focus-mark` in `src/index.css`). |
 | `src/components/SoftPhotos.tsx` | the "Photos that look out of focus" review section. |
-| `src/lib/imaging/focusScore.test.ts` | the calibration harness: builds 1200×900 scenes, blurs at camera size, shrinks, rounds to 8-bit, adds noise. |
+| `src/lib/imaging/focusScore.test.ts` | the calibration harness: builds 2000×1500 stored-size scenes, blurs, rounds to 8-bit, reduces to `ANALYSIS_CEILING`, rounds again, adds noise. |
 | `docs/sessions/*` | one write-up per round, with the numbers. |
 
 **Temporary and must be removed when the feature is finished:** the per-tile number badge, and
 the "Focus check: read N of M …" line in `AlbumPhotos.tsx` that ends "This line is here while the
-setting is being tuned and will come out afterwards."
+setting is being tuned and will come out afterwards." The "People: found someone in N of M …"
+line beside it comes out with them.
 
 ## The five measures tried, and how each died
 
@@ -61,8 +64,14 @@ Every one was calibrated on synthetic scenes, shipped, and then killed by her re
    edges, not the blur. Her album read 5.0, 5.0, 4.0, 5.0, 4.0 — two values, both whole numbers.
    She spotted it: *"the numbers look off."*
 5. **`blurRatio`** (Crété-Roffet: re-blur the frame and see how much detail it loses; higher =
-   blurrier). Genuinely subject-independent and noise-immune in the harness — sharp texture 0.358
-   vs sharp faces 0.363, while blur moves it to 0.77. **Still does not separate her album.**
+   blurrier). Genuinely subject-independent and noise-immune — in-focus texture 0.362–0.381 vs
+   in-focus faces 0.338–0.353, while a blur the lens would be ashamed of moves it past 0.6.
+   **Still does not separate her album.**
+
+   Read the correction below before trusting any earlier number for this one: the readings that
+   condemned it were taken through a pipeline whose constants had been fitted at 400px while the
+   app measured at 800px. The measure has since been re-calibrated at the size it actually runs
+   at, and the verdict is unchanged — but it is now a verdict about the code that ships.
 
 Two faults were also found that were not about the statistic:
 
@@ -71,6 +80,14 @@ Two faults were also found that were not about the statistic:
   wrote and the blur shrinks with it. Fixed — it now measures `storagePath` at 800px.
 - The calibration scenes carried **no sensor noise and no compression artefacts**, which is why
   measures that collapse on every real photograph passed every test.
+- The calibration harness **reduced to 400px while the app measured at 800px**, for the whole
+  life of `blurRatio`. `THUMBNAIL = 400` was right when written; #53 moved production to the
+  stored image at 800px and did not move the harness, and #55 recalibrated on top of the stale
+  size. The threshold, the denoise width and the re-blur span were all fitted at a size the app
+  had stopped using, and nothing failed, because `measureFocus` — the only function that picks
+  the size — had no test at all. The same frame reads 0.390 at 400px and 0.458 at 800px. Fixed:
+  the harness models the real chain and imports `ANALYSIS_CEILING`, so moving the size fails the
+  suite in both directions.
 
 ## The decisive real data
 
@@ -85,8 +102,15 @@ Her Eilat album, five photographs, read on the live site.
 | boy on the shore, sharp | 3.1 | 0.23 |
 
 Read the two right-hand columns. **Under every measure, her sharpest photograph scores as the
-blurriest, and the blurred one sits mid-pack, indistinguishable from two sharp frames.** The line
-is at 0.42 and the sharp selfie is at 0.41 — one hundredth from being wrongly accused.
+blurriest, and the blurred one sits mid-pack, indistinguishable from two sharp frames.** That is
+the finding, and re-calibration does not touch it: no line anywhere reaches 0.32 without taking
+0.41 and 0.32 with it.
+
+The line was at 0.42 when these were read, one hundredth above the sharp selfie — and that line
+had been derived for a 400px pipeline, not the 800px one that produced these numbers. It is now
+**0.46**, set from these five readings rather than from generated scenes: five hundredths above
+the selfie, which is the invariant applied literally. Her album still shows nothing, as it did
+before. The blurred photograph is still not found.
 
 ## The conclusion — this is the thing to act on
 
@@ -103,7 +127,8 @@ work.** A good portrait and a badly focused snapshot contain the same mixture of
 pixels. What separates them is *which part* is sharp. Five measures failed because they all
 asked "how sharp is this frame?" when the question is "is the subject sharp?"
 
-Stop trying whole-frame statistics. There is nothing left to tune.
+Stop trying whole-frame statistics. There is nothing left to tune — and that is now a claim
+about the code that ships, not about a configuration it never ran.
 
 ## What to build next
 
@@ -120,11 +145,20 @@ Recommended shape:
 1. **Face detection locally, in the browser** — BlazeFace via `@mediapipe/tasks-vision`
    (`FaceDetector`). Self-host the wasm and the `blaze_face_short_range.tflite` model from
    `node_modules` into `public/` at build time; do not load from a CDN. Load it lazily, only when
-   the focus check runs. Package unpacked size is ~36MB but only the vision wasm (~3MB) and the
-   model (~230KB) are fetched at runtime.
+   the focus check runs. **Done — and every detail in this paragraph was wrong.** The model is
+   not in `node_modules` at all (MediaPipe publishes it separately; it is now committed at
+   `public/mediapipe/blaze_face_short_range.tflite`, 224 KB). The wasm is 11.8 MB on disk rather
+   than 3, gzipping to 3.3 MB over the wire, and both the SIMD and nosimd variants must be
+   vendored because the browser chooses between them. And it cannot run in this app's module
+   worker (`ModuleFactory not set`), so detection runs on the main thread. See
+   `docs/sessions/2026-09-02-find-the-people-first.md`.
 2. **Measure `blurRatio` on the face region** (padded, taken from the 2000px stored image so the
    crop has enough pixels), not on the frame. `blurRatio` is the right measure for this — it is
    subject-independent and noise-immune; it was only ever being pointed at the wrong region.
+   **Not started, on purpose** — step 5 has to answer first. Note when it is: `BLURRED_ENOUGH` is
+   calibrated for a whole frame reduced to `ANALYSIS_CEILING`, and a face crop taken at stored
+   resolution carries its blur at a different scale entirely. That line will not transfer, and
+   inheriting it would repeat the mistake #57 fixed.
 3. **Decide from the subject**: face sharp → the photograph came out, whatever the background is
    doing. Face soft → offer it.
 4. **No face found → say nothing.** Do not fall back to the whole-frame reading; five rounds
@@ -132,12 +166,29 @@ Recommended shape:
    and photographs of people are the ones anyone actually minds losing.
 5. Report failures distinctly on screen: *found a face and measured it* / *no face found* /
    *detector failed to load* must not all look like silence. This feature was debugged blind
-   three times because they did.
+   three times because they did. **Done, and it is where this now stands:** the album says what
+   the detector managed on every photograph, per tile and in a summary line, and acts on none of
+   it. Two end-to-end tests hold "found nobody" and "could not run" apart.
 
 **The known risk to check first:** in her blurred photograph the boy is small, wearing a hat, and
 some distance away; in another he faces away entirely. BlazeFace may not detect either. Test that
 before building the rest — if faces are not found in her album, this approach dies too, and the
 next option is a saliency or subject-region model rather than a face detector.
+
+**This is now the open question, and the remedy for it has already shipped.** BlazeFace resizes
+the whole frame to 128x128 before it looks at anything, so detection depends on the share of the
+frame a face fills and not on how many pixels the photograph has. Measured, the whole-frame
+reading finds a face down to about 8% of the frame's width and falls off a cliff below that.
+
+So the photograph is also read through 3x3 and 4x4 grids of overlapping tiles, which hands a
+small face to the model three or four times larger, and that recovers faces down to about 2.5%.
+It costs nothing in false accusations (no face found in ten draws each of dense texture and
+random rectangles, at any grid) and 155 ms a frame against 24 ms.
+
+Below roughly 2% of the frame's width nobody is found, and no finer grid rescues it. That is the
+floor. Every face reports `share`, and the album names the smallest it found — **that is the
+number to read first when her album comes back.** If it says nobody was found at all, faces are
+the wrong instrument and the next option is a saliency or subject-region model.
 
 ## Do not repeat these
 
@@ -152,6 +203,14 @@ Written into `AGENTS.md` over the session:
   constant. No constant holds across dense water and smooth skin.
 - Never let a failure and a clean result look the same on screen.
 - When a signal is not trusted yet, display it without acting on it.
+- A plan written from documentation is a hypothesis. The face-detection plan above was wrong
+  about where the model lives, how large the runtime is, and where it can run.
+- Where a library ships a default that decides whether a photograph is accused, measure it
+  rather than take it. MediaPipe's default confidence finds faces in random rectangles.
 - When a measure has a known failure, write the test that asserts the true behaviour and name the
   gap. A test that pretends the failure does not happen is worse than no test.
 - Measure the best copy already in hand.
+- A calibration harness must import the size, and every other constant, that production uses. A
+  restated copy is a mismatch waiting for someone to notice on a live site.
+- When a signal fails on real data, check that what shipped is what was calibrated before
+  concluding the signal cannot work.

@@ -18,16 +18,19 @@ import { edgeWidth, focusScore } from './sharpness'
  *
  * So the stored image is measured instead of the thumbnail — the browser is
  * already downloading it for the tiles, so this costs no extra round trip — and
- * at 800px rather than 400. On the same scenes that separation doubles: a
- * lightly softened frame reads 5.65 against a sharp 4.73, where at 400px it
- * read 5.22 against 4.73.
+ * at 800px rather than 400.
  *
- * 800 and not larger: the transition search reaches sixteen pixels, and past
- * that a badly blurred frame's edges run off the end of the search and it
- * measures *narrow* again — at 1200px an 8px blur read 4.65, below a sharp
- * frame. The measure and the size it is used at go together.
+ * **Exported because the calibration harness must reduce to exactly this
+ * number.** It did not for two rounds: the size moved here in #53 and the
+ * harness went on building 400px frames, so the threshold, the denoise width
+ * and the re-blur span were every one of them fitted at a size this code had
+ * stopped using. The same frame reads 0.390 at 400px and 0.458 at 800px — the
+ * re-blur span is a fixed count of pixels, so halving the frame doubles it
+ * relative to the picture — and nothing failed, because no test ever called
+ * this function. A constant that decides what a measurement means belongs in
+ * one place, and the tests must read it from here rather than restate it.
  */
-const ANALYSIS_CEILING = 800
+export const ANALYSIS_CEILING = 800
 
 /**
  * What came back from trying to judge one photograph.
@@ -80,8 +83,8 @@ function describe(error: unknown): string {
  * Measures how well the best-focused part of an already-stored photograph is
  * focused, from the stored image the album has already downloaded.
  *
- * Measured at whatever size the thumbnail arrived at, and measured when the
- * album opens rather than kept in the database, both on purpose. Every
+ * Measured at `ANALYSIS_CEILING`, and measured when the album opens rather than
+ * kept in the database, both on purpose. Every
  * photograph uploaded before this existed would otherwise carry no reading, and
  * the albums that most need the advice are exactly the ones already full — so
  * the one design that helps nobody is the one that only measures new uploads.

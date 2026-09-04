@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BLURRED_ENOUGH, findSoftPhotos, summariseFocus, unreadable } from './focus'
+import type { FaceReading } from './imaging/faces'
+import { BLURRED_ENOUGH, findSoftPhotos, summariseFaces, summariseFocus, unreadable } from './focus'
 import type { FocusReading } from './imaging/measure'
 import type { Photo } from './photos'
 import { groupSimilar } from './similarity'
@@ -195,5 +196,126 @@ describe('findSoftPhotos', () => {
     expect(
       findSoftPhotos(photos, readings, groupSimilar(photos)).map((entry) => entry.photo.id),
     ).toEqual(['alone'])
+  })
+})
+
+describe('summariseFaces', () => {
+  const withFaces = (confidence: number): FaceReading => ({
+    kind: 'faces',
+    boxes: [{ x: 10, y: 10, width: 40, height: 40, confidence, share: 0.05 }],
+  })
+
+  it('tells apart a photograph with nobody in it from one that could not be looked at', () => {
+    // The distinction the whole round rests on. An album where the detector
+    // never loaded and an album of landscapes are different facts, and this
+    // feature has already been debugged blind three times by letting outcomes
+    // like those look identical on screen.
+    const photos = [photo({ id: 'a' }), photo({ id: 'b' }), photo({ id: 'c' })]
+    const summary = summariseFaces(
+      photos,
+      new Map<string, FaceReading>([
+        ['a', withFaces(0.91)],
+        ['b', { kind: 'none' }],
+        ['c', { kind: 'unavailable', detail: 'the model could not be fetched' }],
+      ]),
+    )
+
+    expect(summary).toMatchObject({
+      total: 3,
+      withFaces: 1,
+      withoutFaces: 1,
+      unavailable: 1,
+      detail: 'the model could not be fetched',
+    })
+  })
+
+  it('reports how sure the detector was, surest first', () => {
+    // A count alone cannot say whether a detection is worth believing. The
+    // owner's blurred photograph has her son small, hatted and some way off; if
+    // he is found at all it will be near the line, and that has to be visible.
+    const photos = [photo({ id: 'a' }), photo({ id: 'b' })]
+    const summary = summariseFaces(
+      photos,
+      new Map<string, FaceReading>([['a', withFaces(0.81)], ['b', withFaces(0.96)]]),
+    )
+
+    expect(summary.confidences).toEqual([0.96, 0.81])
+  })
+
+  it('takes the surest face when a photograph holds several', () => {
+    const summary = summariseFaces(
+      [photo({ id: 'a' })],
+      new Map<string, FaceReading>([
+        ['a', {
+          kind: 'faces',
+          boxes: [
+            { x: 0, y: 0, width: 10, height: 10, confidence: 0.83, share: 0.01 },
+            { x: 20, y: 0, width: 10, height: 10, confidence: 0.94, share: 0.01 },
+          ],
+        }],
+      ]),
+    )
+
+    expect(summary.confidences).toEqual([0.94])
+  })
+
+  it('says nothing about a photograph it has not looked at yet', () => {
+    // An album mid-check must not read as an album with nobody in it.
+    const summary = summariseFaces([photo({ id: 'a' }), photo({ id: 'b' })], new Map())
+
+    expect(summary).toMatchObject({ total: 2, withFaces: 0, withoutFaces: 0, unavailable: 0 })
+    expect(summary.detail).toBeNull()
+  })
+})
+
+describe('summariseFaces, how much room is left', () => {
+  const face = (share: number, confidence = 0.9): FaceReading => ({
+    kind: 'faces',
+    boxes: [{ x: 0, y: 0, width: 10, height: 10, confidence, share }],
+  })
+
+  it('reports the smallest face found anywhere in the album', () => {
+    // The number that says whether this approach is comfortable or standing on
+    // its floor: detection falls off a cliff between 8% and 5% of the frame and
+    // finds nobody below about 2%. An album whose smallest face is 30% has room;
+    // one whose smallest is 3% is about to stop working.
+    const summary = summariseFaces(
+      [photo({ id: 'a' }), photo({ id: 'b' }), photo({ id: 'c' })],
+      new Map<string, FaceReading>([
+        ['a', face(0.30)],
+        ['b', face(0.031)],
+        ['c', face(0.12)],
+      ]),
+    )
+
+    expect(summary.smallestFace).toBeCloseTo(0.031)
+  })
+
+  it('takes the smallest face within a photograph, not just across them', () => {
+    // A group photograph holds the near and the far, and it is the far one that
+    // says where the limit is.
+    const summary = summariseFaces(
+      [photo({ id: 'a' })],
+      new Map<string, FaceReading>([
+        ['a', {
+          kind: 'faces',
+          boxes: [
+            { x: 0, y: 0, width: 200, height: 200, confidence: 0.95, share: 0.25 },
+            { x: 400, y: 0, width: 24, height: 24, confidence: 0.82, share: 0.03 },
+          ],
+        }],
+      ]),
+    )
+
+    expect(summary.smallestFace).toBeCloseTo(0.03)
+  })
+
+  it('has no smallest face to report when nobody was found', () => {
+    const summary = summariseFaces(
+      [photo({ id: 'a' })],
+      new Map<string, FaceReading>([['a', { kind: 'none' }]]),
+    )
+
+    expect(summary.smallestFace).toBeNull()
   })
 })

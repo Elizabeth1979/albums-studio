@@ -28,8 +28,11 @@
  * therefore reads sharp. Untouched, a frame blurred twenty pixels with a trace
  * of grain read 0.213 against 0.269 for a sharp one — backwards again.
  *
- * Smoothed first, the same pair reads 0.748 against 0.357, and heavy grain moves
- * a sharp frame by four thousandths.
+ * Both this and the span below were first fitted against 400px frames, which is
+ * not the size this code runs at; they have since been re-checked at
+ * `ANALYSIS_CEILING` and both sit inside a real window there. Widen this to 3.0
+ * and a sharp textured frame reads 0.504, past the line — the smoothing starts
+ * removing the picture along with the grain.
  */
 const DENOISE = 1.5
 
@@ -95,15 +98,21 @@ function variation(luma: Float64Array, width: number, height: number, horizontal
 }
 
 /**
- * The re-blur itself: a nine-pixel average along one axis.
+ * The re-blur itself: a twenty-five pixel average along one axis.
  *
  * The published metric uses nine, which is right for the small images it was
- * validated on and wrong here: at nine, a frame blurred past twelve pixels was
- * already smoother than the re-blur, so re-blurring changed it hardly at all and
- * the reading fell back down — 20px blur read 0.370 against 0.515 for 6px, so
- * the worst photographs measured better than the merely soft ones. Twenty-five
- * spans the blur a phone actually produces, and the reading rises all the way
- * from 0.36 to 0.77.
+ * validated on and wrong here. This is the constant the size mix-up hurt most,
+ * because it is a fixed count of *pixels*: halving the frame doubles it
+ * relative to the picture, so a span tuned at 400px means something else
+ * entirely at 800px. Re-checked at `ANALYSIS_CEILING`, twenty-five sits inside
+ * a narrow window — at nine a sharp textured frame reads 0.621 and fog reads
+ * 0.526, both far past the line, because the re-blur is too small to flatten
+ * detail the picture genuinely has; at fifteen a sharp frame still reads 0.470;
+ * and at forty a frame the lens missed by ten pixels falls back to 0.446 and
+ * goes unoffered.
+ *
+ * The window is real, and it moves with the size. Neither number may be changed
+ * without the other.
  */
 const REBLUR_SPAN = 25
 
