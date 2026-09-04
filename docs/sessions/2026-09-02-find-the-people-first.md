@@ -65,9 +65,10 @@ The handoff was written from documentation. Each of these came out of running th
 5. **BlazeFace resizes the whole frame to 128×128 before it looks at anything.** This is the
    mechanism behind the risk the handoff named, and it is worse than the handoff supposed: a
    boy who fills a twentieth of the frame is about six pixels across by the time the model sees
-   him. If her album comes back saying no face was found, the answer is not a different
-   threshold. It is to run the detector over tiles of the photograph so a small face arrives
-   larger, or to give up on faces and find the subject another way.
+   him. Detection depends on the share of the *frame* a face fills, never on how many pixels
+   the photograph has.
+
+   This one was not left as a warning. See below.
 
 ## What is proven, and what is not
 
@@ -89,3 +90,48 @@ nothing about a beach.
   running it to find and would have been three rounds of surprise if built on.
 - Where a library ships a default that decides whether a photograph is accused, measure it
   rather than take it. MediaPipe's 0.5 finds faces in random rectangles.
+
+## Then: tiles, because one look should be decisive
+
+The plan was to ship the plain detector and let her album say whether it found her son. Two
+measurements changed that.
+
+First, a near-miss score — reporting how close the detector came when it found nobody — turned
+out to be worthless, which is worth recording because it looked like an obviously good idea. At
+a floor of 0.05 a face filling 5% of the frame scores **0.292**, while a field of random
+rectangles containing nobody scores **0.368**. Noise outscores a real small face, so the number
+could not be read either way. Not shipped.
+
+Second, the detection limit is a cliff, and it is measurable:
+
+| face width, as a share of the frame | whole | 3×3 tiles | 4×4 tiles |
+| --- | --- | --- | --- |
+| 12% | found | 0.856 | — |
+| 8% | found | 0.860 | — |
+| 5% | **missed** | 0.881 | — |
+| 3.5% | **missed** | 0.882 | 0.822 |
+| 2.5% | **missed** | missed | 0.867 |
+| 1.8% | missed | missed | missed |
+
+Between 8% and 5% the whole-frame reading falls off a cliff, and cropping walks straight over
+it: a tile is a third or a quarter of the frame, so a face inside one reaches the model three or
+four times larger. Both grids earn their place and neither replaces the other — a face too large
+for a 4×4 tile is cut across two and found in neither, which is why the whole frame is still
+read first.
+
+The two costs both came back cheap. Sixteen extra looks is sixteen extra chances to be wrong,
+and measured across ten draws each of dense water texture and random rectangles it produced **no
+face at any grid**. And whole + 3×3 + 4×4 takes **155 ms** for one 800px frame against 24 ms for
+the whole frame alone.
+
+So tiling shipped now rather than after another round. The owner verifies on the published site
+and seven pull requests have already been merged into this feature; her attention is the scarce
+thing here, and one look that answers the question beats two that halve it.
+
+Every face found now reports `share` — its width as a fraction of the frame's — and the album
+names the smallest one it found. That is the number that says whether this approach is
+comfortable or standing on its floor. Below about 2% nothing finds anyone, and no finer grid
+rescues it.
+
+An end-to-end test serves a face at 5% of the frame, which the whole-frame pass cannot see.
+Setting `TILE_GRIDS` to `[]` fails that test and only that test — the other seven still pass.

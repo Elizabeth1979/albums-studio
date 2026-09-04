@@ -553,6 +553,9 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                   `. How sure it was: ${faceSummary.confidences
                     .map((one) => one.toFixed(2))
                     .join(', ')}`}
+                {faceSummary.smallestFace !== null &&
+                  `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
+                   the frame's width — this stops working below about 2%`}
                 . Nothing here is acted on yet — no photograph is offered or held back because
                 of it. It is on screen to answer one question before anything is built on it:
                 are the people in these photographs found at all? This line comes out either

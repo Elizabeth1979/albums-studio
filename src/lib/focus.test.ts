@@ -202,7 +202,7 @@ describe('findSoftPhotos', () => {
 describe('summariseFaces', () => {
   const withFaces = (confidence: number): FaceReading => ({
     kind: 'faces',
-    boxes: [{ x: 10, y: 10, width: 40, height: 40, confidence }],
+    boxes: [{ x: 10, y: 10, width: 40, height: 40, confidence, share: 0.05 }],
   })
 
   it('tells apart a photograph with nobody in it from one that could not be looked at', () => {
@@ -249,8 +249,8 @@ describe('summariseFaces', () => {
         ['a', {
           kind: 'faces',
           boxes: [
-            { x: 0, y: 0, width: 10, height: 10, confidence: 0.83 },
-            { x: 20, y: 0, width: 10, height: 10, confidence: 0.94 },
+            { x: 0, y: 0, width: 10, height: 10, confidence: 0.83, share: 0.01 },
+            { x: 20, y: 0, width: 10, height: 10, confidence: 0.94, share: 0.01 },
           ],
         }],
       ]),
@@ -265,5 +265,57 @@ describe('summariseFaces', () => {
 
     expect(summary).toMatchObject({ total: 2, withFaces: 0, withoutFaces: 0, unavailable: 0 })
     expect(summary.detail).toBeNull()
+  })
+})
+
+describe('summariseFaces, how much room is left', () => {
+  const face = (share: number, confidence = 0.9): FaceReading => ({
+    kind: 'faces',
+    boxes: [{ x: 0, y: 0, width: 10, height: 10, confidence, share }],
+  })
+
+  it('reports the smallest face found anywhere in the album', () => {
+    // The number that says whether this approach is comfortable or standing on
+    // its floor: detection falls off a cliff between 8% and 5% of the frame and
+    // finds nobody below about 2%. An album whose smallest face is 30% has room;
+    // one whose smallest is 3% is about to stop working.
+    const summary = summariseFaces(
+      [photo({ id: 'a' }), photo({ id: 'b' }), photo({ id: 'c' })],
+      new Map<string, FaceReading>([
+        ['a', face(0.30)],
+        ['b', face(0.031)],
+        ['c', face(0.12)],
+      ]),
+    )
+
+    expect(summary.smallestFace).toBeCloseTo(0.031)
+  })
+
+  it('takes the smallest face within a photograph, not just across them', () => {
+    // A group photograph holds the near and the far, and it is the far one that
+    // says where the limit is.
+    const summary = summariseFaces(
+      [photo({ id: 'a' })],
+      new Map<string, FaceReading>([
+        ['a', {
+          kind: 'faces',
+          boxes: [
+            { x: 0, y: 0, width: 200, height: 200, confidence: 0.95, share: 0.25 },
+            { x: 400, y: 0, width: 24, height: 24, confidence: 0.82, share: 0.03 },
+          ],
+        }],
+      ]),
+    )
+
+    expect(summary.smallestFace).toBeCloseTo(0.03)
+  })
+
+  it('has no smallest face to report when nobody was found', () => {
+    const summary = summariseFaces(
+      [photo({ id: 'a' })],
+      new Map<string, FaceReading>([['a', { kind: 'none' }]]),
+    )
+
+    expect(summary.smallestFace).toBeNull()
   })
 })

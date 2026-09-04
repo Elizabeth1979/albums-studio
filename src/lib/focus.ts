@@ -210,6 +210,15 @@ export type FaceSummary = {
   detail: string | null
   /** How sure the detector was, surest first, for the photographs where it found someone. */
   confidences: number[]
+  /**
+   * The smallest face found, as a share of its frame's width, or null.
+   *
+   * The number that says how much room this approach has left. Detection falls
+   * off a cliff between 8% and 5% of the frame and finds nobody below about 2%,
+   * so a smallest face of 0.30 means the album is nowhere near the edge and a
+   * smallest face of 0.03 means it is standing on it.
+   */
+  smallestFace: number | null
 }
 
 export function summariseFaces(
@@ -223,6 +232,7 @@ export function summariseFaces(
     unavailable: 0,
     detail: null,
     confidences: [],
+    smallestFace: null,
   }
 
   for (const photo of photos) {
@@ -232,6 +242,11 @@ export function summariseFaces(
     if (reading.kind === 'faces') {
       summary.withFaces += 1
       summary.confidences.push(Math.max(...reading.boxes.map((one) => one.confidence)))
+
+      for (const box of reading.boxes) {
+        summary.smallestFace =
+          summary.smallestFace === null ? box.share : Math.min(summary.smallestFace, box.share)
+      }
     } else if (reading.kind === 'none') {
       summary.withoutFaces += 1
     } else {

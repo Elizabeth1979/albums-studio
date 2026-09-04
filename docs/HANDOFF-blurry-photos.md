@@ -30,7 +30,7 @@ windsurf board behind him — has never been detected, across seven merged pull 
 | `src/lib/imaging/measure.ts` | `measureFocus(blob)` → `{kind:'measured', blur, edgeWidth, texture}` \| `{kind:'unjudgeable'}` \| `{kind:'failed', detail}`. Exports `ANALYSIS_CEILING = 800`; the harness imports it. |
 | `src/lib/focus.ts` | `BLURRED_ENOUGH = 0.46`, `findSoftPhotos`, `summariseFocus`, `unreadable`. |
 | `src/components/AlbumPhotos.tsx` | downloads bytes via `photoBytes(photo.storagePath)`, 4 at a time; measures blur in the worker and finds faces on the main thread; builds `focusNotes`; renders the two temporary tuning lines. |
-| `src/lib/imaging/faces.ts` | `detectFaces`, `findFacesIn`, `forgetDetector`. `CONFIDENCE = 0.8`, measured rather than taken from the library. |
+| `src/lib/imaging/faces.ts` | `detectFaces`, `findFacesIn`, `forgetDetector`. `CONFIDENCE = 0.8`, `TILE_GRIDS = [3, 4]`, `TILE_OVERLAP = 0.25` — all measured, with the tables in the comments. |
 | `scripts/vendor-mediapipe.mjs` | copies the vision runtime out of `node_modules` into `public/mediapipe/` before every build. |
 | `src/components/PhotoGallery.tsx` | `focusNotes` prop → the per-tile number badge (`.photo-focus-mark` in `src/index.css`). |
 | `src/components/SoftPhotos.tsx` | the "Photos that look out of focus" review section. |
@@ -175,12 +175,20 @@ some distance away; in another he faces away entirely. BlazeFace may not detect 
 before building the rest — if faces are not found in her album, this approach dies too, and the
 next option is a saliency or subject-region model rather than a face detector.
 
-**This is now the open question, and the mechanism is worse than supposed.** BlazeFace resizes
-the whole frame to 128x128 before it looks at anything, so a boy filling a twentieth of the frame
-is about six pixels across by the time the model sees him. The detector is shipped and reporting;
-her album is the only thing that can answer it. If it comes back saying no face was found, the
-answer is not a different threshold — it is to run the detector over tiles so a small face
-arrives larger, or to drop faces and find the subject another way.
+**This is now the open question, and the remedy for it has already shipped.** BlazeFace resizes
+the whole frame to 128x128 before it looks at anything, so detection depends on the share of the
+frame a face fills and not on how many pixels the photograph has. Measured, the whole-frame
+reading finds a face down to about 8% of the frame's width and falls off a cliff below that.
+
+So the photograph is also read through 3x3 and 4x4 grids of overlapping tiles, which hands a
+small face to the model three or four times larger, and that recovers faces down to about 2.5%.
+It costs nothing in false accusations (no face found in ten draws each of dense texture and
+random rectangles, at any grid) and 155 ms a frame against 24 ms.
+
+Below roughly 2% of the frame's width nobody is found, and no finer grid rescues it. That is the
+floor. Every face reports `share`, and the album names the smallest it found — **that is the
+number to read first when her album comes back.** If it says nobody was found at all, faces are
+the wrong instrument and the next option is a saliency or subject-region model.
 
 ## Do not repeat these
 

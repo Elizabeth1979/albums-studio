@@ -75,6 +75,33 @@ test.describe('finding the people in a photograph', () => {
     await expect(page.getByRole('heading', { name: 'Photos that look out of focus' })).toBeHidden()
   })
 
+  test('finds a face too small for the whole frame, by looking through tiles', async ({
+    page,
+  }) => {
+    // The reason tiling exists, and the only honest way to prove it: a face
+    // spanning a twentieth of the frame is missed outright when the whole
+    // photograph is handed to the model, because BlazeFace resizes everything
+    // to 128x128 and there is not enough of him left. Cropping to a third of
+    // the frame hands the same face over three times larger, and it is found.
+    //
+    // If this test ever fails, tiling has stopped working — and the whole-frame
+    // test above will still pass, which is precisely why this one is separate.
+    await openAlbum(page, {
+      photos,
+      objectBytes: {
+        'owner/album-1/photo-1.jpg': facePng(STORED, 0.05),
+        'owner/album-1/photo-2.jpg': sharpPng(STORED),
+      },
+    })
+
+    const line = page.locator('p.focus-unchecked', { hasText: 'People:' })
+
+    await expect(line).toContainText('found someone in 1 of 2', { timeout: 30_000 })
+    // And it says how near the floor that was, which is the number that decides
+    // whether this approach has any room left in her album.
+    await expect(line).toContainText('Smallest face found:')
+  })
+
   test('names the failure when the detector cannot be loaded', async ({ page }) => {
     // The fault that must never look like silence. With the model unreachable
     // every photograph is unjudgeable, and an album that says nothing would be

@@ -344,18 +344,25 @@ function colourPngFrom(
  * on photographs and wants something that looks like one. That is worth knowing
  * before anyone simplifies this.
  *
- * What it proves is narrow and worth being plain about: that the detector
+ * `share` is the face's width as a fraction of the frame's, and it is the only
+ * thing detection depends on: BlazeFace resizes whatever it is given to
+ * 128x128, so a photograph's pixel count never enters into it. Small values
+ * make a face that only the tiled passes can find.
+ *
+ * What this proves is narrow and worth being plain about: that the detector
  * loads, runs, and reports inside the real app. Whether it can find a small
  * hatted boy at some distance on a beach is not a question any arithmetic here
  * can answer. Only the owner's album can.
  */
-export function facePng(size = 480): Buffer {
+export function facePng(size = 480, share = 0.40): Buffer {
   const width = size
   const height = Math.round(size * 0.75)
   const cx = width / 2
   const cy = height * 0.52
-  const rx = width * 0.20
-  const ry = height * 0.34
+  // `share` is the face's full width as a fraction of the frame's, which is the
+  // only thing detection depends on — the model resizes everything to 128x128.
+  const rx = (width * share) / 2
+  const ry = rx * 1.7
 
   const BACKDROP = [107, 125, 140]
   const HAIR = [59, 43, 34]
