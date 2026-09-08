@@ -555,7 +555,8 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                     .join(', ')}`}
                 {faceSummary.smallestFace !== null &&
                   `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
-                   the frame's width — this stops working below about 2%`}
+                   the frame's width — this stops working below about 5%, and a face too
+                   blurred to recognise is not found at all`}
                 . Nothing here is acted on yet — no photograph is offered or held back because
                 of it. It is on screen to answer one question before anything is built on it:
                 are the people in these photographs found at all? This line comes out either

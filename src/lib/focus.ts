@@ -213,10 +213,10 @@ export type FaceSummary = {
   /**
    * The smallest face found, as a share of its frame's width, or null.
    *
-   * The number that says how much room this approach has left. Detection falls
-   * off a cliff between 8% and 5% of the frame and finds nobody below about 2%,
-   * so a smallest face of 0.30 means the album is nowhere near the edge and a
-   * smallest face of 0.03 means it is standing on it.
+   * The number that says how much room this approach has left. The whole frame
+   * gives out below about 16% of the frame's width, tiling carries it down to
+   * 5%, and nobody is found below that — so a smallest face of 0.30 means the
+   * album is nowhere near the edge and one of 0.06 means it is standing on it.
    */
   smallestFace: number | null
 }

@@ -29,11 +29,11 @@ export type FaceBox = {
   /**
    * How much of the frame's width this face spans, between 0 and 1.
    *
-   * The number that says whether this feature is near its floor. Detection
-   * falls off a cliff between 8% and 5% of the frame, and below about 2%
-   * nothing here finds anyone at all — so a face found at 0.03 is a face this
-   * approach very nearly missed, and knowing that is the difference between
-   * "this works" and "this works today and will not tomorrow".
+   * The number that says whether this feature is near its floor. The whole
+   * frame gives out below about 16%, tiling carries it down to 5%, and below
+   * that nobody is found at all — so a face found at 0.06 is one this approach
+   * very nearly missed, and knowing that is the difference between "this works"
+   * and "this works today and will not tomorrow".
    */
   share: number
 }
@@ -87,23 +87,23 @@ const CONFIDENCE = 0.8
  * BlazeFace resizes whatever it is given to 128x128 before it looks at
  * anything, so a face's chance of being found depends on the fraction of the
  * *frame* it fills, not on how many pixels the photograph has. Measured in a
- * real browser, with a face shrinking towards the size of a boy some way down a
- * beach:
+ * real browser, with a face's width given as a share of the frame's — the same
+ * number `share` reports:
  *
- * | face width, as a share of the frame | whole | 3x3 | 4x4 |
+ * | face width | whole | 3x3 | 4x4 |
  * | --- | --- | --- | --- |
- * | 12% | found | 0.856 | — |
- * | 8% | found | 0.860 | — |
- * | 5% | **missed** | 0.881 | — |
- * | 3.5% | **missed** | 0.882 | 0.822 |
- * | 2.5% | **missed** | missed | 0.867 |
- * | 1.8% | missed | missed | missed |
+ * | 24% | 0.894 | — | — |
+ * | 16% | 0.827 | 0.923 | 0.814 |
+ * | 12% | **missed** | 0.880 | 0.848 |
+ * | 8% | missed | 0.873 | 0.893 |
+ * | 5% | missed | missed | 0.843 |
+ * | 4% | missed | missed | **missed** |
  *
- * There is a cliff between 8% and 5%, and cropping walks over it: a tile is a
- * third or a quarter of the frame, so a face inside one arrives at the model
- * three or four times larger. Both grids are needed and neither replaces the
- * other — a face too big for a 4x4 tile is cut across two and found in neither,
- * which is why the whole frame is still looked at first.
+ * The whole frame gives out below about 16%, and cropping walks over that: a
+ * tile is a third or a quarter of the frame, so a face inside one arrives at the
+ * model three or four times larger. Both grids are needed and neither replaces
+ * the other — a face too big for a 4x4 tile is cut across two and found in
+ * neither, which is why the whole frame is still looked at first.
  *
  * The obvious worry is that sixteen extra looks means sixteen extra chances to
  * be wrong. It does not, measured: ten draws each of dense water texture and
@@ -111,8 +111,14 @@ const CONFIDENCE = 0.8
  * 3x3 and 4x4 together take 155 ms for one 800px frame, against 24 ms for the
  * whole frame alone.
  *
- * Below about 2% of the frame nothing here finds a face, and no finer grid is
- * going to rescue it. That is the floor of this approach.
+ * **The floor is 5% of the frame's width.** Below that nothing here finds a
+ * face, and no finer grid rescues it.
+ *
+ * An earlier version of this table said 8% and 2%. Those numbers came from a
+ * harness that set the ellipse *radius* to the quoted fraction, so every face in
+ * it was twice the size claimed. The measurements above use a face's full width,
+ * which is what `share` reports and therefore the only thing the two can be
+ * compared on.
  */
 const TILE_GRIDS = [3, 4]
 
@@ -298,11 +304,24 @@ export async function detectFaces(frame: Frame): Promise<FaceReading> {
  * the share of the frame a face fills. That is why `detectFaces` also looks
  * through tiles, and why `share` is reported for every face found.
  *
- * The floor is real and no amount of tiling moves it: below about 2% of the
- * frame's width, nobody is found. If her album comes back empty, that is the
- * number to look at before reaching for a finer grid.
+ * The floor is real and no amount of tiling moves it: below about 5% of the
+ * frame's width, nobody is found.
  *
- * Nothing acts on any of this yet.
+ * **And there is a second floor that matters more.** A face has to be sharp to
+ * be found at all. Measured, with blur applied to the person alone:
+ *
+ * | face width | sharp | 2px blur | 4px | 6px |
+ * | --- | --- | --- | --- | --- |
+ * | 12% | 0.878 | 0.866 | 0.868 | none |
+ * | 8% | 0.893 | 0.890 | none | none |
+ * | 5% | 0.844 | none | none | none |
+ *
+ * Detection survives blur up to roughly 4–5% of the face's own width and is
+ * lost beyond about 6% — so a face soft enough for anyone to notice is a face
+ * this detector cannot see. That is the same shape as the fault that killed
+ * `edgeWidth`: the worse the photograph, the more certain the silence. It means
+ * "face soft, so offer the photograph" can never fire, and it is why nothing
+ * acts on any of this yet.
  */
 export async function findFacesIn(photograph: Blob): Promise<FaceReading> {
   let bitmap: ImageBitmap

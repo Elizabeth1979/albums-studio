@@ -188,6 +188,17 @@ saying so.
   concluding the signal cannot work. Five whole-frame measures were abandoned here on the
   strength of readings from an album, and the fifth was judged against a threshold that had
   never been derived for the pipeline that produced those readings.
+- Before building on a detector, test it on the input you actually need it to handle. Face
+  detection was chosen to judge blurred photographs and cannot see blurred faces: detection
+  survives blur up to about 4-5% of a face's own width and is lost beyond 6%, so the branch that
+  matters — "the face is soft, offer the photograph" — can never fire. One afternoon of
+  measurement would have found that before any of it was written.
+- State a measured size as the thing measured, not as a parameter that happens to produce it. A
+  face table here was wrong by a factor of two for a commit because the harness set an ellipse
+  *radius* to the quoted fraction while the code reported full width.
+- A branch that is green and unmerged is, from the owner's side, identical to one that was never
+  written. She reloaded the site and reported no change; the page was still showing the previous
+  threshold, because nothing had reached `main`.
 - A plan written from documentation is a hypothesis, and the cheapest way to test it is to run
   the thing. The face-detection plan was wrong about three checkable facts — the model is not in
   the npm package, the runtime is 11.8 MB rather than 3, and it cannot start in a module worker

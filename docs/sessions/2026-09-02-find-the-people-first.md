@@ -106,16 +106,16 @@ Second, the detection limit is a cliff, and it is measurable:
 
 | face width, as a share of the frame | whole | 3×3 tiles | 4×4 tiles |
 | --- | --- | --- | --- |
-| 12% | found | 0.856 | — |
-| 8% | found | 0.860 | — |
-| 5% | **missed** | 0.881 | — |
-| 3.5% | **missed** | 0.882 | 0.822 |
-| 2.5% | **missed** | missed | 0.867 |
-| 1.8% | missed | missed | missed |
+| 24% | 0.894 | — | — |
+| 16% | 0.827 | 0.923 | 0.814 |
+| 12% | **missed** | 0.880 | 0.848 |
+| 8% | missed | 0.873 | 0.893 |
+| 5% | missed | missed | 0.843 |
+| 4% | missed | missed | **missed** |
 
-Between 8% and 5% the whole-frame reading falls off a cliff, and cropping walks straight over
-it: a tile is a third or a quarter of the frame, so a face inside one reaches the model three or
-four times larger. Both grids earn their place and neither replaces the other — a face too large
+The whole frame gives out below about 16%, and cropping walks straight over that: a tile is a
+third or a quarter of the frame, so a face inside one reaches the model three or four times
+larger. Both grids earn their place and neither replaces the other — a face too large
 for a 4×4 tile is cut across two and found in neither, which is why the whole frame is still
 read first.
 
@@ -130,8 +130,68 @@ thing here, and one look that answers the question beats two that halve it.
 
 Every face found now reports `share` — its width as a fraction of the frame's — and the album
 names the smallest one it found. That is the number that says whether this approach is
-comfortable or standing on its floor. Below about 2% nothing finds anyone, and no finer grid
+comfortable or standing on its floor. Below about 5% nothing finds anyone, and no finer grid
 rescues it.
 
 An end-to-end test serves a face at 5% of the frame, which the whole-frame pass cannot see.
 Setting `TILE_GRIDS` to `[]` fails that test and only that test — the other seven still pass.
+
+## And then the album, which settled it
+
+The owner reloaded and reported the blurred photograph still unflagged. The screenshot showed
+why immediately, and it was not the detector: the page said *"anything over 0.42"* and carried no
+"People:" line at all. **None of this work had been merged.** The site was running the code from
+before the calibration fix.
+
+That is worth recording on its own. Nothing here reaches her until it is on `main`, and a branch
+that is green and unmerged is, from her side, identical to a branch that was never written.
+
+The screenshot was still the most useful thing this feature has received, for two reasons.
+
+### The blurred photograph, at last visible
+
+Eight photographs now, reading 0.21, 0.23, 0.27, 0.27, 0.32, 0.32, 0.32 and 0.41. The blurred one
+still reads 0.32 and still sits mid-pack. A larger sample confirms rather than softens the
+verdict: no line across a whole-frame reading separates it.
+
+And the photograph itself shows exactly what the handoff argued from words alone. The near water
+is sharp; the boy and the red board behind him are soft. The camera focused past him.
+
+### The finding that decides the feature's future
+
+Which raises the question nobody had tested: **can BlazeFace find a face that is itself blurred?**
+Measured, with blur applied to the person alone:
+
+| face width | sharp | 2px blur | 4px | 6px |
+| --- | --- | --- | --- | --- |
+| 12% | 0.878 | 0.866 | 0.868 | none |
+| 8% | 0.893 | 0.890 | none | none |
+| 5% | 0.844 | none | none | none |
+
+Detection survives blur up to roughly 4–5% of the face's own width and is lost beyond about 6%.
+**A face soft enough for anyone to notice is a face this detector cannot see.**
+
+That is fatal to the plan as written. "Face sharp → the photograph came out; face soft → offer it"
+cannot work, because the soft-face branch never fires: a soft face is not detected as a face at
+all. It is the same fault that killed `edgeWidth` in round three — heavy blur destroys the very
+thing the measure hunts for, so the worse the photograph, the more certain the silence.
+
+Face detection can still say *"there is a sharp person here, so this photograph came out"*. It
+cannot say *"the person here is soft"*. Only the first half of the plan is available.
+
+### A correction to the previous round's numbers
+
+The size table shipped in the last commit was wrong by a factor of two. It came from a harness
+that set the ellipse *radius* to the quoted fraction, so a face labelled 8% actually spanned 16%
+of the frame. The corrected measurements above use full width, which is what `share` reports and
+therefore the only thing the two can be compared on. The floor is 5%, not 2%, and the on-screen
+line said so incorrectly for one commit.
+
+## Rules this correction leaves behind
+
+- State a measured size as the thing being measured, not as a parameter that happens to produce
+  it. "Radius 8%" and "width 8%" differ by two, and a table read months later cannot tell which
+  was meant.
+- Before building on a detector, test it on the input you actually need it to handle. Face
+  detection was chosen to judge blurred photographs and cannot see blurred faces; one afternoon
+  of measurement would have found that before any of it was written.

@@ -175,18 +175,34 @@ some distance away; in another he faces away entirely. BlazeFace may not detect 
 before building the rest — if faces are not found in her album, this approach dies too, and the
 next option is a saliency or subject-region model rather than a face detector.
 
-**This is now the open question, and the remedy for it has already shipped.** BlazeFace resizes
+**READ THIS FIRST: face detection cannot do the job it was chosen for.** A face has to be sharp
+to be found. Measured, with blur applied to the person alone, detection survives blur up to about
+4-5% of the face's own width and is lost beyond about 6% — so a face soft enough for anyone to
+notice is a face BlazeFace cannot see. "Face soft, so offer the photograph" can never fire,
+because a soft face is not detected as a face at all. It is the same fault that killed
+`edgeWidth`: the worse the photograph, the more certain the silence.
+
+What remains available is only the other half — *"there is a sharp person here, so this came
+out"*. Judging a person as soft needs something that finds people without depending on fine
+detail. The next thing to try is a **person detector rather than a face detector** (MediaPipe's
+ObjectDetector with EfficientDet-Lite has a `person` class): a silhouette is a large, low-frequency
+shape and should survive blur far better than facial landmarks. **Measure that against blurred
+input before building on it** — that is the step that was skipped here.
+
+The rest of this section is the size behaviour, which still holds.
+
+**The size question, and the remedy for it that has already shipped.** BlazeFace resizes
 the whole frame to 128x128 before it looks at anything, so detection depends on the share of the
 frame a face fills and not on how many pixels the photograph has. Measured, the whole-frame
 reading finds a face down to about 8% of the frame's width and falls off a cliff below that.
 
 So the photograph is also read through 3x3 and 4x4 grids of overlapping tiles, which hands a
-small face to the model three or four times larger, and that recovers faces down to about 2.5%.
+small face to the model three or four times larger, and that recovers faces down to about 5%.
 It costs nothing in false accusations (no face found in ten draws each of dense texture and
 random rectangles, at any grid) and 155 ms a frame against 24 ms.
 
-Below roughly 2% of the frame's width nobody is found, and no finer grid rescues it. That is the
-floor. Every face reports `share`, and the album names the smallest it found — **that is the
+Below roughly 5% of the frame's width nobody is found, and no finer grid rescues it. That is one
+floor, and not the one that matters. Every face reports `share`, and the album names the smallest it found — **that is the
 number to read first when her album comes back.** If it says nobody was found at all, faces are
 the wrong instrument and the next option is a saliency or subject-region model.
 
