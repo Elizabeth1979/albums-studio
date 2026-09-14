@@ -175,6 +175,16 @@ AI cost.
 - [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
   a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
   was five times too low; photographs are now judged against their own album's median.
+- [Find the people first](sessions/2026-09-02-find-the-people-first.md) — the first round of
+  judging the subject rather than the frame: BlazeFace, self-hosted, reporting on screen and
+  acting on nothing, plus five things the plan got wrong that only running it revealed (the
+  model is not in the package, the runtime is 11.8 MB, it cannot start in this app's worker,
+  the library's default confidence finds faces in noise, and the model sees a 128×128 frame).
+- [Calibrated at a size we do not use](sessions/2026-09-01-calibrated-at-a-size-we-do-not-use.md) —
+  the blur threshold, the denoise width and the re-blur span were all fitted against 400px
+  frames while the app measured at 800px, because the harness restated the size instead of
+  importing it; the harness now models the real chain, the constants are re-derived, and the
+  line moved to 0.46 with margin against the owner's own sharp selfie.
 - [Making the focus check state its own result](sessions/2026-08-29-focus-check-says-what-it-did.md) —
   per-photograph failures were reported but a failure of the whole pass was not, so three
   different states still looked identical; the album now names what the check read and the

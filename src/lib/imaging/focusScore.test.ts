@@ -1,39 +1,58 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BLURRED_ENOUGH } from '../focus'
-import { fitWithin } from './process'
+import { ANALYSIS_CEILING } from './measure'
+import { FULL_SIZE, fitWithin } from './process'
 import { blurRatio } from './reblur'
 import { focusScore } from './sharpness'
 
 /**
  * Focus, judged the way a photograph actually reaches this code.
  *
- * The first version of these scenes blurred an image that was already small,
- * and every one of them passed while a plainly blurry photograph in a real
- * album went unmentioned. The fault was in the scenes, not the measure: **a
- * camera blurs a frame thousands of pixels wide, and the app then shrinks that
- * frame to a 400px thumbnail, which shrinks the blur with it.** Blurring at the
- * size we measure at describes a photograph that does not exist, and a
- * threshold calibrated against it is calibrated against nothing.
+ * These scenes have modelled the wrong reduction twice, and each time every
+ * test passed while the owner's album went unseparated.
  *
- * So every scene here starts at camera size, is blurred there, and is then put
- * through the same reduction the app performs before anything is measured.
+ * The first version blurred an image that was already small. **A camera blurs
+ * a frame thousands of pixels wide and the app then shrinks it, which shrinks
+ * the blur with it**, so blurring at the size we measure at describes a
+ * photograph that does not exist.
+ *
+ * The second version — this one, until now — fixed that but reduced to a 400px
+ * thumbnail, which is what the app read until #53 moved it to the 2000px stored
+ * image read at `ANALYSIS_CEILING`. The harness was not moved with it. So the
+ * threshold below, the denoise width and the re-blur span were all fitted at
+ * 400px and then used at 800px, where the same frame reads quite differently:
+ * a lightly softened one read 0.390 at 400px and 0.458 at 800px, because the
+ * re-blur span is a fixed count of pixels and halving the frame doubles it
+ * relative to the picture.
+ *
+ * So the chain here is now the one the app performs, and the sizes are imported
+ * rather than restated: a camera frame, blurred at camera size, reduced to
+ * `FULL_SIZE` and rounded as a stored JPEG holds it, then reduced to
+ * `ANALYSIS_CEILING` and rounded again — which is exactly what `measureFocus`
+ * does to the bytes it downloads.
  */
-const CAMERA_WIDTH = 1200
-const CAMERA_HEIGHT = 900
+
+/**
+ * The stored image, which is what `measureFocus` is handed.
+ *
+ * Scenes are built and blurred at this size rather than at a phone's full
+ * 4000px, which would take minutes to blur in a test. The blur is named in
+ * stored-image pixels throughout, and a phone frame reduced to `FULL_SIZE`
+ * halves whatever the lens did — so a sigma here is worth roughly twice as many
+ * pixels on the camera's own frame, which is how the tables below read it.
+ */
+const STORED_WIDTH = FULL_SIZE
+const STORED_HEIGHT = 1500
 
 /**
  * Longer than the default five seconds, for this file only.
  *
- * Building a camera-sized frame and blurring it is real work — a couple of
- * seconds on an idle machine — and the default limit turned a busy CI runner
- * into a failure that said nothing about focus. The alternative was to measure
- * smaller frames, which is the exact shortcut that hid the bug these tests
- * exist to catch.
+ * Building a stored-size frame and blurring it is real work, and the default
+ * limit turned a busy CI runner into a failure that said nothing about focus.
+ * The alternative was to measure smaller frames, which is the exact shortcut
+ * that hid the bug these tests exist to catch — twice.
  */
-vi.setConfig({ testTimeout: 30_000 })
-
-/** The longest edge of the thumbnail the album stores and this reads. */
-const THUMBNAIL = 400
+vi.setConfig({ testTimeout: 180_000 })
 
 type Plane = { luma: Float64Array; width: number; height: number }
 
@@ -94,12 +113,12 @@ function octave(width: number, height: number, cell: number, random: () => numbe
 
 /** Detail at every scale, the way a photograph of anything real carries it. */
 function texture(random: () => number, contrast = 1): Float64Array {
-  const out = new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT)
+  const out = new Float64Array(STORED_WIDTH * STORED_HEIGHT)
   let amplitude = 1
   let total = 0
 
-  for (let cell = 300; cell >= 2; cell /= 2) {
-    const layer = octave(CAMERA_WIDTH, CAMERA_HEIGHT, cell, random)
+  for (let cell = 500; cell >= 2; cell /= 2) {
+    const layer = octave(STORED_WIDTH, STORED_HEIGHT, cell, random)
     for (let i = 0; i < out.length; i += 1) out[i] += amplitude * layer[i]
     total += amplitude
     amplitude *= 0.75
@@ -128,24 +147,24 @@ function blur(source: Float64Array, sigma: number): Float64Array {
   const horizontal = new Float64Array(source.length)
   const out = new Float64Array(source.length)
 
-  for (let y = 0; y < CAMERA_HEIGHT; y += 1) {
-    for (let x = 0; x < CAMERA_WIDTH; x += 1) {
+  for (let y = 0; y < STORED_HEIGHT; y += 1) {
+    for (let x = 0; x < STORED_WIDTH; x += 1) {
       let total = 0
       for (let i = -radius; i <= radius; i += 1) {
-        total += kernel[i + radius] * source[y * CAMERA_WIDTH + clamp(x + i, CAMERA_WIDTH)]
+        total += kernel[i + radius] * source[y * STORED_WIDTH + clamp(x + i, STORED_WIDTH)]
       }
-      horizontal[y * CAMERA_WIDTH + x] = total
+      horizontal[y * STORED_WIDTH + x] = total
     }
   }
 
-  for (let y = 0; y < CAMERA_HEIGHT; y += 1) {
-    for (let x = 0; x < CAMERA_WIDTH; x += 1) {
+  for (let y = 0; y < STORED_HEIGHT; y += 1) {
+    for (let x = 0; x < STORED_WIDTH; x += 1) {
       let total = 0
       for (let i = -radius; i <= radius; i += 1) {
         total +=
-          kernel[i + radius] * horizontal[clamp(y + i, CAMERA_HEIGHT) * CAMERA_WIDTH + x]
+          kernel[i + radius] * horizontal[clamp(y + i, STORED_HEIGHT) * STORED_WIDTH + x]
       }
-      out[y * CAMERA_WIDTH + x] = total
+      out[y * STORED_WIDTH + x] = total
     }
   }
 
@@ -186,8 +205,7 @@ function shrink(source: Plane, longestEdge: number): Plane {
 }
 
 /**
- * A camera frame, reduced to the thumbnail the album stores — and rounded to
- * whole numbers, because that is what a stored image holds.
+ * Rounded to whole numbers, because that is what a stored image holds.
  *
  * The rounding is not a detail. Measured in floating point a blurred photograph
  * read 0.07, and the same photograph through a real browser read 0.21: rounding
@@ -196,9 +214,7 @@ function shrink(source: Plane, longestEdge: number): Plane {
  * skips this step describes a photograph made of real numbers, which no camera
  * has ever produced.
  */
-function asThumbnail(camera: Float64Array): Plane {
-  const plane = shrink({ luma: camera, width: CAMERA_WIDTH, height: CAMERA_HEIGHT }, THUMBNAIL)
-
+function rounded(plane: Plane): Plane {
   for (let i = 0; i < plane.luma.length; i += 1) {
     plane.luma[i] = Math.max(0, Math.min(255, Math.round(plane.luma[i])))
   }
@@ -207,21 +223,33 @@ function asThumbnail(camera: Float64Array): Plane {
 }
 
 /**
+ * The stored image, read at the size the app reads it at.
+ *
+ * This is `measureFocus` with the decoding taken out: it is handed the stored
+ * JPEG, reduces it to `ANALYSIS_CEILING`, and measures that. Both roundings are
+ * here because both happen — once when the stored image is written, once when
+ * the analysis canvas hands back eight-bit pixels.
+ */
+function asAnalysed(stored: Float64Array): Plane {
+  const kept = rounded({ luma: stored, width: STORED_WIDTH, height: STORED_HEIGHT })
+
+  return rounded(shrink(kept, ANALYSIS_CEILING))
+}
+
+/**
  * A subject in focus with the rest of the frame thrown out of focus behind it.
  *
- * The background is blurred by 8px at camera size, which is several times past
- * the line this feature draws — thoroughly out of focus, and a third of the
- * cost of the 20px it used to be. That cost was not free: building it took this
- * test beyond vitest's five-second limit whenever the machine was busy, which
- * showed up as a failure that had nothing to do with what is being measured.
+ * The background is blurred by 10px in the stored image — roughly 20px on the
+ * camera's own frame, thoroughly out of focus and well past anything this
+ * feature would call soft.
  */
 function subjectAgainstBackground(random: () => number): Float64Array {
-  const out = blur(texture(random), 8)
+  const out = blur(texture(random), 10)
   const subject = texture(random)
 
-  for (let y = Math.round(CAMERA_HEIGHT * 0.3); y < Math.round(CAMERA_HEIGHT * 0.75); y += 1) {
-    for (let x = Math.round(CAMERA_WIDTH * 0.35); x < Math.round(CAMERA_WIDTH * 0.7); x += 1) {
-      out[y * CAMERA_WIDTH + x] = subject[y * CAMERA_WIDTH + x]
+  for (let y = Math.round(STORED_HEIGHT * 0.3); y < Math.round(STORED_HEIGHT * 0.75); y += 1) {
+    for (let x = Math.round(STORED_WIDTH * 0.35); x < Math.round(STORED_WIDTH * 0.7); x += 1) {
+      out[y * STORED_WIDTH + x] = subject[y * STORED_WIDTH + x]
     }
   }
 
@@ -238,26 +266,26 @@ function subjectAgainstBackground(random: () => number): Float64Array {
  * scene as well as for the textured one.
  */
 function smoothSubject(random: () => number): Float64Array {
-  const out = new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT)
-  const soft = octave(CAMERA_WIDTH, CAMERA_HEIGHT, 400, random)
+  const out = new Float64Array(STORED_WIDTH * STORED_HEIGHT)
+  const soft = octave(STORED_WIDTH, STORED_HEIGHT, Math.round(STORED_WIDTH / 3), random)
 
-  for (let y = 0; y < CAMERA_HEIGHT; y += 1) {
-    for (let x = 0; x < CAMERA_WIDTH; x += 1) {
-      let value = 150 + 30 * soft[y * CAMERA_WIDTH + x]
+  for (let y = 0; y < STORED_HEIGHT; y += 1) {
+    for (let x = 0; x < STORED_WIDTH; x += 1) {
+      let value = 150 + 30 * soft[y * STORED_WIDTH + x]
 
-      const dx = (x - CAMERA_WIDTH * 0.42) / (CAMERA_WIDTH * 0.22)
-      const dy = (y - CAMERA_HEIGHT * 0.48) / (CAMERA_HEIGHT * 0.37)
-      if (dx * dx + dy * dy < 1) value = 196 + 12 * soft[y * CAMERA_WIDTH + x]
+      const dx = (x - STORED_WIDTH * 0.42) / (STORED_WIDTH * 0.22)
+      const dy = (y - STORED_HEIGHT * 0.48) / (STORED_HEIGHT * 0.37)
+      if (dx * dx + dy * dy < 1) value = 196 + 12 * soft[y * STORED_WIDTH + x]
 
       const inBar = (from: number, to: number) => x > from && x < to
-      if (y > CAMERA_HEIGHT * 0.36 && y < CAMERA_HEIGHT * 0.44) {
-        if (inBar(CAMERA_WIDTH * 0.27, CAMERA_WIDTH * 0.41)) value = 42
-        if (inBar(CAMERA_WIDTH * 0.44, CAMERA_WIDTH * 0.58)) value = 42
+      if (y > STORED_HEIGHT * 0.36 && y < STORED_HEIGHT * 0.44) {
+        if (inBar(STORED_WIDTH * 0.27, STORED_WIDTH * 0.41)) value = 42
+        if (inBar(STORED_WIDTH * 0.44, STORED_WIDTH * 0.58)) value = 42
       }
 
-      if (y > CAMERA_HEIGHT * 0.84) value = 96 + 20 * soft[y * CAMERA_WIDTH + x]
+      if (y > STORED_HEIGHT * 0.84) value = 96 + 20 * soft[y * STORED_WIDTH + x]
 
-      out[y * CAMERA_WIDTH + x] = value
+      out[y * STORED_WIDTH + x] = value
     }
   }
 
@@ -302,15 +330,15 @@ function softened(seed: number, sigma: number): Float64Array {
 }
 
 /** The reading the blur advice acts on: how much detail survives a re-blur. */
-function read(camera: Float64Array): number | null {
-  const frame = asThumbnail(camera)
+function read(stored: Float64Array): number | null {
+  const frame = asAnalysed(stored)
   return blurRatio(frame.luma, frame.width, frame.height)
 }
 
 /** The reading used only for ranking inside one burst. */
-function readDetail(camera: Float64Array): number | null {
-  const thumbnail = asThumbnail(camera)
-  return focusScore(thumbnail.luma, thumbnail.width, thumbnail.height)
+function readDetail(stored: Float64Array): number | null {
+  const frame = asAnalysed(stored)
+  return focusScore(frame.luma, frame.width, frame.height)
 }
 
 describe('the blur reading, through the reduction a photograph really goes through', () => {
@@ -343,22 +371,40 @@ describe('the blur reading, through the reduction a photograph really goes throu
     // of the frame, which is the next piece of work.
     for (const seed of SEEDS) {
       const bokeh = read(remember(`bokeh-${seed}`, () => subjectAgainstBackground(generator(seed))))
-      const throughout = read(softened(seed, 8))
+      const throughout = read(softened(seed, 10))
 
       expect(bokeh as number, `seed ${seed}`).toBeLessThan(throughout as number)
     }
   })
 
   it('offers a photograph the lens actually missed, whatever it is a photograph of', () => {
-    // Six pixels at camera size, not three. Three is one pixel by the time the
-    // frame is a 400px thumbnail, and reading that as soft would mean drawing
-    // the line where an in-focus photograph of dense texture already sits.
+    // Ten pixels in the stored image, about twenty on the camera's own frame.
+    // The old harness asserted this of a blur a third that size, which it could
+    // only do because it measured a 400px frame: through the reduction the app
+    // really performs, a six-pixel camera blur lands inside the in-focus band
+    // and nothing can be claimed about it. See the gap named below.
     for (const seed of SEEDS) {
-      for (const sigma of [6, 12]) {
+      for (const sigma of [10, 15]) {
         expect(read(softened(seed, sigma)) as number, `textured ${sigma}px, seed ${seed}`)
           .toBeGreaterThan(BLURRED_ENOUGH)
         expect(read(softenedFaces(seed, sigma)) as number, `faces ${sigma}px, seed ${seed}`)
           .toBeGreaterThan(BLURRED_ENOUGH)
+      }
+    }
+  })
+
+  it('cannot tell a mild softening from a frame that came out, and does not try', () => {
+    // The gap the corrected reduction opens, asserted rather than hidden. A 3px
+    // blur in the stored image — six on the camera's frame — reads 0.377 to
+    // 0.424 across subjects and noise, and an in-focus frame reads 0.338 to
+    // 0.381. Those bands touch, so no line separates them, and the line is
+    // drawn above both: such a photograph goes unmentioned.
+    //
+    // The old harness asserted the opposite and passed, because at 400px the
+    // same frames read further apart than they do at the size the app uses.
+    for (const seed of SEEDS) {
+      for (const frame of [softened(seed, 3), softenedFaces(seed, 3)]) {
+        expect(read(frame) as number, `seed ${seed}`).toBeLessThan(BLURRED_ENOUGH)
       }
     }
   })
@@ -371,7 +417,7 @@ describe('the blur reading, through the reduction a photograph really goes throu
     for (const seed of SEEDS) {
       const sharpTextured = read(scene(seed)) as number
       const sharpFaces = read(faces_(seed)) as number
-      const blurredFaces = read(softenedFaces(seed, 4)) as number
+      const blurredFaces = read(softenedFaces(seed, 8)) as number
 
       const bySubject = Math.abs(sharpTextured - sharpFaces)
       const byBlur = blurredFaces - sharpFaces
@@ -387,7 +433,7 @@ describe('the blur reading, through the reduction a photograph really goes throu
     // impossible to judge — which reads on screen as "nothing to say". The
     // worse the photograph, the more certain the silence.
     for (const seed of SEEDS) {
-      for (const sigma of [10, 16]) {
+      for (const sigma of [15, 25]) {
         const width = read(softened(seed, sigma))
 
         expect(width, `${sigma}px, seed ${seed}`).not.toBeNull()
@@ -412,7 +458,7 @@ describe('the blur reading, through the reduction a photograph really goes throu
           `sharp, noise ${levels}, seed ${seed}`,
         ).toBeLessThan(BLURRED_ENOUGH)
 
-        for (const sigma of [6, 12, 20]) {
+        for (const sigma of [10, 15, 25]) {
           expect(
             read(noisy(softened(seed, sigma), levels, grain)) as number,
             `${sigma}px, noise ${levels}, seed ${seed}`,
@@ -437,7 +483,7 @@ describe('the blur reading, through the reduction a photograph really goes throu
         `grainy fog, seed ${seed}`,
       ).toBeLessThan(BLURRED_ENOUGH)
       expect(
-        read(new Float64Array(CAMERA_WIDTH * CAMERA_HEIGHT).fill(128)),
+        read(new Float64Array(STORED_WIDTH * STORED_HEIGHT).fill(128)),
         `blank wall, seed ${seed}`,
       ).toBeNull()
     }
@@ -452,7 +498,7 @@ describe('the blur reading, through the reduction a photograph really goes throu
     for (const seed of SEEDS) {
       const textured = read(scene(seed)) as number
       const faces = read(faces_(seed)) as number
-      const blurred = read(softenedFaces(seed, 6)) as number
+      const blurred = read(softenedFaces(seed, 12)) as number
 
       // Subject matter must move the reading by well under what blur does.
       expect(Math.abs(textured - faces), `seed ${seed}`).toBeLessThan((blurred - faces) / 3)
@@ -471,7 +517,7 @@ describe('focusScore, kept for ranking the frames of one burst', () => {
     // — which is the one condition under which this measure is trustworthy.
     for (const seed of SEEDS) {
       const sharp = readDetail(scene(seed)) as number
-      const soft = readDetail(softened(seed, 2)) as number
+      const soft = readDetail(softened(seed, 4)) as number
 
       expect(soft, `seed ${seed}`).toBeLessThan(sharp * 0.5)
     }

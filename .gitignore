@@ -32,3 +32,9 @@ blob-report/
 # Deploy
 .vercel/
 .netlify/
+
+# The MediaPipe vision runtime, copied out of node_modules before each build by
+# scripts/vendor-mediapipe.mjs. 22 MB, and reproducible from the pinned
+# dependency. The model beside it is committed — see public/mediapipe/README.md.
+public/mediapipe/*.wasm
+public/mediapipe/vision_wasm_*.js
