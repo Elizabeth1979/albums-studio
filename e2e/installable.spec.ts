@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@aee/cli/test'
 import { stubSupabase } from './support/supabase-stub'
 
 const manifest = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8'))

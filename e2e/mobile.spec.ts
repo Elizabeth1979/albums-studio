@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@aee/cli/test'
 import { sampleFile } from './support/sample-image'
 import { albumRecord, stubSupabase } from './support/supabase-stub'
 
