@@ -221,8 +221,10 @@ textarea:focus-visible {
   transition: color 150ms ease, background 150ms ease;
 }
 
+/* The accent's darker shade: the accent itself is 4.31:1 on this tint, under the 4.5:1
+   small text needs. */
 .password-toggle:hover {
-  color: #996130;
+  color: #8d5526;
   background: #f1ebe1;
 }
 
@@ -1110,11 +1112,12 @@ textarea:focus-visible {
 }
 
 /* Quieter than the sentence above it: this is for reporting a problem, not for
-   reading every day. */
+   reading every day. Quieter, not faint: 4.77:1 on the failed row, where small text
+   needs 4.5:1. */
 .upload-detail {
   grid-column: 1 / -1;
   margin-top: 0.15rem;
-  color: #857468;
+  color: #746d64;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.7rem;
   line-height: 1.45;
