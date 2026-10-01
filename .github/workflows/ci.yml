@@ -12,7 +12,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # Write, for the pictures in the accessibility comment, kept on the aee-images branch.
+  contents: write
   # For the accessibility comment the end-to-end step keeps on each pull request.
   pull-requests: write
 
@@ -52,10 +53,12 @@ jobs:
       # The suite runs as before, and every page its tests load is also checked for accessibility.
       # The findings go in one comment on the pull request; only a failing test fails the job.
       - name: End-to-end tests with accessibility checks
-        uses: Elizabeth1979/accessibility-evidence-engine@v0.4.1
+        uses: Elizabeth1979/accessibility-evidence-engine@v0.5.0
         with:
           run: npm run test:e2e
           fail-on: never
+          # A picture of each problem in the comment.
+          images: true
 
       - if: failure()
         uses: actions/upload-artifact@v4
