@@ -27,6 +27,10 @@ AI cost.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
+  On trial alongside it: the Accessibility Evidence Engine checks every page the end-to-end
+  tests load, each test importing `test` from `@aee/cli/test` rather than `@playwright/test`,
+  and keeps one comment on each pull request. It only reports; a failing test is still the
+  only thing that fails CI.
 - A secondary action written as text — Rename album, Edit description, Sign out, Cancel — is
   brown and underlined, never bold ink alone. Colour and underline together, because colour
   by itself fails WCAG 1.4.1 and because the album header sets these inline beside the words

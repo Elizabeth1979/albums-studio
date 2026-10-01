@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@aee/cli/test'
 import { recoveryUrl, stubSupabase } from './support/supabase-stub'
 
 test.describe('sign-in', () => {

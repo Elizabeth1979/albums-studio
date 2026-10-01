@@ -1,4 +1,4 @@
-import { type Page, expect, test } from '@playwright/test'
+import { type Page, expect, test } from '@aee/cli/test'
 import { blurredPng, facePng, sharpPng, softPng } from './support/sample-image'
 import { type StubOptions, albumRecord, photoRecord, stubSupabase } from './support/supabase-stub'
 

@@ -11,6 +11,11 @@ on:
   # nudge GitHub.
   workflow_dispatch:
 
+permissions:
+  contents: read
+  # For the accessibility comment the end-to-end step keeps on each pull request.
+  pull-requests: write
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -44,8 +49,13 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: End-to-end tests
-        run: npm run test:e2e
+      # The suite runs as before, and every page its tests load is also checked for accessibility.
+      # The findings go in one comment on the pull request; only a failing test fails the job.
+      - name: End-to-end tests with accessibility checks
+        uses: Elizabeth1979/accessibility-evidence-engine@v0.4.0
+        with:
+          run: npm run test:e2e
+          fail-on: never
 
       - if: failure()
         uses: actions/upload-artifact@v4
