@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from 'react'
 import { type Photo, type TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
+import { LiveStatus } from './LiveStatus'
 import { StoryNotes } from './StoryNotes'
+import { useConfirmation } from './useConfirmation'
 
 type PhotoEditorProps = {
   photo: Photo
@@ -75,6 +77,7 @@ export function PhotoEditor({
   const [coverError, setCoverError] = useState<string | null>(null)
   const [moving, setMoving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const confirmation = useConfirmation()
   const [placeError, setPlaceError] = useState<string | null>(null)
 
   async function move(action: () => Promise<void>) {
@@ -277,11 +280,9 @@ export function PhotoEditor({
             <button className="primary-button" type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Save'}
             </button>
-            {saved && !saving && (
-              <p className="form-message success" role="status">
-                Saved.
-              </p>
-            )}
+            <LiveStatus>
+              {saved && !saving && <p className="form-message success">Saved.</p>}
+            </LiveStatus>
           </div>
 
           {error && (
@@ -303,7 +304,7 @@ export function PhotoEditor({
         <h4 id="remove-photo-title">Remove this photo</h4>
         {confirmingDelete ? (
           <>
-            <p className="field-hint">
+            <p className="field-hint" {...confirmation.warning}>
               The photograph and everything written about it go for good. Nothing here is
               recoverable afterwards.
             </p>
@@ -321,6 +322,7 @@ export function PhotoEditor({
                 type="button"
                 disabled={moving}
                 onClick={() => setConfirmingDelete(false)}
+                {...confirmation.keep}
               >
                 Keep it
               </button>

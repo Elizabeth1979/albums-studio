@@ -4,6 +4,7 @@ import type { Identity } from '../lib/identity'
 import { AlbumPhotos } from './AlbumPhotos'
 import { ShareAlbum } from './ShareAlbum'
 import { AppHeader } from './AppHeader'
+import { useConfirmation } from './useConfirmation'
 
 type AlbumPageProps = {
   identity: Identity
@@ -33,6 +34,7 @@ export function AlbumPage({
   const [describing, setDescribing] = useState(false)
   const [description, setDescription] = useState(album.description ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const confirmation = useConfirmation()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -150,6 +152,7 @@ export function AlbumPage({
                   onChange={(event) => setDescription(event.target.value)}
                   maxLength={2000}
                   rows={4}
+                  autoFocus
                 />
               </label>
               <div className="rename-actions">
@@ -193,7 +196,7 @@ export function AlbumPage({
           <h2 id="danger-title">Delete album</h2>
           {confirmingDelete ? (
             <>
-              <p>
+              <p {...confirmation.warning}>
                 Deleting <strong>{album.title}</strong> cannot be undone.
               </p>
               <div className="danger-actions">
@@ -210,6 +213,7 @@ export function AlbumPage({
                   type="button"
                   disabled={pending}
                   onClick={() => setConfirmingDelete(false)}
+                  {...confirmation.keep}
                 >
                   Keep it
                 </button>

@@ -53,7 +53,7 @@ jobs:
       # The suite runs as before, and every page its tests load is also checked for accessibility.
       # The findings go in one comment on the pull request; only a failing test fails the job.
       - name: End-to-end tests with accessibility checks
-        uses: Elizabeth1979/accessibility-evidence-engine@v0.7.1
+        uses: Elizabeth1979/accessibility-evidence-engine@v0.8.0
         with:
           run: npm run test:e2e
           fail-on: never

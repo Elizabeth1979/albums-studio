@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import type { Album } from '../lib/albums'
 import type { Identity } from '../lib/identity'
 import { AppHeader } from './AppHeader'
+import { LiveStatus } from './LiveStatus'
 
 type LibraryProps = {
   identity: Identity
@@ -114,14 +115,16 @@ export function Library({
           )}
         </div>
 
-        {created && (
-          // Announced rather than only drawn: the form closes and the page
-          // scrolls nowhere, so without this the only sign anything happened is
-          // a new row further down that a phone may not have on screen.
-          <p className="form-message success" role="status">
-            Added <strong>{created}</strong> to your library.
-          </p>
-        )}
+        {/* Announced rather than only drawn: the form closes and the page
+            scrolls nowhere, so without this the only sign anything happened is
+            a new row further down that a phone may not have on screen. */}
+        <LiveStatus>
+          {created && (
+            <p className="form-message success">
+              Added <strong>{created}</strong> to your library.
+            </p>
+          )}
+        </LiveStatus>
 
         {composing && (
         <section className="new-album" aria-labelledby="new-album-title">

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { AlbumVisibility } from '../lib/albums'
 import { albumShareToken, rotateShareToken, shareUrl } from '../lib/sharing'
+import { LiveStatus } from './LiveStatus'
+import { useConfirmation } from './useConfirmation'
 
 type ShareAlbumProps = {
   albumId: string
@@ -13,6 +15,7 @@ export function ShareAlbum({ albumId, visibility, onChangeVisibility }: ShareAlb
   const [pending, setPending] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirmingRotate, setConfirmingRotate] = useState(false)
+  const confirmation = useConfirmation()
   const [error, setError] = useState<string | null>(null)
 
   // Only fetched while the album is actually shared. A token is a credential;
@@ -116,16 +119,12 @@ export function ShareAlbum({ albumId, visibility, onChangeVisibility }: ShareAlb
             >
               Copy link
             </button>
-            {copied && (
-              <p className="form-message success" role="status">
-                Copied.
-              </p>
-            )}
+            <LiveStatus>{copied && <p className="form-message success">Copied.</p>}</LiveStatus>
           </div>
 
           {confirmingRotate ? (
             <>
-              <p className="field-hint">
+              <p className="field-hint" {...confirmation.warning}>
                 Every link you have already sent stops working. There is no way to withdraw
                 one copy and keep another: the link is the key.
               </p>
@@ -152,6 +151,7 @@ export function ShareAlbum({ albumId, visibility, onChangeVisibility }: ShareAlb
                   type="button"
                   disabled={pending}
                   onClick={() => setConfirmingRotate(false)}
+                  {...confirmation.keep}
                 >
                   Keep it
                 </button>

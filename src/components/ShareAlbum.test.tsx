@@ -94,13 +94,15 @@ describe('the link itself', () => {
     Object.assign(navigator, { clipboard: { writeText } })
     renderShare({ visibility: 'link' })
     await screen.findByDisplayValue(/the-token/)
+    const region = screen.getByRole('status')
+    expect(region).toBeEmptyDOMElement()
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
 
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith('https://albums.example/shared/the-token'),
     )
-    expect(await screen.findByText('Copied.')).toBeInTheDocument()
+    await waitFor(() => expect(region).toHaveTextContent('Copied.'))
   })
 
   it('never replaces the link on a single click', async () => {
@@ -125,6 +127,17 @@ describe('the link itself', () => {
         'https://albums.example/shared/a-fresh-token',
       ),
     )
+  })
+
+  it('hands focus to the safe choice, described by the warning', async () => {
+    renderShare({ visibility: 'link' })
+    await screen.findByDisplayValue(/the-token/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace this link' }))
+
+    const keep = screen.getByRole('button', { name: 'Keep it' })
+    expect(keep).toHaveFocus()
+    expect(keep).toHaveAccessibleDescription(/Every link you have already sent stops working/)
   })
 
   it('backs out of replacing it', async () => {

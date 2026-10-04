@@ -37,13 +37,18 @@ describe('AuthForm', () => {
     const onSignUp = vi.fn().mockResolvedValue('confirm-email')
 
     renderAuthForm({ onSignUp })
+    // On the page and empty before there is anything to say, so a screen
+    // reader hears the instruction arrive.
+    const region = screen.getByRole('status')
+    expect(region).toBeEmptyDOMElement()
+
     fireEvent.click(screen.getByRole('button', { name: 'Show account creation form' }))
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Elizabeth' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
     fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create private library' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Check your email')
+    await waitFor(() => expect(region).toHaveTextContent('Check your email'))
   })
 
   it('sends a magic link to the trimmed email address', async () => {
@@ -73,7 +78,9 @@ describe('AuthForm', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'nobody@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('If that address has an account')
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('If that address has an account'),
+    )
   })
 
   it('asks for an email before requesting a reset', async () => {

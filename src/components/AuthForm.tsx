@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react'
+import { LiveStatus } from './LiveStatus'
 import { PasswordField } from './PasswordField'
 
 export type AuthCredentials = {
@@ -213,7 +214,7 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink, onResetRequest }: Au
             )}
 
             {error && <p className="form-message error" role="alert">{error}</p>}
-            {notice && <p className="form-message notice" role="status">{notice}</p>}
+            <LiveStatus>{notice && <p className="form-message notice">{notice}</p>}</LiveStatus>
 
             <button className="primary-button" type="submit" disabled={pending}>
               {pendingAction === 'submit'

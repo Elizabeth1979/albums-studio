@@ -127,11 +127,13 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
                   ? 'Yes, remove 1 blurred photo'
                   : `Yes, remove ${chosen.length} blurred photos`}
             </button>
+            {/* Focus moves to the safe choice, since the button pressed has gone: see useConfirmation. */}
             <button
               className="text-button"
               type="button"
               disabled={busy}
               onClick={() => setConfirming(false)}
+              autoFocus
             >
               Keep them
             </button>

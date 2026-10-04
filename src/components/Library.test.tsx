@@ -189,12 +189,17 @@ describe('Library', () => {
     // The form closes and the page does not move, so on a phone the new row can
     // be below the fold. Without this the only feedback is a field going blank.
     renderLibrary()
+    // On the page and empty before there is anything to say. A screen reader
+    // reads out a change to a region it already knows; one that arrives
+    // together with its text is said by some and not by others.
+    const region = screen.getByRole('status')
+    expect(region).toBeEmptyDOMElement()
+
     startAlbum()
     fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
-    const said = await screen.findByRole('status')
-    expect(said).toHaveTextContent('Added Wedding to your library.')
+    await waitFor(() => expect(region).toHaveTextContent('Added Wedding to your library.'))
   })
 
   it('puts the form away once the album exists', async () => {
@@ -215,7 +220,7 @@ describe('Library', () => {
     fireEvent.change(screen.getByLabelText(/^Description/), { target: { value: 'Notes' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
 
-    await screen.findByRole('status')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Added Wedding'))
     startAlbum()
 
     expect(screen.getByLabelText('Album title')).toHaveValue('')

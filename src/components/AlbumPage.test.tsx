@@ -132,6 +132,13 @@ describe('AlbumPage', () => {
     expect(screen.getByRole('button', { name: 'Edit description' })).toBeInTheDocument()
   })
 
+  it('puts the cursor in the description it opens', () => {
+    renderAlbumPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a description' }))
+
+    expect(screen.getByLabelText('What is this album about?')).toHaveFocus()
+  })
+
   it('saves a description', async () => {
     const onChangeDescription = vi.fn().mockResolvedValue(undefined)
 
@@ -178,6 +185,15 @@ describe('AlbumPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yes, delete this album' }))
 
     await waitFor(() => expect(onDelete).toHaveBeenCalled())
+  })
+
+  it('hands focus to the safe choice, described by the warning', () => {
+    renderAlbumPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete album' }))
+
+    const keep = screen.getByRole('button', { name: 'Keep it' })
+    expect(keep).toHaveFocus()
+    expect(keep).toHaveAccessibleDescription('Deleting Summer by the lake cannot be undone.')
   })
 
   it('backs out of a delete', () => {
