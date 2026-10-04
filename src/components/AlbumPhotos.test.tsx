@@ -802,6 +802,7 @@ describe('AlbumPhotos', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Remove 1 ticked photo' }))
       expect(photosApi.deletePhoto).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'Keep them' })).toHaveFocus()
 
       fireEvent.click(screen.getByRole('button', { name: 'Yes, remove 1 blurred photo' }))
 

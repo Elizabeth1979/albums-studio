@@ -101,13 +101,15 @@ describe('captions and alt text', () => {
     expect(screen.getByRole('radio', { name: /Show it under the photo/ })).toBeChecked()
   })
 
-  it('confirms a save', async () => {
+  it('confirms a save, out loud', async () => {
     renderEditor()
+    const region = await screen.findByRole('status')
+    expect(region).toBeEmptyDOMElement()
 
     fireEvent.change(screen.getByLabelText('Caption'), { target: { value: 'Dinner' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByText('Saved.')).toBeInTheDocument()
+    await waitFor(() => expect(region).toHaveTextContent('Saved.'))
   })
 
   it('reports a refused save without losing what was typed', async () => {
@@ -235,6 +237,16 @@ describe('where a photo sits, and removing it', () => {
     expect(screen.getByText(/everything written about it go for good/)).toBeInTheDocument()
   })
 
+  it('hands focus to the safe choice, described by the warning', async () => {
+    renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }))
+
+    const keep = screen.getByRole('button', { name: 'Keep it' })
+    expect(keep).toHaveFocus()
+    expect(keep).toHaveAccessibleDescription(/everything written about it go for good/)
+  })
+
   it('lets the owner back out', async () => {
     const onDelete = vi.fn()
     renderEditor({ onDelete })
@@ -360,6 +372,7 @@ describe('story notes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(onDeleteStory).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Keep it' })).toHaveFocus()
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }))
     await waitFor(() => expect(onDeleteStory).toHaveBeenCalledWith('story-1'))

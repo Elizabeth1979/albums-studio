@@ -305,6 +305,12 @@ textarea:focus-visible {
   opacity: 0.6;
 }
 
+/* An empty live region stays on the page, so a screen reader says what it is given later, but it
+   takes no space: out of the flow, it adds no gap to the grid or row it sits in. */
+.live-status:empty {
+  position: absolute;
+}
+
 .form-message {
   margin: 0;
   padding: 0.8rem 0.9rem;

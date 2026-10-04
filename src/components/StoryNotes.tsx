@@ -162,11 +162,13 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                         >
                           Delete for good
                         </button>
+                        {/* Focus moves to the safe choice, since the button pressed has gone: see useConfirmation. */}
                         <button
                           className="text-button"
                           type="button"
                           disabled={pending}
                           onClick={() => setConfirmingDelete(null)}
+                          autoFocus
                         >
                           Keep it
                         </button>

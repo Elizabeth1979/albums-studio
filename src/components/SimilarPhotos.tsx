@@ -177,11 +177,13 @@ export function SimilarPhotos({
                   ? 'Yes, remove 1 photo'
                   : `Yes, remove ${chosen.length} photos`}
             </button>
+            {/* Focus moves to the safe choice, since the button pressed has gone: see useConfirmation. */}
             <button
               className="text-button"
               type="button"
               disabled={busy}
               onClick={() => setConfirming(false)}
+              autoFocus
             >
               Keep them
             </button>
