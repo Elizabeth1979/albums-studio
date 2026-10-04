@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import type { TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
+import { useReturnFocus } from './useReturnFocus'
 
 type StoryNotesProps = {
   stories: Story[]
@@ -27,6 +28,8 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
+  const editOpener = useReturnFocus(editingId)
+  const deleteOpener = useReturnFocus(confirmingDelete)
 
   async function run(action: () => Promise<void>, fallback: string) {
     setPending(true)
@@ -91,6 +94,7 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                       onChange={(event) => setDraft(event.target.value)}
                       maxLength={5000}
                       rows={4}
+                      autoFocus
                     />
                   </label>
                   <div className="story-actions">
@@ -147,6 +151,7 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                         setDraft(story.body)
                         setError(null)
                       }}
+                      ref={editOpener(story.id)}
                     >
                       Edit
                     </button>
@@ -179,6 +184,7 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                         type="button"
                         disabled={pending}
                         onClick={() => setConfirmingDelete(story.id)}
+                        ref={deleteOpener(story.id)}
                       >
                         Delete
                       </button>

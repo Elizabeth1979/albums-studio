@@ -4,6 +4,7 @@ import type { Story } from '../lib/stories'
 import { LiveStatus } from './LiveStatus'
 import { StoryNotes } from './StoryNotes'
 import { useConfirmation } from './useConfirmation'
+import { useReturnFocus } from './useReturnFocus'
 
 type PhotoEditorProps = {
   photo: Photo
@@ -78,6 +79,7 @@ export function PhotoEditor({
   const [moving, setMoving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const confirmation = useConfirmation()
+  const removeOpener = useReturnFocus(confirmingDelete)
   const [placeError, setPlaceError] = useState<string | null>(null)
 
   async function move(action: () => Promise<void>) {
@@ -333,6 +335,7 @@ export function PhotoEditor({
             className="secondary-button"
             type="button"
             onClick={() => setConfirmingDelete(true)}
+            ref={removeOpener()}
           >
             Remove photo
           </button>

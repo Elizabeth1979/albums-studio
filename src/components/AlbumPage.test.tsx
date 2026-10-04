@@ -106,6 +106,19 @@ describe('AlbumPage', () => {
     expect(screen.getByRole('heading', { name: 'Summer by the lake' })).toBeInTheDocument()
   })
 
+  it('gives focus back to Rename album once the title is saved', async () => {
+    // The form took the place of the button, so without this focus falls to
+    // the page and a keyboard user starts again from the top.
+    renderAlbumPage({ onRename: vi.fn().mockResolvedValue(undefined) })
+    fireEvent.click(screen.getByRole('button', { name: 'Rename album' }))
+    fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Lake days' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save title' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Rename album' })).toHaveFocus(),
+    )
+  })
+
   it('offers no layout choice at all', () => {
     // Masonry and grid were indistinguishable for an album of uniformly shaped
     // phone photographs, and masonry read the owner's ordering down the columns
@@ -137,6 +150,14 @@ describe('AlbumPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add a description' }))
 
     expect(screen.getByLabelText('What is this album about?')).toHaveFocus()
+  })
+
+  it('gives focus back to the description button when the edit is abandoned', () => {
+    renderAlbumPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a description' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByRole('button', { name: 'Add a description' })).toHaveFocus()
   })
 
   it('saves a description', async () => {
@@ -204,6 +225,6 @@ describe('AlbumPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
     expect(onDelete).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Delete album' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete album' })).toHaveFocus()
   })
 })

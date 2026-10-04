@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { SoftPhoto } from '../lib/focus'
 import type { Photo } from '../lib/photos'
+import { useReturnFocus } from './useReturnFocus'
 
 type SoftPhotosProps = {
   soft: SoftPhoto[]
@@ -31,6 +32,7 @@ type SoftPhotosProps = {
 export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
   const [confirming, setConfirming] = useState(false)
+  const removeOpener = useReturnFocus(confirming)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -143,6 +145,7 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
             className="secondary-button"
             type="button"
             onClick={() => setConfirming(true)}
+            ref={removeOpener()}
           >
             {chosen.length === 1
               ? 'Remove 1 ticked photo'

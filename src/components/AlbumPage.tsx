@@ -5,6 +5,7 @@ import { AlbumPhotos } from './AlbumPhotos'
 import { ShareAlbum } from './ShareAlbum'
 import { AppHeader } from './AppHeader'
 import { useConfirmation } from './useConfirmation'
+import { useReturnFocus } from './useReturnFocus'
 
 type AlbumPageProps = {
   identity: Identity
@@ -35,6 +36,9 @@ export function AlbumPage({
   const [description, setDescription] = useState(album.description ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const confirmation = useConfirmation()
+  const renameOpener = useReturnFocus(renaming)
+  const describeOpener = useReturnFocus(describing)
+  const deleteOpener = useReturnFocus(confirmingDelete)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -129,7 +133,12 @@ export function AlbumPage({
           ) : (
             <div className="album-title-row">
               <h1>{album.title}</h1>
-              <button className="text-button" type="button" onClick={startRenaming}>
+              <button
+                className="text-button"
+                type="button"
+                onClick={startRenaming}
+                ref={renameOpener()}
+              >
                 Rename album
               </button>
             </div>
@@ -172,7 +181,12 @@ export function AlbumPage({
           ) : (
             <p className="album-description">
               <span>{album.description || 'No description yet.'}</span>{' '}
-              <button className="text-button" type="button" onClick={startDescribing}>
+              <button
+                className="text-button"
+                type="button"
+                onClick={startDescribing}
+                ref={describeOpener()}
+              >
                 {album.description ? 'Edit description' : 'Add a description'}
               </button>
             </p>
@@ -226,6 +240,7 @@ export function AlbumPage({
                 className="secondary-button"
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
+                ref={deleteOpener()}
               >
                 Delete album
               </button>
