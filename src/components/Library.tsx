@@ -3,6 +3,7 @@ import type { Album } from '../lib/albums'
 import type { Identity } from '../lib/identity'
 import { AppHeader } from './AppHeader'
 import { LiveStatus } from './LiveStatus'
+import { useReturnFocus } from './useReturnFocus'
 
 type LibraryProps = {
   identity: Identity
@@ -49,6 +50,8 @@ export function Library({
   // form pushed them past the bottom of a phone screen.
   const [composing, setComposing] = useState(false)
   const [created, setCreated] = useState<string | null>(null)
+  // Either button that starts an album: only one is on the page at a time.
+  const composeOpener = useReturnFocus(composing)
 
   /**
    * Whether the heading offers a way to start an album.
@@ -109,7 +112,12 @@ export function Library({
             <p>Every story starts with a few photographs and the context only you know.</p>
           </div>
           {offersNewAlbum && (
-            <button className="primary-button new-album-button" type="button" onClick={startComposing}>
+            <button
+              className="primary-button new-album-button"
+              type="button"
+              onClick={startComposing}
+              ref={composeOpener()}
+            >
               New album
             </button>
           )}
@@ -193,7 +201,12 @@ export function Library({
             {/* "choose how it should look" outlived the masonry/grid switch it
                 described. An album is named, then filled. */}
             <p>Name it, add photographs, and write what you remember.</p>
-            <button className="primary-button" type="button" onClick={startComposing}>
+            <button
+              className="primary-button"
+              type="button"
+              onClick={startComposing}
+              ref={composeOpener()}
+            >
               Start your first album
             </button>
           </section>

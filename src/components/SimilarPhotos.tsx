@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
 import { compareSharpness, type SharpnessReading, type SimilarGroup } from '../lib/similarity'
+import { useReturnFocus } from './useReturnFocus'
 
 type SimilarPhotosProps = {
   groups: SimilarGroup[]
@@ -47,6 +48,7 @@ export function SimilarPhotos({
 }: SimilarPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
   const [confirming, setConfirming] = useState(false)
+  const removeOpener = useReturnFocus(confirming)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -193,6 +195,7 @@ export function SimilarPhotos({
             className="secondary-button"
             type="button"
             onClick={() => setConfirming(true)}
+            ref={removeOpener()}
           >
             {chosen.length === 1
               ? 'Remove 1 ticked photo'

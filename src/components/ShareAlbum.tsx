@@ -3,6 +3,7 @@ import type { AlbumVisibility } from '../lib/albums'
 import { albumShareToken, rotateShareToken, shareUrl } from '../lib/sharing'
 import { LiveStatus } from './LiveStatus'
 import { useConfirmation } from './useConfirmation'
+import { useReturnFocus } from './useReturnFocus'
 
 type ShareAlbumProps = {
   albumId: string
@@ -16,6 +17,7 @@ export function ShareAlbum({ albumId, visibility, onChangeVisibility }: ShareAlb
   const [copied, setCopied] = useState(false)
   const [confirmingRotate, setConfirmingRotate] = useState(false)
   const confirmation = useConfirmation()
+  const rotateOpener = useReturnFocus(confirmingRotate)
   const [error, setError] = useState<string | null>(null)
 
   // Only fetched while the album is actually shared. A token is a credential;
@@ -162,6 +164,7 @@ export function ShareAlbum({ albumId, visibility, onChangeVisibility }: ShareAlb
               className="text-button"
               type="button"
               onClick={() => setConfirmingRotate(true)}
+              ref={rotateOpener()}
             >
               Replace this link
             </button>

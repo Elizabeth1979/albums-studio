@@ -148,6 +148,19 @@ describe('the link itself', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
     expect(sharingApi.rotateShareToken).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Replace this link' })).toHaveFocus()
+  })
+
+  it('gives focus back to Replace this link once the link is replaced', async () => {
+    renderShare({ visibility: 'link' })
+    await screen.findByDisplayValue(/the-token/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace this link' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Replace the link' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Replace this link' })).toHaveFocus(),
+    )
   })
 
   it('reports a refused change rather than looking like it worked', async () => {

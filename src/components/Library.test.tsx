@@ -202,6 +202,23 @@ describe('Library', () => {
     await waitFor(() => expect(region).toHaveTextContent('Added Wedding to your library.'))
   })
 
+  it('gives focus back to the button that started the album, on cancel', () => {
+    renderLibrary()
+    startAlbum()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByRole('button', { name: 'Start your first album' })).toHaveFocus()
+  })
+
+  it('gives focus back to New album once the album exists', async () => {
+    renderLibrary({ albums: [album()] })
+    startAlbum()
+    fireEvent.change(screen.getByLabelText('Album title'), { target: { value: 'Wedding' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create album' }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New album' })).toHaveFocus())
+  })
+
   it('puts the form away once the album exists', async () => {
     renderLibrary()
     startAlbum()

@@ -256,6 +256,7 @@ describe('where a photo sits, and removing it', () => {
 
     expect(screen.queryByRole('button', { name: 'Yes, remove it' })).not.toBeInTheDocument()
     expect(onDelete).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Remove photo' })).toHaveFocus()
   })
 
   it('reports a refused removal', async () => {
@@ -387,6 +388,17 @@ describe('story notes', () => {
 
     expect(screen.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument()
     expect(onDeleteStory).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus()
+  })
+
+  it('puts the cursor in the story being edited, and gives focus back to Edit after', async () => {
+    renderEditor({ stories: [story()] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByLabelText('Edit this story note')).toHaveFocus()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus()
   })
 })
 
