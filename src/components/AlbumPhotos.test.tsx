@@ -321,6 +321,125 @@ describe('AlbumPhotos', () => {
     expect(screen.queryByText('Added 1 of 1.')).not.toBeInTheDocument()
   })
 
+  it('numbers after the last photo, not the count, once one has been removed', async () => {
+    // Photo 1 was deleted. The count is 2, and position 2 is already taken.
+    photosApi.listPhotos.mockResolvedValue([photo(0), photo(2)])
+
+    renderPhotos()
+    await screen.findByLabelText('Choose photos')
+
+    chooseFiles(['three.jpg'])
+
+    await waitFor(() =>
+      expect(photosApi.storePhoto).toHaveBeenCalledWith(
+        expect.objectContaining({ sortOrder: 3 }),
+      ),
+    )
+  })
+
+  describe('choosing more photos while some are still uploading', () => {
+    // Android's photo picker stops at 100 a pick, so a large album always
+    // arrives in several, and the next pick often comes before the last lands.
+    function holdUploads() {
+      const held: Array<() => void> = []
+      let inFlight = 0
+      let mostInFlight = 0
+
+      photosApi.storePhoto.mockImplementation(async ({ sortOrder }: { sortOrder: number }) => {
+        inFlight += 1
+        mostInFlight = Math.max(mostInFlight, inFlight)
+        await new Promise<void>((resolve) => held.push(resolve))
+        inFlight -= 1
+        return photo(sortOrder)
+      })
+
+      return {
+        mostInFlight: () => mostInFlight,
+        /** Lets the uploads already waiting finish, and no others. */
+        releaseHeld: async () => {
+          held.splice(0).forEach((release) => release())
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        },
+        releaseAll: async () => {
+          while (held.length > 0 || inFlight > 0) {
+            held.splice(0).forEach((release) => release())
+            await new Promise((resolve) => setTimeout(resolve, 0))
+          }
+        },
+      }
+    }
+
+    const names = (prefix: string, count: number) =>
+      Array.from({ length: count }, (_, index) => `${prefix}-${index}.jpg`)
+
+    it('keeps the first pick on the list and counts both', async () => {
+      const uploads = holdUploads()
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+      await waitFor(() => expect(photosApi.storePhoto).toHaveBeenCalledTimes(1))
+      chooseFiles(['two.jpg', 'three.jpg'])
+
+      expect(screen.getByText('one.jpg')).toBeInTheDocument()
+      expect(screen.getByText('Adding 0 of 3…')).toBeInTheDocument()
+
+      await uploads.releaseAll()
+
+      expect(await screen.findByText('Added 3 of 3.')).toBeInTheDocument()
+    })
+
+    it('does not say it has finished while the second pick is still uploading', async () => {
+      const uploads = holdUploads()
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+      await waitFor(() => expect(photosApi.storePhoto).toHaveBeenCalledTimes(1))
+      chooseFiles(['two.jpg'])
+
+      // The first pick lands; the second is now held in its place.
+      await uploads.releaseHeld()
+      await waitFor(() => expect(photosApi.storePhoto).toHaveBeenCalledTimes(2))
+
+      expect(screen.getByText('Adding 1 of 2…')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Clear this list' })).not.toBeInTheDocument()
+
+      await uploads.releaseAll()
+      expect(await screen.findByText('Added 2 of 2.')).toBeInTheDocument()
+    })
+
+    it('gives every photo its own place in the album', async () => {
+      const uploads = holdUploads()
+      photosApi.listPhotos.mockResolvedValue([photo(0)])
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(names('first', 3))
+      await waitFor(() => expect(photosApi.storePhoto).toHaveBeenCalled())
+      chooseFiles(names('second', 3))
+      await uploads.releaseAll()
+      await screen.findByText('Added 6 of 6.')
+
+      const orders = photosApi.storePhoto.mock.calls.map(([input]) => input.sortOrder)
+      expect([...orders].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6])
+    })
+
+    it('never decodes more than four at once across picks', async () => {
+      const uploads = holdUploads()
+      renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(names('first', 6))
+      await waitFor(() => expect(photosApi.storePhoto).toHaveBeenCalledTimes(4))
+      chooseFiles(names('second', 6))
+      await uploads.releaseAll()
+      await screen.findByText('Added 12 of 12.')
+
+      expect(uploads.mostInFlight()).toBe(4)
+    })
+  })
+
   describe('writing about a photo', () => {
     async function openEditor() {
       photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
