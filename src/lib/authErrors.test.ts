@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeAuthError } from './authErrors'
+import { UNREACHABLE_MESSAGE, describeAuthError } from './authErrors'
 
 describe('describeAuthError', () => {
   it('explains an email rate limit and repeats the wait', () => {
@@ -28,6 +28,29 @@ describe('describeAuthError', () => {
         'fallback',
       ),
     ).toBe('Too many sign-in emails at once. Wait a minute, then try again.')
+  })
+
+  it('explains a request that never reached the server, in any browser wording', () => {
+    const browserWordings = [
+      'Failed to fetch',
+      'Load failed',
+      'NetworkError when attempting to fetch resource.',
+    ]
+
+    for (const message of browserWordings) {
+      expect(
+        describeAuthError({ name: 'AuthRetryableFetchError', message, status: 0 }, 'fallback'),
+      ).toBe(UNREACHABLE_MESSAGE)
+    }
+  })
+
+  it('leaves a server that answered with an error in its own words', () => {
+    expect(
+      describeAuthError(
+        { name: 'AuthRetryableFetchError', message: 'HTTP 502', status: 502 },
+        'fallback',
+      ),
+    ).toBe('HTTP 502')
   })
 
   it('leaves an unrelated failure in its own words', () => {
