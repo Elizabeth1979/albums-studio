@@ -252,43 +252,92 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     }
   }, [photoIds])
 
+  /**
+   * Picks made while earlier ones are still uploading join them rather than
+   * replacing them. Android's photo picker stops at 100 a pick, so a large
+   * album always arrives in several, and the second often comes mid-upload.
+   *
+   * Each pick waits for the one before it, so at most UPLOAD_CONCURRENCY
+   * photographs are ever decoded at once: two picks side by side would double
+   * the memory a phone has to find. Positions are reserved at the moment of the
+   * pick, from `nextSortOrder`, because photos still in flight are not yet in
+   * `photos` and counting only those would hand the same places out twice.
+   */
+  const session = useRef({
+    queue: Promise.resolve(),
+    pending: 0,
+    nextSortOrder: 0,
+    base: [] as Photo[],
+    added: [] as Photo[],
+  })
+
   async function handleFiles(files: File[]) {
     const processor = imageProcessor()
-    const requests = files.map((file) => ({ id: crypto.randomUUID(), file }))
+    const current = session.current
+    const joining = current.pending > 0
 
-    setItems(
-      requests.map((request) => ({
-        id: request.id,
-        fileName: request.file.name,
-        status: 'waiting' as const,
-        error: null,
-        detail: null,
-        permanent: false,
-      })),
+    if (!joining) {
+      current.base = photos
+      current.added = []
+    }
+
+    // The highest position, not the count: after a deletion the count is
+    // already taken by the photograph that is now last.
+    const firstSortOrder = Math.max(
+      joining ? current.nextSortOrder : 0,
+      ...photos.map((photo) => photo.sortOrder + 1),
     )
+    current.nextSortOrder = firstSortOrder + files.length
+
+    const requests = files.map((file) => ({ id: crypto.randomUUID(), file }))
+    const waiting = requests.map((request) => ({
+      id: request.id,
+      fileName: request.file.name,
+      status: 'waiting' as const,
+      error: null,
+      detail: null,
+      permanent: false,
+    }))
+
+    setItems((shown) => (joining ? [...shown, ...waiting] : waiting))
     setBusy(true)
     setError(null)
 
-    const added: Photo[] = []
+    current.pending += 1
+    // Chained from the previous pick settling, not succeeding, so one that
+    // went wrong cannot stop every pick after it from starting.
+    current.queue = current.queue.catch(() => undefined).then(() =>
+      runUploads(album.id, requests, firstSortOrder, {
+        processor,
+        store: storePhoto,
+        onItemChange: (item) =>
+          setItems((shown) =>
+            shown.map((existing) => (existing.id === item.id ? item : existing)),
+          ),
+        onPhoto: (photo) => {
+          current.added.push(photo)
+          setPhotos((shown) => [...shown, photo].sort((a, b) => a.sortOrder - b.sortOrder))
+        },
+      }),
+    )
 
-    await runUploads(album.id, requests, photos.length, {
-      processor,
-      store: storePhoto,
-      onItemChange: (item) =>
-        setItems((current) =>
-          current.map((existing) => (existing.id === item.id ? item : existing)),
-        ),
-      onPhoto: (photo) => {
-        added.push(photo)
-        setPhotos((current) => [...current, photo].sort((a, b) => a.sortOrder - b.sortOrder))
-      },
-    })
+    try {
+      await current.queue
+    } finally {
+      current.pending -= 1
+    }
+
+    // Only the last pick to finish speaks for the session: an earlier one
+    // saying "done" while photographs are still uploading is the fault this
+    // replaced.
+    if (current.pending > 0) return
 
     setBusy(false)
 
+    const added = current.added
     if (added.length === 0) return
 
-    const all = [...photos, ...added].sort((a, b) => a.sortOrder - b.sortOrder)
+    const all = [...current.base, ...added].sort((a, b) => a.sortOrder - b.sortOrder)
     await refreshThumbnails(all)
 
     // The first photograph in an album that has none becomes its cover, so the
