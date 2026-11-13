@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SimilarPhotos } from './SimilarPhotos'
 import type { Photo } from '../lib/photos'
@@ -60,5 +60,38 @@ describe('SimilarPhotos', () => {
     fireEvent.click(first)
 
     expect(first).toHaveFocus()
+  })
+
+  it('opens a frame full size and steps through only its own group', () => {
+    // A tile is too small to see a closed eye. The full-size image, not the
+    // thumbnail, is what has to open, and Next has to stay within the burst.
+    const photos = [photo('photo-1', 0), photo('photo-2', 1)]
+    const other = [photo('photo-3', 2), photo('photo-4', 3)]
+    const urls = new Map(
+      [...photos, ...other].flatMap((one) => [
+        [one.storagePath, `full:${one.id}`],
+        [one.thumbnailPath as string, `thumb:${one.id}`],
+      ]),
+    )
+    render(
+      <SimilarPhotos
+        groups={[
+          { photos, suggested: photos[0], spread: 2 },
+          { photos: other, suggested: other[0], spread: 2 },
+        ]}
+        thumbnails={urls}
+        onRemove={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'View photo 2 larger' }))
+    const dialog = screen.getByRole('dialog')
+    const image = () => dialog.querySelector('img.lightbox-image')
+
+    expect(image()).toHaveAttribute('src', 'full:photo-2')
+    expect(within(dialog).getByText('2 of 2')).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next →' }))
+    expect(image()).toHaveAttribute('src', 'full:photo-1')
   })
 })
