@@ -190,7 +190,7 @@ test.describe('writing about a photo', () => {
     // editor is a modal, so it holds the page until it is closed — which is
     // what a modal is for.
     await page.getByRole('button', { name: 'Close' }).click()
-    await page.getByRole('button', { name: '← All albums' }).click()
+    await page.getByRole('button', { name: 'All albums' }).click()
 
     const cover = page.locator('.album-card img.album-cover')
     await expect(cover).toHaveCount(1)

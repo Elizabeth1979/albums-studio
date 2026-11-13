@@ -100,7 +100,7 @@ test.describe('albums', () => {
     await expect(page.getByRole('heading', { name: 'Summer by the lake' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'No photos yet' })).toBeVisible()
 
-    await page.getByRole('button', { name: '← All albums' }).click()
+    await page.getByRole('button', { name: 'All albums' }).click()
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { name: '1 album' })).toBeVisible()
   })
@@ -162,7 +162,7 @@ test.describe('albums', () => {
     expect(patch?.body).toEqual({ title: 'Lake days' })
     expect(calls.albums()[0].slug).toBe('summer-by-the-lake')
 
-    await page.getByRole('button', { name: '← All albums' }).click()
+    await page.getByRole('button', { name: 'All albums' }).click()
     await expect(page.getByRole('button', { name: /Lake days/ })).toBeVisible()
   })
 

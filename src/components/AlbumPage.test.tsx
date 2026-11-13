@@ -54,7 +54,7 @@ describe('AlbumPage', () => {
     const onBack = vi.fn()
 
     renderAlbumPage({ onBack })
-    fireEvent.click(screen.getByRole('button', { name: '← All albums' }))
+    fireEvent.click(screen.getByRole('button', { name: 'All albums' }))
 
     expect(onBack).toHaveBeenCalled()
   })

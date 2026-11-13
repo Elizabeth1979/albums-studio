@@ -110,7 +110,7 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                       {pending ? 'Saving…' : 'Save changes'}
                     </button>
                     <button
-                      className="text-button"
+                      className="secondary-button"
                       type="button"
                       disabled={pending}
                       onClick={() => setEditingId(null)}
