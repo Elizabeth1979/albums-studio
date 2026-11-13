@@ -8,8 +8,23 @@ const RATE_LIMIT_CODES = new Set(['over_email_send_rate_limit', 'over_request_ra
 
 type AuthErrorShape = {
   message: string
+  name?: string
   code?: string
   status?: number
+}
+
+/**
+ * supabase-js reports a request that never got an answer as
+ * `AuthRetryableFetchError` with status 0, carrying the browser's own words —
+ * "Failed to fetch" in Chrome, "Load failed" in Safari — which say nothing to a
+ * person. It happens offline and when the backend is down (a paused project),
+ * and the page cannot tell which, so the message names both.
+ */
+export const UNREACHABLE_MESSAGE =
+  "Can't reach Albums Studio. If your internet is working, the problem is on our side. Try again in a few minutes."
+
+function isUnreachable(error: AuthErrorShape): boolean {
+  return error.name === 'AuthRetryableFetchError' && (error.status ?? 0) === 0
 }
 
 function asAuthError(error: unknown): AuthErrorShape | null {
@@ -18,7 +33,12 @@ function asAuthError(error: unknown): AuthErrorShape | null {
   const candidate = error as Partial<AuthErrorShape>
 
   return typeof candidate.message === 'string'
-    ? { message: candidate.message, code: candidate.code, status: candidate.status }
+    ? {
+        message: candidate.message,
+        name: candidate.name,
+        code: candidate.code,
+        status: candidate.status,
+      }
     : null
 }
 
@@ -34,6 +54,8 @@ export function describeAuthError(error: unknown, fallback: string): string {
   const authError = asAuthError(error)
 
   if (!authError) return fallback
+
+  if (isUnreachable(authError)) return UNREACHABLE_MESSAGE
 
   const rateLimited =
     RATE_LIMIT_CODES.has(authError.code ?? '') || authError.status === 429
