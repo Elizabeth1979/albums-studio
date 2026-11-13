@@ -20,7 +20,6 @@ import {
   updateStory,
 } from '../lib/stories'
 import { type UploadItem, runUploads } from '../lib/uploads'
-import { LayoutPreview } from './LayoutPreview'
 import { PhotoEditor } from './PhotoEditor'
 import { SimilarPhotos } from './SimilarPhotos'
 import { SoftPhotos } from './SoftPhotos'
@@ -471,8 +470,20 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     storyCounts.set(story.photoId, (storyCounts.get(story.photoId) ?? 0) + 1)
   }
 
+  const empty = !loading && photos.length === 0
+
   return (
     <>
+      {/* An empty album leads with what is true and what to do, then the
+          button. Placeholder tiles used to stand in for the photographs and
+          read as a page that had failed to load. */}
+      {empty && (
+        <section className="album-empty" aria-labelledby="album-photos-title">
+          <h2 id="album-photos-title">No photos yet</h2>
+          <p>Add a few to start this album.</p>
+        </section>
+      )}
+
       <PhotoUploader
         items={items}
         busy={busy}
@@ -483,132 +494,126 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
       {error && <p className="form-message error" role="alert">{error}</p>}
 
-      <section className="album-canvas" aria-labelledby="album-photos-title">
-        {loading ? (
-          <p className="library-status" aria-live="polite">Opening this album…</p>
-        ) : photos.length === 0 ? (
-          <>
-            <LayoutPreview />
-            <div className="album-empty-copy">
-              <h2 id="album-photos-title">No photos yet</h2>
-              <p>This is how your photographs will be arranged. Choose some above to fill it.</p>
-            </div>
-          </>
-        ) : (
-          <>
-            <h2 className="visually-hidden" id="album-photos-title">
-              {photos.length === 1 ? '1 photo' : `${photos.length} photos`}
-            </h2>
-            <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
-            <PhotoGallery
-              photos={photos}
-              thumbnails={thumbnails}
-              storyCounts={storyCounts}
-              coverPhotoId={album.coverPhotoId}
-              selectedId={selectedId}
-              onSelect={(photoId) =>
-                setSelectedId((current) => (current === photoId ? null : photoId))
-              }
-              focusNotes={focusNotes}
-            />
-            <SimilarPhotos
-              groups={similarGroups}
-              thumbnails={thumbnails}
-              readings={detailReadings}
-              onRemove={handleRemoveChosen}
-            />
-            <SoftPhotos
-              soft={softPhotos}
-              thumbnails={thumbnails}
-              onRemove={handleRemoveChosen}
-            />
-
-            {focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 && (
-              <p className="album-note focus-unchecked">
-                <strong>Focus check:</strong> read {focusSummary.measured} of{' '}
-                {focusSummary.total}
-                {focusSummary.failed > 0 && `, could not read ${focusSummary.failed}`}
-                {focusSummary.unjudgeable > 0 &&
-                  `, too little contrast to judge ${focusSummary.unjudgeable}`}
-                {focusSummary.readings.length > 0 &&
-                  `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
-                {focusSummary.line !== null &&
-                  ` — anything over ${focusSummary.line.toFixed(2)} is offered above`}
-                . Each photograph shows how much of its detail survives being blurred again;
-                higher is blurrier. This line is here while the setting is being tuned and will
-                come out afterwards.
-              </p>
-            )}
-
-            {faceSummary.withFaces + faceSummary.withoutFaces + faceSummary.unavailable > 0 && (
-              <p className="album-note focus-unchecked">
-                <strong>People:</strong> found someone in {faceSummary.withFaces} of{' '}
-                {faceSummary.total}
-                {faceSummary.withoutFaces > 0 &&
-                  `, found nobody in ${faceSummary.withoutFaces}`}
-                {faceSummary.unavailable > 0 &&
-                  `, and the detector could not run on ${faceSummary.unavailable}`}
-                {faceSummary.detail && ` (${faceSummary.detail})`}
-                {faceSummary.confidences.length > 0 &&
-                  `. How sure it was: ${faceSummary.confidences
-                    .map((one) => one.toFixed(2))
-                    .join(', ')}`}
-                {faceSummary.smallestFace !== null &&
-                  `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
-                   the frame's width — this stops working below about 5%, and a face too
-                   blurred to recognise is not found at all`}
-                . Nothing here is acted on yet — no photograph is offered or held back because
-                of it. It is on screen to answer one question before anything is built on it:
-                are the people in these photographs found at all? This line comes out either
-                way.
-              </p>
-            )}
-
-            <dialog
-              className="editor-sheet"
-              ref={editorDialog}
-              aria-label="Photo details"
-              onClose={() => setSelectedId(null)}
-              onClick={(event) => {
-                if (event.target === editorDialog.current) setSelectedId(null)
-              }}
-            >
-            {selected && (
-              <PhotoEditor
-                // Remounting per photo is deliberate: the editor holds a draft,
-                // and carrying one photo's half-typed caption to the next would
-                // be a good way to save it to the wrong picture.
-                key={selected.id}
-                photo={selected}
-                position={selectedIndex + 1}
-                thumbnail={
-                  selected.thumbnailPath
-                    ? thumbnails.get(selected.thumbnailPath)
-                    : undefined
+      {!empty && (
+        <section className="album-canvas" aria-labelledby="album-photos-title">
+          {loading ? (
+            <p className="library-status" aria-live="polite">Opening this album…</p>
+          ) : (
+            <>
+              <h2 className="visually-hidden" id="album-photos-title">
+                {photos.length === 1 ? '1 photo' : `${photos.length} photos`}
+              </h2>
+              <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
+              <PhotoGallery
+                photos={photos}
+                thumbnails={thumbnails}
+                storyCounts={storyCounts}
+                coverPhotoId={album.coverPhotoId}
+                selectedId={selectedId}
+                onSelect={(photoId) =>
+                  setSelectedId((current) => (current === photoId ? null : photoId))
                 }
-                stories={stories.filter((story) => story.photoId === selected.id)}
-                onSave={(patch) => handleSaveText(selected.id, patch)}
-                onAddStory={(input) => handleAddStory(selected.id, input)}
-                onEditStory={handleEditStory}
-                onDeleteStory={handleDeleteStory}
-                isCover={album.coverPhotoId === selected.id}
-                onUseAsCover={() => onCoverChosen(selected.id)}
-                onMoveEarlier={
-                  selectedIndex > 0 ? () => handleSwap(selectedIndex, selectedIndex - 1) : null
-                }
-                onMoveLater={
-                  selectedIndex < photos.length - 1
-                    ? () => handleSwap(selectedIndex, selectedIndex + 1)
-                    : null
-                }
-                onDelete={() => handleDeletePhoto(selected)}
-                onClose={() => setSelectedId(null)}
+                focusNotes={focusNotes}
               />
-            )}
-            </dialog>
-          </>
-        )}
-      </section>
+              <SimilarPhotos
+                groups={similarGroups}
+                thumbnails={thumbnails}
+                readings={detailReadings}
+                onRemove={handleRemoveChosen}
+              />
+              <SoftPhotos
+                soft={softPhotos}
+                thumbnails={thumbnails}
+                onRemove={handleRemoveChosen}
+              />
+
+              {focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 && (
+                <p className="album-note focus-unchecked">
+                  <strong>Focus check:</strong> read {focusSummary.measured} of{' '}
+                  {focusSummary.total}
+                  {focusSummary.failed > 0 && `, could not read ${focusSummary.failed}`}
+                  {focusSummary.unjudgeable > 0 &&
+                    `, too little contrast to judge ${focusSummary.unjudgeable}`}
+                  {focusSummary.readings.length > 0 &&
+                    `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
+                  {focusSummary.line !== null &&
+                    ` — anything over ${focusSummary.line.toFixed(2)} is offered above`}
+                  . Each photograph shows how much of its detail survives being blurred again;
+                  higher is blurrier. This line is here while the setting is being tuned and will
+                  come out afterwards.
+                </p>
+              )}
+
+              {faceSummary.withFaces + faceSummary.withoutFaces + faceSummary.unavailable > 0 && (
+                <p className="album-note focus-unchecked">
+                  <strong>People:</strong> found someone in {faceSummary.withFaces} of{' '}
+                  {faceSummary.total}
+                  {faceSummary.withoutFaces > 0 &&
+                    `, found nobody in ${faceSummary.withoutFaces}`}
+                  {faceSummary.unavailable > 0 &&
+                    `, and the detector could not run on ${faceSummary.unavailable}`}
+                  {faceSummary.detail && ` (${faceSummary.detail})`}
+                  {faceSummary.confidences.length > 0 &&
+                    `. How sure it was: ${faceSummary.confidences
+                      .map((one) => one.toFixed(2))
+                      .join(', ')}`}
+                  {faceSummary.smallestFace !== null &&
+                    `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
+                     the frame's width — this stops working below about 5%, and a face too
+                     blurred to recognise is not found at all`}
+                  . Nothing here is acted on yet — no photograph is offered or held back because
+                  of it. It is on screen to answer one question before anything is built on it:
+                  are the people in these photographs found at all? This line comes out either
+                  way.
+                </p>
+              )}
+
+              <dialog
+                className="editor-sheet"
+                ref={editorDialog}
+                aria-label="Photo details"
+                onClose={() => setSelectedId(null)}
+                onClick={(event) => {
+                  if (event.target === editorDialog.current) setSelectedId(null)
+                }}
+              >
+              {selected && (
+                <PhotoEditor
+                  // Remounting per photo is deliberate: the editor holds a draft,
+                  // and carrying one photo's half-typed caption to the next would
+                  // be a good way to save it to the wrong picture.
+                  key={selected.id}
+                  photo={selected}
+                  position={selectedIndex + 1}
+                  thumbnail={
+                    selected.thumbnailPath
+                      ? thumbnails.get(selected.thumbnailPath)
+                      : undefined
+                  }
+                  stories={stories.filter((story) => story.photoId === selected.id)}
+                  onSave={(patch) => handleSaveText(selected.id, patch)}
+                  onAddStory={(input) => handleAddStory(selected.id, input)}
+                  onEditStory={handleEditStory}
+                  onDeleteStory={handleDeleteStory}
+                  isCover={album.coverPhotoId === selected.id}
+                  onUseAsCover={() => onCoverChosen(selected.id)}
+                  onMoveEarlier={
+                    selectedIndex > 0 ? () => handleSwap(selectedIndex, selectedIndex - 1) : null
+                  }
+                  onMoveLater={
+                    selectedIndex < photos.length - 1
+                      ? () => handleSwap(selectedIndex, selectedIndex + 1)
+                      : null
+                  }
+                  onDelete={() => handleDeletePhoto(selected)}
+                  onClose={() => setSelectedId(null)}
+                />
+              )}
+              </dialog>
+            </>
+          )}
+        </section>
+      )}
     </>
   )
 }

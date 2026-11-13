@@ -127,7 +127,7 @@ describe('Studio', () => {
       await screen.findByRole('heading', { name: 'Summer by the lake' }),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '← All albums' }))
+    fireEvent.click(screen.getByRole('button', { name: 'All albums' }))
     expect(await screen.findByRole('heading', { name: '1 album' })).toBeInTheDocument()
   })
 
@@ -292,7 +292,7 @@ describe('Studio', () => {
       expect(albumsApi.setAlbumCover).toHaveBeenCalledWith('album-1', 'photo-0'),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '← All albums' }))
+    fireEvent.click(screen.getByRole('button', { name: 'All albums' }))
 
     await waitFor(() =>
       expect(container.querySelector('img.album-cover')).toHaveAttribute(

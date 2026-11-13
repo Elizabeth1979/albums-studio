@@ -32,7 +32,7 @@ export function AppHeader({ identity, onSignOut }: AppHeaderProps) {
         <div className="account-actions">
           <span className="account-email">{identity.email}</span>
           <button
-            className="text-button"
+            className="chip-button"
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}

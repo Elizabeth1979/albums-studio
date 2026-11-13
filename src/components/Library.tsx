@@ -171,7 +171,7 @@ export function Library({
                 {creating ? 'Creating…' : 'Create album'}
               </button>
               <button
-                className="text-button"
+                className="secondary-button"
                 type="button"
                 disabled={creating}
                 onClick={() => setComposing(false)}

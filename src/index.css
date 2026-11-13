@@ -417,6 +417,43 @@ textarea:focus-visible {
   text-decoration-thickness: 2px;
 }
 
+/*
+ * A chip is a quiet action that stands beside the thing it acts on: Rename
+ * album next to the title, Edit description at the end of the description,
+ * Sign out under the email. Underlined bold brown read as shouting next to a
+ * one-word title, and the underline drifted away from the text on Android.
+ * The outline is the non-colour cue now (WCAG 1.4.1); 2.5rem tall clears the
+ * 24px target minimum with room to spare.
+ */
+.chip-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  align-items: center;
+  border: 1px solid #d8cfc1;
+  border-radius: 999px;
+  color: #8d5526;
+  background: #fffdf9;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.chip-button:hover:not(:disabled) {
+  border-color: #996130;
+  color: #6f3f19;
+  background: #fbf3e8;
+}
+
+.chip-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .library-main {
   width: min(100% - 2.5rem, 78rem);
   margin: 0 auto;
@@ -736,8 +773,30 @@ textarea:focus-visible {
  * screen before a single photograph appeared. The rhythm here is a heading's,
  * not a page's.
  */
+/* The way back is a convention, not a sentence: a chevron at the top left is
+   recognised on its own, so it stays quiet ink rather than another brown
+   underline. Negative margin keeps the text aligned with the title while the
+   44px target extends into the gutter. */
 .back-link {
-  margin-bottom: 0.15rem;
+  display: inline-flex;
+  min-height: 2.75rem;
+  margin: 0 0 0.35rem -0.5rem;
+  padding: 0 0.6rem 0 0.4rem;
+  align-items: center;
+  gap: 0.3rem;
+  border: 0;
+  border-radius: 999px;
+  color: #57514a;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.back-link:hover {
+  color: #25231f;
+  background: #ece6dc;
 }
 
 /* Title and rename on one line, so the album's name and the way to change it
@@ -745,7 +804,7 @@ textarea:focus-visible {
 .album-title-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0.4rem 0.9rem;
 }
 
@@ -801,7 +860,9 @@ textarea:focus-visible {
   gap: 1rem;
 }
 
-.rename-actions .primary-button {
+.rename-actions .primary-button,
+.new-album-actions .primary-button,
+.story-actions .primary-button {
   margin-top: 0;
 }
 
@@ -836,36 +897,27 @@ textarea:focus-visible {
   background: #fffdf9;
 }
 
-.layout-preview {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.7rem;
+.album-empty {
+  margin-top: 1.9rem;
 }
 
-.layout-tile {
-  aspect-ratio: 1;
-  border-radius: 0.5rem;
-  background: linear-gradient(160deg, #efe8dd, #e2d8c9);
-}
-
-.album-empty-copy {
-  margin-top: 1.6rem;
-  text-align: center;
-}
-
-.album-empty-copy h2 {
-  margin: 0 0 0.5rem;
+.album-empty h2 {
+  margin: 0 0 0.3rem;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 400;
   letter-spacing: -0.02em;
 }
 
-.album-empty-copy p {
-  max-width: 32rem;
-  margin: 0 auto;
+.album-empty p {
+  margin: 0;
   color: #746d64;
   line-height: 1.6;
+}
+
+/* Directly under the empty-state copy it belongs to. */
+.album-empty + .uploader {
+  margin-top: 1rem;
 }
 
 .danger-zone {
@@ -914,10 +966,6 @@ textarea:focus-visible {
 @media (max-width: 720px) {
   .new-album-form .primary-button {
     flex: 1 1 auto;
-  }
-
-  .layout-preview {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1010,8 +1058,7 @@ textarea:focus-visible {
   border: 1px dashed #c3b8a8;
   border-radius: 0.9rem;
   background: #fffdf9;
-  justify-items: center;
-  text-align: center;
+  justify-items: start;
   transition: border-color 150ms ease, background 150ms ease;
 }
 
@@ -2042,16 +2089,7 @@ textarea:focus-visible {
   .drop-zone.compact {
     grid-template-columns: 1fr;
     justify-items: stretch;
-    text-align: center;
   }
-}
-
-.drop-formats {
-  max-width: 32rem;
-  margin: -0.4rem 0 0;
-  color: #6f675c;
-  font-size: 0.78rem;
-  line-height: 1.5;
 }
 
 /* A quiet line under the albums for the architecture map. It sits at the foot

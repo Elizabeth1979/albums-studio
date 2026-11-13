@@ -59,11 +59,11 @@ export function PhotoUploader({
 
   return (
     <section className="uploader" aria-labelledby="uploader-title">
-      {/* Once the album has photographs the button below says "Choose photos"
-          in full, so a heading above it repeating the same words is a line of
-          the first screenful spent saying nothing twice. It stays in the
-          accessibility tree either way: the section is named by it. */}
-      <h2 className={filled ? 'visually-hidden' : undefined} id="uploader-title">
+      {/* The button below says "Choose photos" in full, and an empty album
+          already says "No photos yet" above it, so a visible heading here is a
+          line spent saying nothing twice. It stays in the accessibility tree:
+          the section is named by it. */}
+      <h2 className="visually-hidden" id="uploader-title">
         Add photos
       </h2>
 
@@ -102,24 +102,11 @@ export function PhotoUploader({
         <label className="primary-button choose-photos" htmlFor={inputId}>
           Choose photos
         </label>
-        {/* The reassurance is worth a paragraph the first time and a clause
-            every time after. Neither is dropped: what leaves the device is not
-            something to learn once and then hide. */}
-        {filled ? (
-          <p className="drop-hint">
-            Resized in your browser first. {UNIVERSAL_FORMATS} all work.
-          </p>
-        ) : (
-          <>
-            <p className="drop-hint">
-              Photos are resized in your browser before they are uploaded, so only the
-              smaller copy leaves your device.
-            </p>
-            <p className="drop-formats">
-              {UNIVERSAL_FORMATS} work everywhere. iPhone photos convert as you add them.
-            </p>
-          </>
-        )}
+        {/* One line, every time: what leaves the device is worth saying, but
+            not in a paragraph the owner reads before she has a single photo. */}
+        <p className="drop-hint">
+          Resized in your browser first. {UNIVERSAL_FORMATS} all work.
+        </p>
       </div>
 
       {items.length > 0 && (

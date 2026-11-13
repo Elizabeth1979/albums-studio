@@ -246,7 +246,7 @@ test.describe('uploading photos', () => {
     await page.getByLabel('Choose photos').setInputFiles(sampleFile())
     await expect(page.getByText('Added 1 of 1.')).toBeVisible()
 
-    await page.getByRole('button', { name: '← All albums' }).click()
+    await page.getByRole('button', { name: 'All albums' }).click()
 
     const cover = page.locator('.album-card img.album-cover')
     await expect(cover).toHaveCount(1)

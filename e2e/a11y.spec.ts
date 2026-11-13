@@ -105,8 +105,9 @@ test.describe('accessibility', () => {
     // a cursor that a phone does not have.
     //
     // Two separate guarantees, because either alone is insufficient: a colour
-    // distinct from the prose around it, and an underline, which is what
-    // survives a monochrome screen and colour blindness (WCAG 1.4.1).
+    // distinct from the prose around it, and a non-colour cue — an underline or
+    // a visible outline — which is what survives a monochrome screen and colour
+    // blindness (WCAG 1.4.1).
     //
     // Asked of the rendered page rather than the stylesheet, because the fault
     // this replaces was a second `.text-button` block further down the file
@@ -124,10 +125,11 @@ test.describe('accessibility', () => {
         colour: own.color,
         proseColour: prose.color,
         decoration: own.textDecorationLine,
+        border: parseFloat(own.borderTopWidth),
       }
     })
 
-    expect(styles.decoration).toContain('underline')
+    expect(styles.decoration.includes('underline') || styles.border > 0).toBe(true)
     expect(styles.colour).not.toBe(styles.proseColour)
   })
 

@@ -96,8 +96,11 @@ export function AlbumPage({
       <AppHeader identity={identity} onSignOut={onSignOut} />
 
       <main className="album-main">
-        <button className="text-button back-link" type="button" onClick={onBack}>
-          ← All albums
+        <button className="back-link" type="button" onClick={onBack}>
+          <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16">
+            <path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          All albums
         </button>
 
         <div className="album-heading">
@@ -121,7 +124,7 @@ export function AlbumPage({
                   {pending ? 'Saving…' : 'Save title'}
                 </button>
                 <button
-                  className="text-button"
+                  className="secondary-button"
                   type="button"
                   onClick={() => setRenaming(false)}
                   disabled={pending}
@@ -134,7 +137,7 @@ export function AlbumPage({
             <div className="album-title-row">
               <h1>{album.title}</h1>
               <button
-                className="text-button"
+                className="chip-button"
                 type="button"
                 onClick={startRenaming}
                 ref={renameOpener()}
@@ -169,7 +172,7 @@ export function AlbumPage({
                   {pending ? 'Saving…' : 'Save description'}
                 </button>
                 <button
-                  className="text-button"
+                  className="secondary-button"
                   type="button"
                   onClick={() => setDescribing(false)}
                   disabled={pending}
@@ -182,7 +185,7 @@ export function AlbumPage({
             <p className="album-description">
               <span>{album.description || 'No description yet.'}</span>{' '}
               <button
-                className="text-button"
+                className="chip-button"
                 type="button"
                 onClick={startDescribing}
                 ref={describeOpener()}

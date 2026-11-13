@@ -199,12 +199,11 @@ describe('AlbumPhotos', () => {
     await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(1))
     expect(container.querySelector('.drop-zone')).toHaveClass('compact')
 
-    // Shorter, but it still says what leaves the device.
+    // Short, but it still says what leaves the device.
     expect(screen.getByText(/Resized in your browser first/)).toBeInTheDocument()
-    expect(screen.queryByText(/only the\s+smaller copy leaves your device/)).toBeNull()
   })
 
-  it('gives an empty album the full drop zone and its explanation', async () => {
+  it('gives an empty album the full drop zone and no placeholder grid', async () => {
     photosApi.listPhotos.mockResolvedValue([])
 
     renderPhotos()
@@ -213,7 +212,8 @@ describe('AlbumPhotos', () => {
       expect(screen.getByRole('heading', { name: 'No photos yet' })).toBeInTheDocument(),
     )
     expect(document.querySelector('.drop-zone')).not.toHaveClass('compact')
-    expect(screen.getByText(/smaller copy leaves your device/)).toBeInTheDocument()
+    expect(screen.getByText(/Resized in your browser first/)).toBeInTheDocument()
+    expect(document.querySelector('.album-canvas')).toBeNull()
   })
 
   it('keeps the image itself out of the accessibility tree', async () => {
