@@ -1700,6 +1700,22 @@ textarea:focus-visible {
   margin-top: auto;
 }
 
+/* Same reset as the shared album's tiles: the whole tile opens it larger. */
+.similar-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  cursor: zoom-in;
+}
+
+.similar-open:focus-visible {
+  outline: 3px solid #8d5526;
+  outline-offset: 3px;
+}
+
 .similar-thumb {
   display: block;
   width: 100%;

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { SoftPhoto } from '../lib/focus'
 import type { Photo } from '../lib/photos'
+import { PhotoLightbox } from './PhotoLightbox'
+import { ReviewThumb, toLightboxPhoto } from './ReviewThumb'
 import { useReturnFocus } from './useReturnFocus'
 
 type SoftPhotosProps = {
@@ -9,6 +11,8 @@ type SoftPhotosProps = {
   thumbnails: Map<string, string>
   onRemove: (photos: Photo[]) => Promise<void>
 }
+
+const OUT_OF_FOCUS = 'Out of focus'
 
 /**
  * Photographs that are blurred on their own, offered for the owner to decide about.
@@ -35,6 +39,7 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
   const removeOpener = useReturnFocus(confirming)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [viewing, setViewing] = useState<number | null>(null)
 
   if (soft.length === 0) return null
 
@@ -79,20 +84,15 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
       </p>
 
       <ul className="similar-row soft-row">
-        {soft.map(({ photo }) => {
-          const url = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
+        {soft.map(({ photo }, index) => {
           const isMarked = marked.has(photo.id)
 
           return (
             <li className={`similar-item${isMarked ? ' marked' : ''}`} key={photo.id}>
-              {url ? (
-                <img className="similar-thumb" src={url} alt="" loading="lazy" />
-              ) : (
-                <span className="similar-thumb empty" aria-hidden="true" />
-              )}
+              <ReviewThumb photo={photo} urls={thumbnails} onOpen={() => setViewing(index)} />
 
               <p className="similar-meta">
-                <span className="similar-sharpness">Out of focus</span>
+                <span className="similar-sharpness">{OUT_OF_FOCUS}</span>
               </p>
 
               <label className="similar-choice">
@@ -152,6 +152,12 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
               : `Remove ${chosen.length} ticked photos`}
           </button>
         ))}
+      <PhotoLightbox
+        photos={soft.map(({ photo }) => toLightboxPhoto(photo, thumbnails, OUT_OF_FOCUS))}
+        index={viewing}
+        onClose={() => setViewing(null)}
+        onGoTo={setViewing}
+      />
     </section>
   )
 }

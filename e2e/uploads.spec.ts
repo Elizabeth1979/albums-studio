@@ -362,6 +362,13 @@ test.describe('reviewing photographs that look alike', () => {
     // Nothing is preselected, and nothing offers to remove anything yet.
     await expect(page.getByRole('button', { name: /Remove \d photo/ })).toHaveCount(0)
 
+    // A tile is too small to judge a frame by, so each one opens full size.
+    await similar.getByRole('button', { name: 'View photo 2 larger' }).click()
+    const lightbox = page.getByRole('dialog')
+    await expect(lightbox.locator('img.lightbox-image')).toBeVisible()
+    await lightbox.getByRole('button', { name: 'Close' }).click()
+    await expect(lightbox).toBeHidden()
+
     await similar.getByRole('checkbox').first().check()
     await page.getByRole('button', { name: 'Remove 1 ticked photo' }).click()
 

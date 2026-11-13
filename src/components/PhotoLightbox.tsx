@@ -2,8 +2,14 @@ import { useCallback } from 'react'
 import type { SharedPhoto } from '../lib/sharing'
 import { useModalDialog } from './useModalDialog'
 
+/** What the lightbox reads from a photograph; a shared one is already this shape. */
+export type LightboxPhoto = Pick<
+  SharedPhoto,
+  'id' | 'alt' | 'caption' | 'thumbnailUrl' | 'fullUrl' | 'stories'
+>
+
 type PhotoLightboxProps = {
-  photos: SharedPhoto[]
+  photos: LightboxPhoto[]
   /** Which photograph is open; the dialog is closed when this is null. */
   index: number | null
   onClose: () => void

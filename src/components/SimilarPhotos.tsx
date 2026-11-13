@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
 import { compareSharpness, type SharpnessReading, type SimilarGroup } from '../lib/similarity'
+import { PhotoLightbox } from './PhotoLightbox'
+import { ReviewThumb, toLightboxPhoto } from './ReviewThumb'
 import { useReturnFocus } from './useReturnFocus'
 
 type SimilarPhotosProps = {
@@ -51,8 +53,22 @@ export function SimilarPhotos({
   const removeOpener = useReturnFocus(confirming)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Previous and Next step through one group only: the point of opening a
+  // frame here is to compare it with its siblings.
+  const [viewing, setViewing] = useState<{ group: number; index: number } | null>(null)
 
   if (groups.length === 0) return null
+
+  const viewedGroup = viewing ? groups[viewing.group] : undefined
+  const viewedPhotos = viewedGroup
+    ? viewedGroup.photos.map((photo) =>
+        toLightboxPhoto(
+          photo,
+          thumbnails,
+          READING_TEXT[compareSharpness(photo, viewedGroup, readings)],
+        ),
+      )
+    : []
 
   const chosen = groups.flatMap((group) => group.photos).filter((photo) => marked.has(photo.id))
 
@@ -107,7 +123,7 @@ export function SimilarPhotos({
         focus, so the last word is yours.
       </p>
 
-      {groups.map((group) => (
+      {groups.map((group, groupIndex) => (
         <div className="similar-group" key={group.photos[0].id}>
           <div className="similar-group-heading">
             <h3>{group.photos.length} of the same picture</h3>
@@ -122,18 +138,17 @@ export function SimilarPhotos({
           </div>
 
           <ul className="similar-row">
-            {group.photos.map((photo) => {
-              const url = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
+            {group.photos.map((photo, photoIndex) => {
               const reading = compareSharpness(photo, group, readings)
               const isMarked = marked.has(photo.id)
 
               return (
                 <li className={`similar-item${isMarked ? ' marked' : ''}`} key={photo.id}>
-                  {url ? (
-                    <img className="similar-thumb" src={url} alt="" loading="lazy" />
-                  ) : (
-                    <span className="similar-thumb empty" aria-hidden="true" />
-                  )}
+                  <ReviewThumb
+                    photo={photo}
+                    urls={thumbnails}
+                    onOpen={() => setViewing({ group: groupIndex, index: photoIndex })}
+                  />
 
                   <p className="similar-meta">
                     <span
@@ -202,6 +217,13 @@ export function SimilarPhotos({
               : `Remove ${chosen.length} ticked photos`}
           </button>
         ))}
+
+      <PhotoLightbox
+        photos={viewedPhotos}
+        index={viewedGroup && viewing ? viewing.index : null}
+        onClose={() => setViewing(null)}
+        onGoTo={(index) => setViewing((current) => current && { ...current, index })}
+      />
     </section>
   )
 }
