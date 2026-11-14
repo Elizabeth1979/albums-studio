@@ -1788,6 +1788,17 @@ textarea:focus-visible {
   color: #6f675c;
 }
 
+/* On the picture's top corner, solid so it reads against any photograph. */
+.similar-tag {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  font-size: 0.78rem;
+  background: #fffdf9;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+
 @media (max-width: 720px) {
   .similar-item {
     flex-basis: 8.5rem;
