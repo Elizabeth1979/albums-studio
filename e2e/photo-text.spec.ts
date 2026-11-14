@@ -37,12 +37,15 @@ test.describe('full quality', () => {
   test('downloads the original as it was chosen, not the copy the album draws', async ({ page }) => {
     await openPhoto(page)
 
-    const download = page.waitForRequest((request) => request.url().includes('/object/signed/'))
+    // A download, not a navigation: leaving the album for a bare image would be
+    // the wrong behaviour even with the right file.
+    const download = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Download full quality' }).click()
 
-    const url = new URL((await download).url())
-    expect(decodeURIComponent(url.pathname)).toMatch(/-original\.png$/)
-    expect(url.searchParams.get('download')).toMatch(/^photo-.+\.png$/)
+    const saved = await download
+    expect(decodeURIComponent(new URL(saved.url()).pathname)).toMatch(/-original\.png$/)
+    expect(saved.suggestedFilename()).toMatch(/^photo-.+\.png$/)
+    await expect(page.getByRole('button', { name: 'Download full quality' })).toBeVisible()
   })
 })
 

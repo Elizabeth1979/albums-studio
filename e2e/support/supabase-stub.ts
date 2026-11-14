@@ -292,6 +292,18 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       const wanted = decodeURIComponent(path.slice('/storage/v1/object/signed/'.length))
       const bytes = options.objectBytes?.[wanted]
 
+      // `download` makes Storage answer as an attachment, so the browser saves the
+      // file and stays on the page rather than navigating to a bare image.
+      const downloadAs = url.searchParams.get('download')
+      if (downloadAs) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/octet-stream',
+          headers: { 'Content-Disposition': `attachment; filename="${downloadAs}"` },
+          body: bytes ?? Buffer.from('original bytes'),
+        })
+      }
+
       if (bytes) {
         return route.fulfill({ status: 200, contentType: 'image/png', body: bytes })
       }
