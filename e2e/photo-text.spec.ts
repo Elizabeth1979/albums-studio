@@ -264,7 +264,9 @@ test.describe('writing about a photo', () => {
     await page.getByLabel('Add a story').fill('A long day.')
     await page.getByRole('button', { name: 'Save story' }).click()
     await expect(savedStories(page)).toHaveText(['A long day.'])
-    expect(calls.objects()).toHaveLength(2)
+    // The seeded photograph predates display copies, so opening the album
+    // writes one. Waiting for it makes the removal below prove it goes too.
+    await expect.poll(() => calls.objects()).toHaveLength(3)
 
     await page.getByRole('button', { name: 'Remove photo' }).click()
     await page.getByRole('button', { name: 'Yes, remove it' }).click()

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   type Photo,
+  attachDisplay,
   deletePhoto,
   listPhotos,
   signedUrls,
@@ -35,6 +36,7 @@ const ROW = {
 const image = {
   full: new Blob(['full']),
   thumbnail: new Blob(['thumb']),
+  display: new Blob(['display']),
   width: 2000,
   height: 1500,
   phash: '1'.repeat(64),
@@ -73,16 +75,26 @@ beforeEach(() => {
 })
 
 describe('storePhoto', () => {
-  it('writes both objects under the owner prefix and records the measurements', async () => {
+  it('writes every copy under the owner prefix and records the measurements', async () => {
     const { upload } = bucket()
     const insert = table({ data: ROW, error: null })
 
     const stored = await storePhoto({ albumId: 'album-1', image, sortOrder: 3 })
 
-    expect(upload).toHaveBeenCalledTimes(2)
+    expect(upload.mock.calls.map(([, body]) => body)).toEqual([
+      image.full,
+      image.thumbnail,
+      image.display,
+    ])
     for (const [path] of upload.mock.calls) {
       expect(path.startsWith(`${OWNER}/album-1/`)).toBe(true)
     }
+
+    // The grid draws from the display copy, so the row has to name the object
+    // that was actually written.
+    const displayPath = upload.mock.calls[2][0]
+    expect(displayPath).toMatch(/-display\.jpg$/)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ display_path: displayPath }))
 
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -138,8 +150,8 @@ describe('storePhoto', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
-  it('removes both objects when the row is refused', async () => {
-    const { remove } = bucket()
+  it('removes every object when the row is refused', async () => {
+    const { remove, upload } = bucket()
     table({ data: null, error: { message: 'permission denied for table photos' } })
 
     await expect(storePhoto({ albumId: 'album-1', image, sortOrder: 0 })).rejects.toThrow(
@@ -147,7 +159,21 @@ describe('storePhoto', () => {
     )
 
     expect(remove).toHaveBeenCalledOnce()
-    expect(remove.mock.calls[0][0]).toHaveLength(2)
+    expect(remove.mock.calls[0][0]).toEqual(upload.mock.calls.map(([path]) => path))
+  })
+
+  it('removes what it wrote when the display copy is refused', async () => {
+    const { remove, upload } = bucket({
+      uploads: [{ error: null }, { error: null }, { error: { message: 'quota exceeded' } }],
+    })
+    const insert = table({ data: ROW, error: null })
+
+    await expect(storePhoto({ albumId: 'album-1', image, sortOrder: 0 })).rejects.toThrow(
+      'quota exceeded',
+    )
+
+    expect(remove).toHaveBeenCalledWith([upload.mock.calls[0][0], upload.mock.calls[1][0]])
+    expect(insert).not.toHaveBeenCalled()
   })
 
   it('does not upload anything without a session', async () => {
@@ -452,6 +478,7 @@ describe('deletePhoto', () => {
       id: 'photo-1',
       storagePath: 'owner/a/1.jpg',
       thumbnailPath: 'owner/a/1-thumb.jpg',
+      displayPath: null,
       width: 2000,
       height: 1500,
       caption: null,
@@ -574,3 +601,52 @@ describe('swapPhotoOrder', () => {
     expect(patches).toHaveLength(1)
   })
 })
+
+describe('attachDisplay', () => {
+  const older: Photo = {
+    id: 'photo-1',
+    storagePath: `${OWNER}/album-1/abc.jpg`,
+    thumbnailPath: `${OWNER}/album-1/abc-thumb.jpg`,
+    displayPath: null,
+    width: 2000,
+    height: 1500,
+    caption: null,
+    captionVisibility: 'hidden',
+    alt: null,
+    sortOrder: 0,
+    phash: null,
+    sharpness: null,
+    takenAt: null,
+  }
+
+  function rowUpdate(result: { error: unknown }) {
+    const eq = vi.fn(async () => result)
+    const update = vi.fn((_values: Record<string, unknown>) => ({ eq }))
+    from.mockReturnValue({ update })
+    return { update, eq }
+  }
+
+  it('writes the copy beside the stored image and records it on the row', async () => {
+    const { upload } = bucket()
+    const { update, eq } = rowUpdate({ error: null })
+    const copy = new Blob(['display'])
+
+    const updated = await attachDisplay(older, copy)
+
+    const path = `${OWNER}/album-1/abc-display.jpg`
+    // Upserted: a first attempt can write the bytes and fail to record them.
+    expect(upload).toHaveBeenCalledWith(path, copy, { contentType: 'image/jpeg', upsert: true })
+    expect(update).toHaveBeenCalledWith({ display_path: path })
+    expect(eq).toHaveBeenCalledWith('id', 'photo-1')
+    expect(updated.displayPath).toBe(path)
+  })
+
+  it('records nothing when the bytes were not written', async () => {
+    bucket({ uploads: [{ error: { message: 'new row violates row-level security policy' } }] })
+    const { update } = rowUpdate({ error: null })
+
+    await expect(attachDisplay(older, new Blob(['display']))).rejects.toThrow('row-level security')
+    expect(update).not.toHaveBeenCalled()
+  })
+})
+

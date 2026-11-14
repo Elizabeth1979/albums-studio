@@ -20,10 +20,16 @@ AI cost.
 - Owners sign their own image URLs from the browser; Storage checks its policy against
   the caller's token first. Shared viewers have no token, so Phase 6 signs on their behalf
   from an Edge Function.
-- Both the studio gallery and the visitor's view offer the thumbnail and the stored 2000px
-  image together in a `srcset`. A tile is about a third of a 78rem canvas, so a retina screen
-  needs close to 800 device pixels and the 400px thumbnail alone rendered visibly soft. A
-  mid-size rendition written at upload is the follow-up if this costs too much bandwidth.
+- Every upload is stored three times: the 2000px image, a 1080px display copy and a 400px
+  thumbnail. The album grid draws the display copy — a square tile crops the thumbnail to 300
+  pixels across, so phones and retina screens otherwise took the 2000px image for every tile,
+  about 340 KB each against roughly a quarter of that. Photographs uploaded before
+  2026-11-14 get their display copy the first time their album is opened, from the bytes the
+  focus check already downloads; until then they draw from the stored image as before. The
+  visitor's view still offers only the thumbnail and the stored image; giving it the display
+  copy needs `get_shared_album` and the `shared-album` Edge Function to return the path.
+  The focus check downloads two photographs at a time rather than four, so it no longer
+  takes the bandwidth the tiles on screen need.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.

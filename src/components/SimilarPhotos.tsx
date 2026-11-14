@@ -127,14 +127,19 @@ export function SimilarPhotos({
         <div className="similar-group" key={group.photos[0].id}>
           <div className="similar-group-heading">
             <h3>{group.photos.length} of the same picture</h3>
-            <button
-              className="text-button similar-shortcut"
-              type="button"
-              onClick={() => markRest(group)}
-              disabled={busy}
-            >
-              Tick all but the sharpest
-            </button>
+            {/* An optional shortcut, worded as an offer: "Tick all but the sharpest"
+                read as an instruction. Without a focus reading the "sharpest" is
+                just the first frame, so there is nothing to suggest. */}
+            {compareSharpness(group.suggested, group, readings) === 'sharpest' && (
+              <button
+                className="text-button similar-shortcut"
+                type="button"
+                onClick={() => markRest(group)}
+                disabled={busy}
+              >
+                Suggest which to tick
+              </button>
+            )}
           </div>
 
           <ul className="similar-row">
@@ -150,13 +155,15 @@ export function SimilarPhotos({
                     onOpen={() => setViewing({ group: groupIndex, index: photoIndex })}
                   />
 
-                  <p className="similar-meta">
-                    <span
-                      className={reading === 'sharpest' ? 'similar-badge' : 'similar-sharpness'}
-                    >
-                      {READING_TEXT[reading]}
-                    </span>
-                  </p>
+                  {/* The sharpest wears its verdict on the picture, as a tag; the
+                      rest say how they compare underneath. */}
+                  {reading === 'sharpest' ? (
+                    <span className="similar-badge similar-tag">{READING_TEXT[reading]}</span>
+                  ) : (
+                    <p className="similar-meta">
+                      <span className="similar-sharpness">{READING_TEXT[reading]}</span>
+                    </p>
+                  )}
 
                   <label className="similar-choice">
                     <input

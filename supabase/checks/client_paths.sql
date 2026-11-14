@@ -71,11 +71,11 @@ begin
 
   begin
     insert into public.photos (
-      album_id, owner_id, storage_path, thumbnail_path, mime,
+      album_id, owner_id, storage_path, thumbnail_path, display_path, mime,
       width, height, phash, sharpness, sort_order, taken_at
     ) values (
-      album_a, alice, alice || '/a/one.jpg', alice || '/a/one-thumb.jpg', 'image/jpeg',
-      2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
+      album_a, alice, alice || '/a/one.jpg', alice || '/a/one-thumb.jpg',
+      alice || '/a/one-display.jpg', 'image/jpeg', 2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
     ) returning id into photo_a;
     log := log || E'\n  ok    insert photo with every column storePhoto sends';
   exception when others then
@@ -90,6 +90,21 @@ begin
     log := log || E'\n  ok    update photo text and order';
   exception when others then
     log := log || E'\n  FAIL  update photo text -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  -- What the album page does for a photograph uploaded before display copies.
+  begin
+    update public.photos set display_path = alice || '/a/one-display.jpg' where id = photo_a;
+    log := log || E'\n  ok    record a display copy for an older photo';
+  exception when others then
+    log := log || E'\n  FAIL  record a display copy -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  begin
+    update public.photos set display_path = bob || '/a/one-display.jpg' where id = photo_a;
+    log := log || E'\n  FAIL  display copy could point outside her namespace'; fails := fails + 1;
+  exception when others then
+    log := log || E'\n  ok    display copy cannot point outside her namespace';
   end;
 
   begin
