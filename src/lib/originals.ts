@@ -3,7 +3,7 @@
  *
  * Pure, so the decision is tested without a bucket. The `photos` bucket refuses
  * any type or size outside what is listed here, so both constants are mirrored
- * in `supabase/migrations/*_keep_full_quality_originals.sql`; change them
+ * in `supabase/migrations/20261114142706_keep_full_quality_originals.sql`; change them
  * together or uploads start failing for files this module thinks are fine.
  */
 
