@@ -123,6 +123,12 @@ AI cost.
   plan and open product decisions, including the recorded evaluation of free and local
   models for alt text, semantic search, and faces.
 
+## Research
+
+- [Best-photo picking and competing products](research/2026-11-14-best-photo-and-competitors.md)
+  — what culling tools and photo apps do, what their users complain about, why closed eyes
+  are compared only within a moment, and the storage cost of keeping originals.
+
 ## Architecture
 
 - [Project structure](project-structure.md) — visual frontend/backend map, the model and
