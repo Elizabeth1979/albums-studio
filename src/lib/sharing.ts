@@ -44,6 +44,8 @@ export type SharedPhoto = {
   alt: string | null
   sortOrder: number | null
   thumbnailUrl: string | null
+  /** Absent from a response the Edge Function sent before it signed one. */
+  displayUrl?: string | null
   fullUrl: string | null
   stories: string[]
 }

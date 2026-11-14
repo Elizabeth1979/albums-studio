@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
+import { TILE_SIZES, tileSrcSet } from '../lib/tiles'
 import { type SharedAlbum as Shared, loadSharedAlbum } from '../lib/sharing'
 import { PhotoLightbox } from './PhotoLightbox'
 
 type SharedAlbumProps = { token: string }
-
-// Three columns on a wide screen and two on a narrow one, so a tile occupies
-// roughly a third of the page, then half of it.
-const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
 
 /**
  * An album as a visitor sees it.
@@ -75,49 +71,53 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
         <p className="library-status">This album has no photographs yet.</p>
       ) : (
         <ul className="shared-photos">
-          {album.photos.map((photo, index) => (
-            <li className="shared-photo" key={photo.id}>
-              {(photo.fullUrl ?? photo.thumbnailUrl) && (
-                <button
-                  className="shared-photo-open"
-                  type="button"
-                  // The button takes its name from the alt text inside it, which
-                  // keeps the description on the image where it belongs. A
-                  // photograph with none still needs a name for the control.
-                  aria-label={
-                    photo.alt ? undefined : `Photograph ${index + 1} of ${album.photos.length}`
-                  }
-                  onClick={() => setOpenPhoto(index)}
-                >
-                  <img
-                    // The full image is what a phone at full width actually
-                    // needs; the thumbnail is offered alongside it so a small
-                    // screen can take the cheap one. Falling back keeps an album
-                    // readable if only one of the two could be signed.
-                    src={photo.fullUrl ?? (photo.thumbnailUrl as string)}
-                    srcSet={
-                      photo.fullUrl && photo.thumbnailUrl
-                        ? `${photo.thumbnailUrl} ${THUMBNAIL_SIZE}w, ${photo.fullUrl} ${FULL_SIZE}w`
-                        : undefined
+          {album.photos.map((photo, index) => {
+            const source = photo.displayUrl ?? photo.fullUrl ?? photo.thumbnailUrl
+            const srcSet = tileSrcSet({
+              thumbnail: photo.thumbnailUrl ?? undefined,
+              display: photo.displayUrl ?? undefined,
+              full: photo.fullUrl ?? undefined,
+            })
+
+            return (
+              <li className="shared-photo" key={photo.id}>
+                {source && (
+                  <button
+                    className="shared-photo-open"
+                    type="button"
+                    // The button takes its name from the alt text inside it, which
+                    // keeps the description on the image where it belongs. A
+                    // photograph with none still needs a name for the control.
+                    aria-label={
+                      photo.alt ? undefined : `Photograph ${index + 1} of ${album.photos.length}`
                     }
-                    sizes={TILE_SIZES}
-                    // The owner's own words when they wrote them. An empty alt is
-                    // correct otherwise: it marks the image decorative rather
-                    // than reading out something invented.
-                    alt={photo.alt ?? ''}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </button>
-              )}
-              {photo.caption && <p className="shared-caption">{photo.caption}</p>}
-              {photo.stories.map((story, index) => (
-                <p className="shared-story" key={index}>
-                  {story}
-                </p>
-              ))}
-            </li>
-          ))}
+                    onClick={() => setOpenPhoto(index)}
+                  >
+                    <img
+                      // Every copy that could be signed, so the browser takes the
+                      // smallest that fills the tile — normally the 1080px display
+                      // copy rather than the 2000px image.
+                      src={source}
+                      srcSet={srcSet}
+                      sizes={srcSet ? TILE_SIZES : undefined}
+                      // The owner's own words when they wrote them. An empty alt is
+                      // correct otherwise: it marks the image decorative rather
+                      // than reading out something invented.
+                      alt={photo.alt ?? ''}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                )}
+                {photo.caption && <p className="shared-caption">{photo.caption}</p>}
+                {photo.stories.map((story, index) => (
+                  <p className="shared-story" key={index}>
+                    {story}
+                  </p>
+                ))}
+              </li>
+            )
+          })}
         </ul>
       )}
 
