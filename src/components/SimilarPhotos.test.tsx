@@ -56,7 +56,7 @@ describe('SimilarPhotos', () => {
       />,
     )
 
-    const offers = screen.getAllByRole('button', { name: 'Suggest which to remove' })
+    const offers = screen.getAllByRole('button', { name: 'Suggest which to tick' })
     expect(offers).toHaveLength(1)
     fireEvent.click(offers[0])
 
