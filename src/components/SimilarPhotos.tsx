@@ -22,10 +22,10 @@ type SimilarPhotosProps = {
 /** What each focus reading says out loud. */
 const READING_TEXT: Record<SharpnessReading, string> = {
   sharpest: 'Sharpest',
-  close: 'Nearly as sharp',
-  softer: 'A little softer',
-  blurrier: 'Noticeably softer',
-  unmeasured: 'Focus not measured',
+  close: 'Just as sharp',
+  softer: 'Softer',
+  blurrier: 'Blurry',
+  unmeasured: 'Not measured',
 }
 
 /**
@@ -33,13 +33,13 @@ const READING_TEXT: Record<SharpnessReading, string> = {
  *
  * Deliberately not a cleanup that runs itself. The grouping is arithmetic on a
  * perceptual hash and the suggestion is a focus measurement, and neither knows
- * which frame someone was smiling in. So nothing is preselected, the suggestion
- * is only ever a starting point, and removing anything takes two deliberate
- * actions.
+ * which frame someone was smiling in. So nothing is preselected, nothing is
+ * ticked on the owner's behalf (a "tick all but the sharpest" shortcut was
+ * removed at her request), and removing anything takes two deliberate actions.
  *
  * The wording carries that: every tick box says "Remove" beside it rather than
  * sitting unlabelled on the picture, and the measurement is spoken as a
- * comparison ("nearly as sharp") instead of the raw variance, which read as a
+ * comparison ("just as sharp") instead of the raw variance, which read as a
  * score nobody could act on.
  */
 export function SimilarPhotos({
@@ -83,19 +83,6 @@ export function SimilarPhotos({
     })
   }
 
-  /** Ticks everything in a group except the sharpest, as a starting point. */
-  function markRest(group: SimilarGroup) {
-    setConfirming(false)
-    setError(null)
-    setMarked((current) => {
-      const next = new Set(current)
-      for (const photo of group.photos) {
-        if (photo.id !== group.suggested.id) next.add(photo.id)
-      }
-      return next
-    })
-  }
-
   async function handleRemove() {
     setBusy(true)
     setError(null)
@@ -125,22 +112,7 @@ export function SimilarPhotos({
 
       {groups.map((group, groupIndex) => (
         <div className="similar-group" key={group.photos[0].id}>
-          <div className="similar-group-heading">
-            <h3>{group.photos.length} of the same picture</h3>
-            {/* An optional shortcut, worded as an offer: "Tick all but the sharpest"
-                read as an instruction. Without a focus reading the "sharpest" is
-                just the first frame, so there is nothing to suggest. */}
-            {compareSharpness(group.suggested, group, readings) === 'sharpest' && (
-              <button
-                className="text-button similar-shortcut"
-                type="button"
-                onClick={() => markRest(group)}
-                disabled={busy}
-              >
-                Suggest which to tick
-              </button>
-            )}
-          </div>
+          <h3>{group.photos.length} of the same picture</h3>
 
           <ul className="similar-row">
             {group.photos.map((photo, photoIndex) => {
@@ -155,15 +127,12 @@ export function SimilarPhotos({
                     onOpen={() => setViewing({ group: groupIndex, index: photoIndex })}
                   />
 
-                  {/* The sharpest wears its verdict on the picture, as a tag; the
-                      rest say how they compare underneath. */}
-                  {reading === 'sharpest' ? (
-                    <span className="similar-badge similar-tag">{READING_TEXT[reading]}</span>
-                  ) : (
-                    <p className="similar-meta">
-                      <span className="similar-sharpness">{READING_TEXT[reading]}</span>
-                    </p>
-                  )}
+                  {/* Every frame wears its reading on the picture, as a short tag:
+                      a line under each tile read as a caption. The sharpest is
+                      the one in bold. */}
+                  <span className={`similar-tag${reading === 'sharpest' ? ' best' : ''}`}>
+                    {READING_TEXT[reading]}
+                  </span>
 
                   <label className="similar-choice">
                     <input

@@ -1645,14 +1645,7 @@ textarea:focus-visible {
   margin-top: 1.6rem;
 }
 
-.similar-group-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.similar-group-heading h3 {
+.similar-group h3 {
   margin: 0;
   font-size: 0.82rem;
   font-weight: 800;
@@ -1663,22 +1656,6 @@ textarea:focus-visible {
 
 /* Scrolls sideways rather than shrinking: comparing two photographs is the
    whole point, and past about four they stop being comparable at tile size. */
-/*
- * Looks like something to press. As bare bold text it read as a caption telling
- * the owner to do the ticking herself, which is the opposite of a shortcut.
- */
-.similar-shortcut {
-  min-height: 2.4rem;
-  text-decoration: none;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid #ccc0ac;
-  border-radius: 0.4rem;
-  background: #fffdf9;
-  color: #6d3f18;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
 .similar-row {
   display: flex;
   gap: 0.8rem;
@@ -1780,14 +1757,6 @@ textarea:focus-visible {
   color: #6f675c;
 }
 
-.similar-badge {
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.3rem;
-  background: #e8e0d2;
-  color: #4a4036;
-  font-weight: 700;
-}
-
 .similar-sharpness {
   color: #6f675c;
 }
@@ -1797,22 +1766,24 @@ textarea:focus-visible {
   position: absolute;
   top: 0.4rem;
   left: 0.4rem;
-  font-size: 0.78rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
   background: #fffdf9;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  color: #6f675c;
+  font-size: 0.78rem;
+  font-weight: 600;
   pointer-events: none;
+}
+
+.similar-tag.best {
+  color: #4a4036;
+  font-weight: 800;
 }
 
 @media (max-width: 720px) {
   .similar-item {
     flex-basis: 8.5rem;
-  }
-
-  /* Side by side, the shortcut ran off the edge of the screen. */
-  .similar-group-heading {
-    display: grid;
-    justify-items: start;
-    gap: 0.3rem;
   }
 }
 

@@ -37,33 +37,23 @@ function askToRemove() {
 }
 
 describe('SimilarPhotos', () => {
-  it('offers to tick all but the sharpest, and only once focus is measured', () => {
-    // Without a reading the "sharpest" is just the first frame, so the
-    // suggestion would be arbitrary and is not offered.
+  it('tags every frame with how sharp it is next to the best', () => {
     const photos = [
-      { ...photo('photo-1', 0), sharpness: 50 },
-      { ...photo('photo-2', 1), sharpness: 100 },
-      { ...photo('photo-3', 2), sharpness: 80 },
+      { ...photo('photo-1', 0), sharpness: 100 },
+      { ...photo('photo-2', 1), sharpness: 95 },
+      { ...photo('photo-3', 2), sharpness: 70 },
+      { ...photo('photo-4', 3), sharpness: 30 },
     ]
-    const unmeasured = [photo('photo-4', 3), photo('photo-5', 4)]
     render(
       <SimilarPhotos
-        groups={[
-          { photos, suggested: photos[1], spread: 2 },
-          { photos: unmeasured, suggested: unmeasured[0], spread: 2 },
-        ]}
+        groups={[{ photos, suggested: photos[0], spread: 2 }]}
         thumbnails={new Map()}
         onRemove={vi.fn()}
       />,
     )
 
-    const offers = screen.getAllByRole('button', { name: 'Suggest which to tick' })
-    expect(offers).toHaveLength(1)
-    fireEvent.click(offers[0])
-
-    expect(screen.getByLabelText('Remove photo 1')).toBeChecked()
-    expect(screen.getByLabelText('Remove photo 2')).not.toBeChecked()
-    expect(screen.getByLabelText('Remove photo 3')).toBeChecked()
+    const tags = [...document.querySelectorAll('.similar-tag')].map((tag) => tag.textContent)
+    expect(tags).toEqual(['Sharpest', 'Just as sharp', 'Softer', 'Blurry'])
   })
 
   it('hands focus to the safe choice once removal is asked for', () => {
