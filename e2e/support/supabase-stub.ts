@@ -83,6 +83,7 @@ export type PhotoRecord = {
   storage_path: string
   thumbnail_path: string | null
   display_path?: string | null
+  original_path?: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -414,6 +415,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           storage_path: String(body.storage_path ?? ''),
           thumbnail_path: (body.thumbnail_path as string | null) ?? null,
           display_path: (body.display_path as string | null) ?? null,
+          original_path: (body.original_path as string | null) ?? null,
           width: (body.width as number | null) ?? null,
           height: (body.height as number | null) ?? null,
           caption: null,
