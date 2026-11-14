@@ -54,6 +54,25 @@ test.describe('writing about a photo', () => {
     expect(photo.alt_source).toBe('human')
   })
 
+  test('opens the photo larger, and closing it keeps the editor open', async ({ page }) => {
+    await openPhoto(page)
+    const heading = page.getByRole('heading', { name: 'What do you want to remember?' })
+
+    // Once with the Close button and once with Escape: both end on the top
+    // dialog only, never on the editor under it.
+    for (const close of ['button', 'Escape'] as const) {
+      await page.getByRole('button', { name: 'View photo 1 larger' }).click()
+      const lightbox = page.locator('dialog.lightbox')
+      await expect(lightbox.locator('img.lightbox-image')).toBeVisible()
+
+      if (close === 'button') await lightbox.getByRole('button', { name: 'Close' }).click()
+      else await page.keyboard.press('Escape')
+
+      await expect(lightbox).toBeHidden()
+      await expect(heading).toBeVisible()
+    }
+  })
+
   test('keeps a caption to the owner unless they say otherwise', async ({ page }) => {
     const calls = await openPhoto(page)
 
