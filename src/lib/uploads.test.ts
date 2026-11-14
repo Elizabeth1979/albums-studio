@@ -11,6 +11,7 @@ function processed() {
   return {
     full: new Blob(['full']),
     thumbnail: new Blob(['thumb']),
+    display: new Blob(['display']),
     width: 2000,
     height: 1500,
     phash: '0'.repeat(64),
@@ -24,6 +25,7 @@ function photo(id: string, sortOrder: number): Photo {
     id,
     storagePath: `owner/album/${id}.jpg`,
     thumbnailPath: `owner/album/${id}-thumb.jpg`,
+    displayPath: null,
     width: 2000,
     height: 1500,
     caption: null,

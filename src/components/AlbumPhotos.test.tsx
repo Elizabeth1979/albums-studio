@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AlbumPhotos } from './AlbumPhotos'
 import type { Album } from '../lib/albums'
 import { BLURRED_ENOUGH } from '../lib/focus'
-import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
+import { DISPLAY_SIZE, FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import type { Photo } from '../lib/photos'
 
 /**
@@ -13,8 +13,9 @@ import type { Photo } from '../lib/photos'
 const SHARP = BLURRED_ENOUGH - 0.06
 const BLURRED = BLURRED_ENOUGH + 0.2
 
-const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted(() => ({
+const { photosApi, processorApi, createImageProcessor, storiesApi, displayRendition } = vi.hoisted(() => ({
   photosApi: {
+    attachDisplay: vi.fn(),
     photoBytes: vi.fn(),
     listPhotos: vi.fn(),
     storePhoto: vi.fn(),
@@ -25,6 +26,7 @@ const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted
   },
   processorApi: { process: vi.fn(), measure: vi.fn(), dispose: vi.fn() },
   createImageProcessor: vi.fn(),
+  displayRendition: vi.fn(),
   storiesApi: {
     listStories: vi.fn(),
     createStory: vi.fn(),
@@ -33,7 +35,14 @@ const { photosApi, processorApi, createImageProcessor, storiesApi } = vi.hoisted
   },
 }))
 
-vi.mock('../lib/photos', () => photosApi)
+vi.mock('../lib/photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/photos')>()),
+  ...photosApi,
+}))
+vi.mock('../lib/imaging/process', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/imaging/process')>()),
+  displayRendition,
+}))
 vi.mock('../lib/stories', () => storiesApi)
 vi.mock('../lib/imaging/processor', () => ({ createImageProcessor }))
 
@@ -60,6 +69,7 @@ function photo(index: number): Photo {
     id: `photo-${index}`,
     storagePath: `owner/album-1/photo-${index}.jpg`,
     thumbnailPath: `owner/album-1/photo-${index}-thumb.jpg`,
+    displayPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -86,6 +96,11 @@ beforeEach(() => {
   onCoverChosen.mockResolvedValue(undefined)
   photosApi.listPhotos.mockResolvedValue([])
   photosApi.signedUrls.mockResolvedValue(new Map())
+  displayRendition.mockResolvedValue(new Blob(['display']))
+  photosApi.attachDisplay.mockImplementation(async (each: Photo) => ({
+    ...each,
+    displayPath: each.storagePath.replace('.jpg', '-display.jpg'),
+  }))
   // In focus unless a test says otherwise: the advice has to be something a
   // photograph earns, not the default state of an album.
   processorApi.measure.mockResolvedValue({ kind: 'measured', blur: SHARP, edgeWidth: 2, texture: 5 })
@@ -93,6 +108,7 @@ beforeEach(() => {
   processorApi.process.mockResolvedValue({
     full: new Blob(['full']),
     thumbnail: new Blob(['thumb']),
+    display: new Blob(['display']),
     width: 2000,
     height: 1500,
     phash: '0'.repeat(64),
@@ -165,6 +181,69 @@ describe('AlbumPhotos', () => {
         'owner/album-1/photo-0.jpg',
       ]),
     )
+  })
+
+  it('draws a tile from the mid-size copy when the photograph has one', async () => {
+    // Without it a phone takes the 2000px image for every tile: the square crop
+    // leaves the 400px thumbnail 300 pixels across, short of what a tile needs.
+    photosApi.listPhotos.mockResolvedValue([
+      { ...photo(0), displayPath: 'owner/album-1/photo-0-display.jpg' },
+    ])
+    photosApi.signedUrls.mockResolvedValue(
+      new Map([
+        ['owner/album-1/photo-0-thumb.jpg', 'https://signed/thumb-0'],
+        ['owner/album-1/photo-0-display.jpg', 'https://signed/display-0'],
+        ['owner/album-1/photo-0.jpg', 'https://signed/full-0'],
+      ]),
+    )
+
+    const { container } = renderPhotos()
+
+    await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(1))
+    const image = container.querySelectorAll('img')[0]
+
+    expect(image).toHaveAttribute('src', 'https://signed/display-0')
+    expect(image).toHaveAttribute(
+      'srcset',
+      `https://signed/thumb-0 ${THUMBNAIL_SIZE}w, https://signed/display-0 ${DISPLAY_SIZE}w, https://signed/full-0 ${FULL_SIZE}w`,
+    )
+  })
+
+  it('writes the mid-size copy for an older photograph from the bytes it already fetched', async () => {
+    const older = photo(0)
+    const newer = { ...photo(1), displayPath: 'owner/album-1/photo-1-display.jpg' }
+    const stored = new Blob(['stored-0'])
+    const copy = new Blob(['display-0'])
+    photosApi.listPhotos.mockResolvedValue([older, newer])
+    photosApi.photoBytes.mockImplementation(async (path: string) =>
+      path === older.storagePath ? stored : new Blob(['stored-1']),
+    )
+    displayRendition.mockResolvedValue(copy)
+    photosApi.attachDisplay.mockImplementation(async (each: Photo) => ({
+      ...each,
+      displayPath: 'owner/album-1/photo-0-display.jpg',
+    }))
+
+    renderPhotos()
+
+    await waitFor(() => expect(photosApi.attachDisplay).toHaveBeenCalledWith(older, copy))
+    expect(displayRendition).toHaveBeenCalledTimes(1)
+    expect(displayRendition).toHaveBeenCalledWith(stored)
+    // One download per photograph: the copy is made from the focus check's bytes.
+    expect(photosApi.photoBytes).toHaveBeenCalledTimes(2)
+  })
+
+  it('still reports focus when the mid-size copy cannot be written', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    photosApi.listPhotos.mockResolvedValue([photo(0)])
+    displayRendition.mockRejectedValue(new Error('no canvas'))
+
+    renderPhotos()
+
+    await waitFor(() => expect(warn).toHaveBeenCalled())
+    expect(photosApi.attachDisplay).not.toHaveBeenCalled()
+    expect(screen.queryByText(/could not be read/i)).not.toBeInTheDocument()
+    warn.mockRestore()
   })
 
   it('falls back to the one image it could sign', async () => {

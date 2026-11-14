@@ -67,14 +67,14 @@ test.describe('uploading photos', () => {
     expect(body.height).toBe(333)
   })
 
-  test('uploads a full image and a thumbnail under the owner prefix', async ({ page }) => {
+  test('uploads a full image, a display copy and a thumbnail under the owner prefix', async ({ page }) => {
     const calls = await openAlbum(page)
 
     await page.getByLabel('Choose photos').setInputFiles(sampleFile())
     await expect(page.getByText('Added 1 of 1.')).toBeVisible()
 
     const objects = calls.objects()
-    expect(objects).toHaveLength(2)
+    expect(objects).toHaveLength(3)
 
     // Both the Storage policy and a database check require the owner's uuid to
     // start the key.
@@ -82,6 +82,7 @@ test.describe('uploading photos', () => {
       expect(key.startsWith('00000000-0000-4000-8000-000000000001/album-1/')).toBe(true)
     }
     expect(objects.filter((key) => key.endsWith('-thumb.jpg'))).toHaveLength(1)
+    expect(objects.filter((key) => key.endsWith('-display.jpg'))).toHaveLength(1)
   })
 
   test('shows the photos it added', async ({ page }) => {
@@ -295,7 +296,7 @@ test.describe('uploading photos', () => {
       sampleFile('two.png'),
     ])
     await expect(page.getByText('Added 2 of 2.')).toBeVisible()
-    expect(calls.objects()).toHaveLength(4)
+    expect(calls.objects()).toHaveLength(6)
 
     await page.getByRole('button', { name: 'Delete album' }).click()
     await page.getByRole('button', { name: 'Yes, delete this album' }).click()
@@ -326,7 +327,7 @@ test.describe('uploading photos', () => {
     await page.getByRole('button', { name: 'Yes, delete this album' }).click()
 
     await expect(page.getByRole('alert')).toContainText('permission denied')
-    expect(calls.objects()).toHaveLength(2)
+    expect(calls.objects()).toHaveLength(3)
   })
 
   test('clears the upload list on request', async ({ page }) => {

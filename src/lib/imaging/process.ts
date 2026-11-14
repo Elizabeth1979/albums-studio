@@ -7,8 +7,19 @@ import { laplacianVariance } from './sharpness'
 /** Longest edge of the stored image. */
 export const FULL_SIZE = 2000
 
-/** Longest edge of the thumbnail the album grid renders. */
+/** Longest edge of the small thumbnail: library covers and review strips. */
 export const THUMBNAIL_SIZE = 400
+
+/**
+ * Longest edge of the copy the album grid draws.
+ *
+ * A square tile crops a 4:3 frame to its short edge, so the 400px thumbnail
+ * fills only 300 pixels across — too few for any phone or retina screen — and
+ * the browser fell back to the 2000px stored image for every tile, about 340 KB
+ * each. 1080 leaves 810 across the short edge, enough for a retina laptop's
+ * 800-pixel tile, at roughly a quarter of the bytes.
+ */
+export const DISPLAY_SIZE = 1080
 
 /** Signals are measured at this size: cheap, and enough for both of them. */
 const ANALYSIS_SIZE = 256
@@ -18,6 +29,7 @@ const THUMBNAIL_QUALITY = 0.75
 
 export type ProcessedImage = {
   full: Blob
+  display: Blob
   thumbnail: Blob
   width: number
   height: number
@@ -195,6 +207,30 @@ function draw(source: ImageBitmap, width: number, height: number): OffscreenCanv
   return canvas
 }
 
+function drawWithin(source: ImageBitmap, longestEdge: number): OffscreenCanvas {
+  const size = fitWithin(source.width, source.height, longestEdge)
+  return draw(source, size.width, size.height)
+}
+
+function encodeDisplay(canvas: OffscreenCanvas): Promise<Blob> {
+  return canvas.convertToBlob({ type: 'image/jpeg', quality: THUMBNAIL_QUALITY })
+}
+
+/**
+ * The grid's copy of a photograph already stored, for those uploaded before
+ * the grid had one. Same size and quality as an upload writes, so a backfilled
+ * tile and a new one cannot be told apart.
+ */
+export async function displayRendition(stored: Blob): Promise<Blob> {
+  const bitmap = await createImageBitmap(stored)
+
+  try {
+    return await encodeDisplay(drawWithin(bitmap, DISPLAY_SIZE))
+  } finally {
+    bitmap.close()
+  }
+}
+
 /**
  * Decode, resize, and measure one file, entirely in the browser.
  *
@@ -220,6 +256,7 @@ export async function processImage(file: File | Blob, fileName: string): Promise
     const analysis = fitWithin(bitmap.width, bitmap.height, ANALYSIS_SIZE)
 
     const fullCanvas = draw(bitmap, full.width, full.height)
+    const displayCanvas = drawWithin(bitmap, DISPLAY_SIZE)
     const thumbCanvas = draw(bitmap, thumb.width, thumb.height)
     const analysisCanvas = draw(bitmap, analysis.width, analysis.height)
 
@@ -228,13 +265,15 @@ export async function processImage(file: File | Blob, fileName: string): Promise
       .getImageData(0, 0, analysis.width, analysis.height)
     const luma = toLuma(pixels.data)
 
-    const [fullBlob, thumbnailBlob] = await Promise.all([
+    const [fullBlob, displayBlob, thumbnailBlob] = await Promise.all([
       fullCanvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY }),
+      encodeDisplay(displayCanvas),
       thumbCanvas.convertToBlob({ type: 'image/jpeg', quality: THUMBNAIL_QUALITY }),
     ])
 
     return {
       full: fullBlob,
+      display: displayBlob,
       thumbnail: thumbnailBlob,
       width: full.width,
       height: full.height,

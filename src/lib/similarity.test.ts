@@ -19,6 +19,7 @@ function photo(overrides: Partial<Photo> & { id: string }): Photo {
   return {
     storagePath: `owner/a/${overrides.id}.jpg`,
     thumbnailPath: `owner/a/${overrides.id}-thumb.jpg`,
+    displayPath: null,
     width: 2000,
     height: 1500,
     caption: null,

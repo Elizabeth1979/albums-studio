@@ -22,6 +22,8 @@ export type Photo = {
   id: string
   storagePath: string
   thumbnailPath: string | null
+  /** The grid's mid-size copy. Null until written for an older photograph. */
+  displayPath: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -51,6 +53,7 @@ type PhotoRow = {
   id: string
   storage_path: string
   thumbnail_path: string | null
+  display_path: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -63,13 +66,14 @@ type PhotoRow = {
 }
 
 const PHOTO_COLUMNS =
-  'id, storage_path, thumbnail_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at'
+  'id, storage_path, thumbnail_path, display_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at'
 
 function toPhoto(row: PhotoRow): Photo {
   return {
     id: row.id,
     storagePath: row.storage_path,
     thumbnailPath: row.thumbnail_path,
+    displayPath: row.display_path ?? null,
     width: row.width,
     height: row.height,
     caption: row.caption,
@@ -92,16 +96,27 @@ function toPhoto(row: PhotoRow): Photo {
 export async function photoObjectPaths(albumId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('photos')
-    .select('storage_path, thumbnail_path')
+    .select('storage_path, thumbnail_path, display_path')
     .eq('album_id', albumId)
 
   if (error) throw new Error(error.message)
 
   return (data ?? []).flatMap((row) => {
-    const photo = row as { storage_path: string; thumbnail_path: string | null }
+    const photo = row as Pick<PhotoRow, 'storage_path' | 'thumbnail_path' | 'display_path'>
 
-    return photo.thumbnail_path ? [photo.storage_path, photo.thumbnail_path] : [photo.storage_path]
+    return pathsOf({
+      storagePath: photo.storage_path,
+      thumbnailPath: photo.thumbnail_path,
+      displayPath: photo.display_path,
+    })
   })
+}
+
+/** Every stored object behind one photograph. */
+export function pathsOf(photo: Pick<Photo, 'storagePath' | 'thumbnailPath' | 'displayPath'>): string[] {
+  return [photo.storagePath, photo.thumbnailPath, photo.displayPath].filter(
+    (path): path is string => Boolean(path),
+  )
 }
 
 /**
@@ -191,9 +206,7 @@ export async function listPhotos(albumId: string): Promise<Photo[]> {
  * a refusal leaves the photo intact rather than showing a broken image.
  */
 export async function deletePhoto(photo: Photo): Promise<void> {
-  const paths = photo.thumbnailPath
-    ? [photo.storagePath, photo.thumbnailPath]
-    : [photo.storagePath]
+  const paths = pathsOf(photo)
 
   const { error } = await supabase.from('photos').delete().eq('id', photo.id)
 
@@ -295,6 +308,7 @@ export async function storePhoto(input: {
   const id = crypto.randomUUID()
   const storagePath = objectKey(ownerId, input.albumId, id)
   const thumbnailPath = objectKey(ownerId, input.albumId, id, '-thumb')
+  const displayPath = objectKey(ownerId, input.albumId, id, DISPLAY_SUFFIX)
 
   const bucket = supabase.storage.from(PHOTO_BUCKET)
 
@@ -304,13 +318,18 @@ export async function storePhoto(input: {
   })
   if (uploaded.error) throw new Error(uploaded.error.message)
 
-  const uploadedThumb = await bucket.upload(thumbnailPath, input.image.thumbnail, {
-    contentType: 'image/jpeg',
-    upsert: false,
-  })
-  if (uploadedThumb.error) {
-    await bucket.remove([storagePath])
-    throw new Error(uploadedThumb.error.message)
+  // In turn, not at once: each failure has to remove only what came before it.
+  const written = [storagePath]
+  for (const [path, blob] of [
+    [thumbnailPath, input.image.thumbnail],
+    [displayPath, input.image.display],
+  ] as const) {
+    const uploadedCopy = await bucket.upload(path, blob, { contentType: 'image/jpeg', upsert: false })
+    if (uploadedCopy.error) {
+      await bucket.remove(written)
+      throw new Error(uploadedCopy.error.message)
+    }
+    written.push(path)
   }
 
   const { data, error } = await supabase
@@ -320,6 +339,7 @@ export async function storePhoto(input: {
       owner_id: ownerId,
       storage_path: storagePath,
       thumbnail_path: thumbnailPath,
+      display_path: displayPath,
       mime: 'image/jpeg',
       width: input.image.width,
       height: input.image.height,
@@ -332,11 +352,39 @@ export async function storePhoto(input: {
     .single()
 
   if (error) {
-    await bucket.remove([storagePath, thumbnailPath])
+    await bucket.remove(written)
     throw new Error(error.message)
   }
 
   return toPhoto(data as PhotoRow)
+}
+
+const DISPLAY_SUFFIX = '-display'
+
+/**
+ * Gives an older photograph the grid's mid-size copy, from bytes already
+ * downloaded, and records it.
+ *
+ * The key sits beside the stored image so the bucket reads the same for old
+ * photographs and new. Upserted because a first attempt can write the bytes
+ * and then fail to record them; the second simply writes them again.
+ */
+export async function attachDisplay(photo: Photo, display: Blob): Promise<Photo> {
+  const displayPath = photo.storagePath.replace(/\.jpg$/, `${DISPLAY_SUFFIX}.jpg`)
+  if (displayPath === photo.storagePath) throw new Error(`${photo.storagePath} is not a .jpg key.`)
+
+  const uploaded = await supabase.storage
+    .from(PHOTO_BUCKET)
+    .upload(displayPath, display, { contentType: 'image/jpeg', upsert: true })
+  if (uploaded.error) throw new Error(uploaded.error.message)
+
+  const { error } = await supabase
+    .from('photos')
+    .update({ display_path: displayPath })
+    .eq('id', photo.id)
+  if (error) throw new Error(error.message)
+
+  return { ...photo, displayPath }
 }
 
 /**
