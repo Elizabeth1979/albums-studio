@@ -1753,14 +1753,6 @@ textarea:focus-visible {
   color: #6f675c;
 }
 
-.similar-badge {
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.3rem;
-  background: #e8e0d2;
-  color: #4a4036;
-  font-weight: 700;
-}
-
 .similar-sharpness {
   color: #6f675c;
 }
@@ -1770,10 +1762,19 @@ textarea:focus-visible {
   position: absolute;
   top: 0.4rem;
   left: 0.4rem;
-  font-size: 0.78rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
   background: #fffdf9;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  color: #6f675c;
+  font-size: 0.78rem;
+  font-weight: 600;
   pointer-events: none;
+}
+
+.similar-tag.best {
+  color: #4a4036;
+  font-weight: 800;
 }
 
 @media (max-width: 720px) {

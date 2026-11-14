@@ -36,6 +36,25 @@ function askToRemove() {
 }
 
 describe('SimilarPhotos', () => {
+  it('tags every frame with how sharp it is next to the best', () => {
+    const photos = [
+      { ...photo('photo-1', 0), sharpness: 100 },
+      { ...photo('photo-2', 1), sharpness: 95 },
+      { ...photo('photo-3', 2), sharpness: 70 },
+      { ...photo('photo-4', 3), sharpness: 30 },
+    ]
+    render(
+      <SimilarPhotos
+        groups={[{ photos, suggested: photos[0], spread: 2 }]}
+        thumbnails={new Map()}
+        onRemove={vi.fn()}
+      />,
+    )
+
+    const tags = [...document.querySelectorAll('.similar-tag')].map((tag) => tag.textContent)
+    expect(tags).toEqual(['Sharpest', 'Just as sharp', 'Softer', 'Blurry'])
+  })
+
   it('hands focus to the safe choice once removal is asked for', () => {
     // The button pressed is replaced by the confirmation, so focus has to go
     // somewhere: to keeping them, so a second Enter loses nothing.

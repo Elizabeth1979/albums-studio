@@ -22,10 +22,10 @@ type SimilarPhotosProps = {
 /** What each focus reading says out loud. */
 const READING_TEXT: Record<SharpnessReading, string> = {
   sharpest: 'Sharpest',
-  close: 'Nearly as sharp',
-  softer: 'A little softer',
-  blurrier: 'Noticeably softer',
-  unmeasured: 'Focus not measured',
+  close: 'Just as sharp',
+  softer: 'Softer',
+  blurrier: 'Blurry',
+  unmeasured: 'Not measured',
 }
 
 /**
@@ -39,7 +39,7 @@ const READING_TEXT: Record<SharpnessReading, string> = {
  *
  * The wording carries that: every tick box says "Remove" beside it rather than
  * sitting unlabelled on the picture, and the measurement is spoken as a
- * comparison ("nearly as sharp") instead of the raw variance, which read as a
+ * comparison ("just as sharp") instead of the raw variance, which read as a
  * score nobody could act on.
  */
 export function SimilarPhotos({
@@ -127,15 +127,12 @@ export function SimilarPhotos({
                     onOpen={() => setViewing({ group: groupIndex, index: photoIndex })}
                   />
 
-                  {/* The sharpest wears its verdict on the picture, as a tag; the
-                      rest say how they compare underneath. */}
-                  {reading === 'sharpest' ? (
-                    <span className="similar-badge similar-tag">{READING_TEXT[reading]}</span>
-                  ) : (
-                    <p className="similar-meta">
-                      <span className="similar-sharpness">{READING_TEXT[reading]}</span>
-                    </p>
-                  )}
+                  {/* Every frame wears its reading on the picture, as a short tag:
+                      a line under each tile read as a caption. The sharpest is
+                      the one in bold. */}
+                  <span className={`similar-tag${reading === 'sharpest' ? ' best' : ''}`}>
+                    {READING_TEXT[reading]}
+                  </span>
 
                   <label className="similar-choice">
                     <input
