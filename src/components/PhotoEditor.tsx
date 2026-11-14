@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from 'react'
 import { type Photo, type TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
+import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
 import { LiveStatus } from './LiveStatus'
+import { PhotoLightbox } from './PhotoLightbox'
 import { StoryNotes } from './StoryNotes'
 import { useConfirmation } from './useConfirmation'
 import { useReturnFocus } from './useReturnFocus'
@@ -9,7 +11,8 @@ import { useReturnFocus } from './useReturnFocus'
 type PhotoEditorProps = {
   photo: Photo
   position: number
-  thumbnail: string | undefined
+  /** Signed URLs, by storage path. */
+  urls: Map<string, string>
   stories: Story[]
   onSave: (patch: {
     caption?: string
@@ -55,7 +58,7 @@ function formatTakenAt(takenAt: string): string {
 export function PhotoEditor({
   photo,
   position,
-  thumbnail,
+  urls,
   stories,
   onSave,
   onAddStory,
@@ -81,6 +84,7 @@ export function PhotoEditor({
   const confirmation = useConfirmation()
   const removeOpener = useReturnFocus(confirmingDelete)
   const [placeError, setPlaceError] = useState<string | null>(null)
+  const [viewing, setViewing] = useState(false)
 
   async function move(action: () => Promise<void>) {
     setMoving(true)
@@ -150,15 +154,15 @@ export function PhotoEditor({
 
       <div className="photo-editor-body">
         <div className="photo-editor-aside">
-          {thumbnail && (
-            <img
-              className="photo-editor-preview"
-              src={thumbnail}
-              // Whatever the owner has written is already on screen beside this,
-              // and until they write something there is nothing truthful to say.
-              alt=""
-            />
-          )}
+          {/* The image inside has no alt: whatever the owner has written is
+              already on screen beside it, and until they write something there
+              is nothing truthful to say. */}
+          <ExpandableThumb
+            photo={photo}
+            urls={urls}
+            onOpen={() => setViewing(true)}
+            imageClassName="photo-editor-preview"
+          />
 
           {photo.takenAt && (
             <p className="photo-taken">Taken {formatTakenAt(photo.takenAt)}</p>
@@ -341,6 +345,12 @@ export function PhotoEditor({
           </button>
         )}
       </section>
+      <PhotoLightbox
+        photos={[toLightboxPhoto(photo, urls, null)]}
+        index={viewing ? 0 : null}
+        onClose={() => setViewing(false)}
+        onGoTo={() => {}}
+      />
     </section>
   )
 }

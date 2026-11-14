@@ -28,6 +28,13 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo }: PhotoLightboxP
   const dialog = useModalDialog(open)
   const photo = open ? photos[index] : undefined
 
+  // React passes a dialog's close up its own tree, so a lightbox opened from
+  // inside another dialog would close that one too without this.
+  function closed(event: React.SyntheticEvent<HTMLDialogElement>) {
+    event.stopPropagation()
+    onClose()
+  }
+
   const goBy = useCallback(
     (step: number) => {
       if (index === null || photos.length === 0) return
@@ -53,7 +60,7 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo }: PhotoLightboxP
   if (!photo) {
     // Rendered but empty: the element has to exist for showModal to be callable
     // on the render that opens it.
-    return <dialog className="lightbox" ref={dialog} onClose={onClose} />
+    return <dialog className="lightbox" ref={dialog} onClose={closed} />
   }
 
   const source = photo.fullUrl ?? photo.thumbnailUrl
@@ -63,7 +70,7 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo }: PhotoLightboxP
     <dialog
       className="lightbox"
       ref={dialog}
-      onClose={onClose}
+      onClose={closed}
       onKeyDown={handleKeyDown}
       aria-label={photo.alt || `Photograph ${position}`}
       onClick={(event) => {

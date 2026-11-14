@@ -1700,8 +1700,8 @@ textarea:focus-visible {
   margin-top: auto;
 }
 
-/* Same reset as the shared album's tiles: the whole tile opens it larger. */
-.similar-open {
+/* Same reset as the shared album's tiles: the whole picture opens it larger. */
+.thumb-open {
   display: block;
   width: 100%;
   padding: 0;
@@ -1711,7 +1711,11 @@ textarea:focus-visible {
   cursor: zoom-in;
 }
 
-.similar-open:focus-visible {
+.photo-editor-aside .thumb-open {
+  width: max-content;
+}
+
+.thumb-open:focus-visible {
   outline: 3px solid #8d5526;
   outline-offset: 3px;
 }

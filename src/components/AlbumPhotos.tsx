@@ -609,11 +609,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                   key={selected.id}
                   photo={selected}
                   position={selectedIndex + 1}
-                  thumbnail={
-                    selected.thumbnailPath
-                      ? thumbnails.get(selected.thumbnailPath)
-                      : undefined
-                  }
+                  urls={thumbnails}
                   stories={stories.filter((story) => story.photoId === selected.id)}
                   onSave={(patch) => handleSaveText(selected.id, patch)}
                   onAddStory={(input) => handleAddStory(selected.id, input)}
