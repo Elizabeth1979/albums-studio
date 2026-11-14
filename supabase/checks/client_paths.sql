@@ -71,11 +71,12 @@ begin
 
   begin
     insert into public.photos (
-      album_id, owner_id, storage_path, thumbnail_path, display_path, mime,
+      album_id, owner_id, storage_path, thumbnail_path, display_path, original_path, mime,
       width, height, phash, sharpness, sort_order, taken_at
     ) values (
       album_a, alice, alice || '/a/one.jpg', alice || '/a/one-thumb.jpg',
-      alice || '/a/one-display.jpg', 'image/jpeg', 2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
+      alice || '/a/one-display.jpg', alice || '/a/one-original.heic', 'image/jpeg',
+      2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
     ) returning id into photo_a;
     log := log || E'\n  ok    insert photo with every column storePhoto sends';
   exception when others then
@@ -105,6 +106,22 @@ begin
     log := log || E'\n  FAIL  display copy could point outside her namespace'; fails := fails + 1;
   exception when others then
     log := log || E'\n  ok    display copy cannot point outside her namespace';
+  end;
+
+  -- An original cannot be made after the fact, so nothing may repoint one.
+  begin
+    update public.photos set original_path = alice || '/a/other.jpg' where id = photo_a;
+    log := log || E'\n  FAIL  an original could be repointed'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    an original cannot be repointed';
+  end;
+
+  begin
+    insert into public.photos (album_id, owner_id, storage_path, original_path, mime, sort_order)
+    values (album_a, alice, alice || '/a/two.jpg', bob || '/a/two-original.jpg', 'image/jpeg', 2);
+    log := log || E'\n  FAIL  an original could point outside her namespace'; fails := fails + 1;
+  exception when check_violation then
+    log := log || E'\n  ok    an original cannot point outside her namespace';
   end;
 
   begin
@@ -238,6 +255,14 @@ begin
     -- A share link shows someone photographs, not a record of where their owner
     -- was and when.
     log := log || E'\n  ok    cannot read capture times through the Data API';
+  end;
+
+  begin
+    select original_path into seen from public.photos where id = photo_a;
+    log := log || E'\n  FAIL  can find originals through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    -- Originals keep the camera's metadata, location included.
+    log := log || E'\n  ok    cannot find originals through the Data API';
   end;
 
   select caption into seen from public.get_shared_album(token) where photo_id = photo_a;

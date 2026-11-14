@@ -70,6 +70,7 @@ function photo(index: number): Photo {
     storagePath: `owner/album-1/photo-${index}.jpg`,
     thumbnailPath: `owner/album-1/photo-${index}-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,

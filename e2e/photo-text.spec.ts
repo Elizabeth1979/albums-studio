@@ -33,6 +33,22 @@ async function openPhoto(page: Page, options: StubOptions = {}) {
   return calls
 }
 
+test.describe('full quality', () => {
+  test('downloads the original as it was chosen, not the copy the album draws', async ({ page }) => {
+    await openPhoto(page)
+
+    // A download, not a navigation: leaving the album for a bare image would be
+    // the wrong behaviour even with the right file.
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Download full quality' }).click()
+
+    const saved = await download
+    expect(decodeURIComponent(new URL(saved.url()).pathname)).toMatch(/-original\.png$/)
+    expect(saved.suggestedFilename()).toMatch(/^photo-.+\.png$/)
+    await expect(page.getByRole('button', { name: 'Download full quality' })).toBeVisible()
+  })
+})
+
 test.describe('writing about a photo', () => {
   test('saves a caption, its visibility, and alt text', async ({ page }) => {
     const calls = await openPhoto(page)
@@ -266,7 +282,7 @@ test.describe('writing about a photo', () => {
     await expect(savedStories(page)).toHaveText(['A long day.'])
     // The seeded photograph predates display copies, so opening the album
     // writes one. Waiting for it makes the removal below prove it goes too.
-    await expect.poll(() => calls.objects()).toHaveLength(3)
+    await expect.poll(() => calls.objects()).toHaveLength(4)
 
     await page.getByRole('button', { name: 'Remove photo' }).click()
     await page.getByRole('button', { name: 'Yes, remove it' }).click()

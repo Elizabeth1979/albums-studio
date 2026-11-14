@@ -83,6 +83,7 @@ export type PhotoRecord = {
   storage_path: string
   thumbnail_path: string | null
   display_path?: string | null
+  original_path?: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -269,6 +270,14 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     // <img> resolves rather than dangling.
     if (path.startsWith('/storage/v1/object/sign/')) {
       const body = parseBody(request) as { paths?: string[]; expiresIn?: number }
+
+      // One object at a time is a download link; the key is in the path itself.
+      if (!body.paths) {
+        const signedPath = decodeURIComponent(path.slice('/storage/v1/object/sign/photos/'.length))
+        // Shaped like the real one: the client appends `&download=` to it.
+        return json({ signedURL: `/object/signed/${signedPath}?token=stub` })
+      }
+
       // The client prefixes its storage base onto whatever `signedURL` holds,
       // so this has to be relative to /storage/v1 rather than absolute.
       return json(
@@ -282,6 +291,18 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     if (path.startsWith('/storage/v1/object/signed/')) {
       const wanted = decodeURIComponent(path.slice('/storage/v1/object/signed/'.length))
       const bytes = options.objectBytes?.[wanted]
+
+      // `download` makes Storage answer as an attachment, so the browser saves the
+      // file and stays on the page rather than navigating to a bare image.
+      const downloadAs = url.searchParams.get('download')
+      if (downloadAs) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/octet-stream',
+          headers: { 'Content-Disposition': `attachment; filename="${downloadAs}"` },
+          body: bytes ?? Buffer.from('original bytes'),
+        })
+      }
 
       if (bytes) {
         return route.fulfill({ status: 200, contentType: 'image/png', body: bytes })
@@ -414,6 +435,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           storage_path: String(body.storage_path ?? ''),
           thumbnail_path: (body.thumbnail_path as string | null) ?? null,
           display_path: (body.display_path as string | null) ?? null,
+          original_path: (body.original_path as string | null) ?? null,
           width: (body.width as number | null) ?? null,
           height: (body.height as number | null) ?? null,
           caption: null,

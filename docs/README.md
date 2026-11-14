@@ -30,6 +30,10 @@ AI cost.
   copy needs `get_shared_album` and the `shared-album` Edge Function to return the path.
   The focus check downloads two photographs at a time rather than four, so it no longer
   takes the bandwidth the tiles on screen need.
+- Since 2026-11-14 an upload also keeps the file exactly as it was chosen, so the owner can
+  download a photograph at full quality from the photo editor. Photographs uploaded earlier
+  have no original and the editor says so. Originals are not shown to visitors: they keep the
+  camera's location, and removing it is roadmap Phase 3.5 step 2.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
@@ -128,6 +132,12 @@ AI cost.
 - [Albums Studio roadmap](plans/2026-08-15-albums-studio-roadmap.md) — active phased build
   plan and open product decisions, including the recorded evaluation of free and local
   models for alt text, semantic search, and faces.
+
+## Research
+
+- [Best-photo picking and competing products](research/2026-11-14-best-photo-and-competitors.md)
+  — what culling tools and photo apps do, what their users complain about, why closed eyes
+  are compared only within a moment, and the storage cost of keeping originals.
 
 ## Architecture
 

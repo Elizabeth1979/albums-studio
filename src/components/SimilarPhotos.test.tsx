@@ -9,6 +9,7 @@ function photo(id: string, sortOrder: number): Photo {
     storagePath: `owner/album-1/${id}.jpg`,
     thumbnailPath: `owner/album-1/${id}-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,

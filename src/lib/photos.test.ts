@@ -4,6 +4,7 @@ import {
   attachDisplay,
   deletePhoto,
   listPhotos,
+  originalDownloadUrl,
   signedUrls,
   storePhoto,
   swapPhotoOrder,
@@ -44,6 +45,9 @@ const image = {
   takenAt: '2026-08-19T13:45:02',
 }
 
+/** The file as the camera wrote it, as the file input hands it over. */
+const original = new File(['camera bytes'], 'IMG_0001.JPG', { type: 'image/jpeg' })
+
 /** Mirrors the Storage client surface `storePhoto` chains onto. */
 function bucket(overrides: { uploads?: { error: unknown }[] } = {}) {
   const queued = [...(overrides.uploads ?? [])]
@@ -79,12 +83,13 @@ describe('storePhoto', () => {
     const { upload } = bucket()
     const insert = table({ data: ROW, error: null })
 
-    const stored = await storePhoto({ albumId: 'album-1', image, sortOrder: 3 })
+    const stored = await storePhoto({ albumId: 'album-1', original, image, sortOrder: 3 })
 
     expect(upload.mock.calls.map(([, body]) => body)).toEqual([
       image.full,
       image.thumbnail,
       image.display,
+      original,
     ])
     for (const [path] of upload.mock.calls) {
       expect(path.startsWith(`${OWNER}/album-1/`)).toBe(true)
@@ -111,6 +116,60 @@ describe('storePhoto', () => {
     expect(stored.id).toBe('photo-1')
   })
 
+  it('keeps the chosen file untouched, under its own type, and records where', async () => {
+    // The whole point: these bytes cannot be recovered later. If the row does not
+    // name them, the original is stored, paid for, and unreachable.
+    const { upload } = bucket()
+    const insert = table({ data: ROW, error: null })
+
+    await storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })
+
+    const [originalPath, body, options] = upload.mock.calls[3]
+    expect(body).toBe(original)
+    expect(originalPath).toMatch(new RegExp(`^${OWNER}/album-1/.+-original\\.jpg$`))
+    expect(options).toEqual(expect.objectContaining({ contentType: 'image/jpeg' }))
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ original_path: originalPath }))
+  })
+
+  it('stores a HEIC original as HEIC', async () => {
+    const { upload } = bucket()
+    table({ data: ROW, error: null })
+    const heic = new File(['heic bytes'], 'IMG_0002.HEIC', { type: '' })
+
+    await storePhoto({ albumId: 'album-1', original: heic, image, sortOrder: 0 })
+
+    const [originalPath, , options] = upload.mock.calls[3]
+    expect(originalPath).toMatch(/-original\.heic$/)
+    expect(options).toEqual(expect.objectContaining({ contentType: 'image/heic' }))
+  })
+
+  it('still adds a photograph whose original the bucket would refuse, and records none', async () => {
+    const { upload } = bucket()
+    const insert = table({ data: ROW, error: null })
+    const gif = new File(['gif bytes'], 'loop.gif', { type: 'image/gif' })
+
+    await storePhoto({ albumId: 'album-1', original: gif, image, sortOrder: 0 })
+
+    expect(upload).toHaveBeenCalledTimes(3)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ original_path: null }))
+  })
+
+  it('removes every copy when the original cannot be written', async () => {
+    // Retried as a whole rather than recorded without it: a photograph quietly
+    // saved without its original is the loss this exists to prevent.
+    const { remove, upload } = bucket({
+      uploads: [{ error: null }, { error: null }, { error: null }, { error: { message: 'too large' } }],
+    })
+    const insert = table({ data: ROW, error: null })
+
+    await expect(
+      storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 }),
+    ).rejects.toThrow('too large')
+
+    expect(remove).toHaveBeenCalledWith(upload.mock.calls.slice(0, 3).map(([path]) => path))
+    expect(insert).not.toHaveBeenCalled()
+  })
+
   it('records when the photograph was taken', async () => {
     // The column exists so photographs from one burst can be found together.
     // If the capture time is dropped between the processor and the insert, the
@@ -118,7 +177,7 @@ describe('storePhoto', () => {
     bucket()
     const insert = table({ data: ROW, error: null })
 
-    await storePhoto({ albumId: 'album-1', image, sortOrder: 0 })
+    await storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })
 
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({ taken_at: '2026-08-19T13:45:02' }),
@@ -129,7 +188,7 @@ describe('storePhoto', () => {
     bucket()
     const insert = table({ data: ROW, error: null })
 
-    await storePhoto({ albumId: 'album-1', image: { ...image, takenAt: null }, sortOrder: 0 })
+    await storePhoto({ albumId: 'album-1', original, image: { ...image, takenAt: null }, sortOrder: 0 })
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ taken_at: null }))
   })
@@ -140,7 +199,7 @@ describe('storePhoto', () => {
       uploads: [{ error: null }, { error: { message: 'thumbnail rejected' } }],
     })
 
-    await expect(storePhoto({ albumId: 'album-1', image, sortOrder: 0 })).rejects.toThrow(
+    await expect(storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })).rejects.toThrow(
       'thumbnail rejected',
     )
 
@@ -154,7 +213,7 @@ describe('storePhoto', () => {
     const { remove, upload } = bucket()
     table({ data: null, error: { message: 'permission denied for table photos' } })
 
-    await expect(storePhoto({ albumId: 'album-1', image, sortOrder: 0 })).rejects.toThrow(
+    await expect(storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })).rejects.toThrow(
       'permission denied',
     )
 
@@ -168,7 +227,7 @@ describe('storePhoto', () => {
     })
     const insert = table({ data: ROW, error: null })
 
-    await expect(storePhoto({ albumId: 'album-1', image, sortOrder: 0 })).rejects.toThrow(
+    await expect(storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })).rejects.toThrow(
       'quota exceeded',
     )
 
@@ -180,7 +239,7 @@ describe('storePhoto', () => {
     auth.getClaims.mockResolvedValue({ data: null, error: null })
     const { upload } = bucket()
 
-    await expect(storePhoto({ albumId: 'album-1', image, sortOrder: 0 })).rejects.toThrow(
+    await expect(storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })).rejects.toThrow(
       'session has expired',
     )
     expect(upload).not.toHaveBeenCalled()
@@ -190,11 +249,11 @@ describe('storePhoto', () => {
     const { upload } = bucket()
     table({ data: ROW, error: null })
 
-    await storePhoto({ albumId: 'album-1', image, sortOrder: 0 })
+    await storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })
     const first = upload.mock.calls[0][0]
 
     upload.mockClear()
-    await storePhoto({ albumId: 'album-1', image, sortOrder: 1 })
+    await storePhoto({ albumId: 'album-1', original, image, sortOrder: 1 })
     const second = upload.mock.calls[0][0]
 
     expect(first).not.toBe(second)
@@ -479,6 +538,7 @@ describe('deletePhoto', () => {
       storagePath: 'owner/a/1.jpg',
       thumbnailPath: 'owner/a/1-thumb.jpg',
       displayPath: null,
+      originalPath: null,
       width: 2000,
       height: 1500,
       caption: null,
@@ -532,6 +592,14 @@ describe('deletePhoto', () => {
 
     await expect(deletePhoto(photo())).rejects.toThrow('permission denied')
     expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('removes the original with the photograph', async () => {
+    const { remove } = deletion()
+
+    await deletePhoto(photo({ originalPath: 'owner/a/1-original.heic' }))
+
+    expect(remove).toHaveBeenCalledWith(['owner/a/1.jpg', 'owner/a/1-thumb.jpg', 'owner/a/1-original.heic'])
   })
 
   it('copes with a photo that has no thumbnail', async () => {
@@ -608,6 +676,7 @@ describe('attachDisplay', () => {
     storagePath: `${OWNER}/album-1/abc.jpg`,
     thumbnailPath: `${OWNER}/album-1/abc-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -650,3 +719,38 @@ describe('attachDisplay', () => {
   })
 })
 
+
+describe('originalDownloadUrl', () => {
+  const stored = {
+    id: 'photo-1',
+    storagePath: 'owner/a/1.jpg',
+    thumbnailPath: null,
+    displayPath: null,
+    originalPath: 'owner/a/1-original.heic',
+    width: 2000,
+    height: 1500,
+    caption: null,
+    captionVisibility: 'hidden',
+    alt: null,
+    sortOrder: 0,
+    phash: null,
+    sharpness: null,
+    takenAt: null,
+  } satisfies Photo
+
+  it('signs a short-lived link that downloads under a plain name', async () => {
+    const createSignedUrl = vi.fn(async () => ({ data: { signedUrl: 'https://signed/original' }, error: null }))
+    storage.from.mockReturnValue({ createSignedUrl })
+
+    await expect(originalDownloadUrl(stored)).resolves.toBe('https://signed/original')
+    expect(createSignedUrl).toHaveBeenCalledWith('owner/a/1-original.heic', 60, {
+      download: 'photo-1.heic',
+    })
+  })
+
+  it('refuses a photograph that has no original rather than signing the copy', async () => {
+    await expect(originalDownloadUrl({ ...stored, originalPath: null })).rejects.toThrow(
+      'no full-quality original',
+    )
+  })
+})

@@ -1,4 +1,5 @@
 import { currentOwnerId } from './session'
+import { originalDownloadName, originalFormat } from './originals'
 import type { ProcessedImage } from './imaging/process'
 import { supabase } from './supabase'
 
@@ -24,6 +25,14 @@ export type Photo = {
   thumbnailPath: string | null
   /** The grid's mid-size copy. Null until written for an older photograph. */
   displayPath: string | null
+  /**
+   * The file exactly as it was chosen, for download and print.
+   *
+   * Null for every photograph uploaded before originals were kept, and for a
+   * file of a type or size the bucket does not take. Neither can be filled in
+   * later: the bytes were never stored.
+   */
+  originalPath: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -54,6 +63,7 @@ type PhotoRow = {
   storage_path: string
   thumbnail_path: string | null
   display_path: string | null
+  original_path: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -66,7 +76,7 @@ type PhotoRow = {
 }
 
 const PHOTO_COLUMNS =
-  'id, storage_path, thumbnail_path, display_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at'
+  'id, storage_path, thumbnail_path, display_path, original_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at'
 
 function toPhoto(row: PhotoRow): Photo {
   return {
@@ -74,6 +84,7 @@ function toPhoto(row: PhotoRow): Photo {
     storagePath: row.storage_path,
     thumbnailPath: row.thumbnail_path,
     displayPath: row.display_path ?? null,
+    originalPath: row.original_path ?? null,
     width: row.width,
     height: row.height,
     caption: row.caption,
@@ -96,25 +107,31 @@ function toPhoto(row: PhotoRow): Photo {
 export async function photoObjectPaths(albumId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('photos')
-    .select('storage_path, thumbnail_path, display_path')
+    .select('storage_path, thumbnail_path, display_path, original_path')
     .eq('album_id', albumId)
 
   if (error) throw new Error(error.message)
 
   return (data ?? []).flatMap((row) => {
-    const photo = row as Pick<PhotoRow, 'storage_path' | 'thumbnail_path' | 'display_path'>
+    const photo = row as Pick<
+      PhotoRow,
+      'storage_path' | 'thumbnail_path' | 'display_path' | 'original_path'
+    >
 
     return pathsOf({
       storagePath: photo.storage_path,
       thumbnailPath: photo.thumbnail_path,
       displayPath: photo.display_path,
+      originalPath: photo.original_path,
     })
   })
 }
 
 /** Every stored object behind one photograph. */
-export function pathsOf(photo: Pick<Photo, 'storagePath' | 'thumbnailPath' | 'displayPath'>): string[] {
-  return [photo.storagePath, photo.thumbnailPath, photo.displayPath].filter(
+export function pathsOf(
+  photo: Pick<Photo, 'storagePath' | 'thumbnailPath' | 'displayPath' | 'originalPath'>,
+): string[] {
+  return [photo.storagePath, photo.thumbnailPath, photo.displayPath, photo.originalPath].filter(
     (path): path is string => Boolean(path),
   )
 }
@@ -287,8 +304,14 @@ export type { ProcessedImage }
  * a database check constraint require it. Keeping the album in the key as well
  * makes an object's home obvious when looking at the bucket directly.
  */
-function objectKey(ownerId: string, albumId: string, id: string, suffix = ''): string {
-  return `${ownerId}/${albumId}/${id}${suffix}.jpg`
+function objectKey(
+  ownerId: string,
+  albumId: string,
+  id: string,
+  suffix = '',
+  extension = 'jpg',
+): string {
+  return `${ownerId}/${albumId}/${id}${suffix}.${extension}`
 }
 
 /**
@@ -302,6 +325,8 @@ function objectKey(ownerId: string, albumId: string, id: string, suffix = ''): s
 export async function storePhoto(input: {
   albumId: string
   image: ProcessedImage
+  /** The file as chosen. Kept as the original when `originalFormat` allows. */
+  original: File
   sortOrder: number
 }): Promise<Photo> {
   const ownerId = await currentOwnerId()
@@ -309,6 +334,10 @@ export async function storePhoto(input: {
   const storagePath = objectKey(ownerId, input.albumId, id)
   const thumbnailPath = objectKey(ownerId, input.albumId, id, '-thumb')
   const displayPath = objectKey(ownerId, input.albumId, id, DISPLAY_SUFFIX)
+  const original = originalFormat(input.original)
+  const originalPath = original
+    ? objectKey(ownerId, input.albumId, id, '-original', original.extension)
+    : null
 
   const bucket = supabase.storage.from(PHOTO_BUCKET)
 
@@ -320,11 +349,16 @@ export async function storePhoto(input: {
 
   // In turn, not at once: each failure has to remove only what came before it.
   const written = [storagePath]
-  for (const [path, blob] of [
-    [thumbnailPath, input.image.thumbnail],
-    [displayPath, input.image.display],
-  ] as const) {
-    const uploadedCopy = await bucket.upload(path, blob, { contentType: 'image/jpeg', upsert: false })
+  // The original goes last: it is the largest, so a slow connection has already
+  // shown progress on the copies the album needs to draw anything.
+  const copies: [string, Blob, string][] = [
+    [thumbnailPath, input.image.thumbnail, 'image/jpeg'],
+    [displayPath, input.image.display, 'image/jpeg'],
+  ]
+  if (original && originalPath) copies.push([originalPath, input.original, original.mime])
+
+  for (const [path, blob, contentType] of copies) {
+    const uploadedCopy = await bucket.upload(path, blob, { contentType, upsert: false })
     if (uploadedCopy.error) {
       await bucket.remove(written)
       throw new Error(uploadedCopy.error.message)
@@ -340,6 +374,7 @@ export async function storePhoto(input: {
       storage_path: storagePath,
       thumbnail_path: thumbnailPath,
       display_path: displayPath,
+      original_path: originalPath,
       mime: 'image/jpeg',
       width: input.image.width,
       height: input.image.height,
@@ -360,6 +395,30 @@ export async function storePhoto(input: {
 }
 
 const DISPLAY_SUFFIX = '-display'
+
+/** Short: the link is used the moment it is made, and a copied one should go stale. */
+const DOWNLOAD_URL_TTL_SECONDS = 60
+
+/**
+ * A link that downloads a photograph's original rather than opening it.
+ *
+ * Signed on demand, not with the album: an album of originals is gigabytes,
+ * and nobody downloads all of them by opening the page.
+ */
+export async function originalDownloadUrl(photo: Photo): Promise<string> {
+  if (!photo.originalPath) throw new Error('This photo has no full-quality original.')
+
+  const { data, error } = await supabase.storage
+    .from(PHOTO_BUCKET)
+    .createSignedUrl(photo.originalPath, DOWNLOAD_URL_TTL_SECONDS, {
+      download: originalDownloadName(photo.originalPath),
+    })
+
+  if (error) throw new Error(error.message)
+  if (!data?.signedUrl) throw new Error('The download link could not be made.')
+
+  return data.signedUrl
+}
 
 /**
  * Gives an older photograph the grid's mid-size copy, from bytes already
