@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { SoftPhoto } from '../lib/focus'
 import type { Photo } from '../lib/photos'
 import { PhotoLightbox } from './PhotoLightbox'
-import { ReviewThumb, toLightboxPhoto } from './ReviewThumb'
+import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
 import { useReturnFocus } from './useReturnFocus'
 
 type SoftPhotosProps = {
@@ -89,7 +89,7 @@ export function SoftPhotos({ soft, thumbnails, onRemove }: SoftPhotosProps) {
 
           return (
             <li className={`similar-item${isMarked ? ' marked' : ''}`} key={photo.id}>
-              <ReviewThumb photo={photo} urls={thumbnails} onOpen={() => setViewing(index)} />
+              <ExpandableThumb photo={photo} urls={thumbnails} onOpen={() => setViewing(index)} />
 
               <p className="similar-meta">
                 <span className="similar-sharpness">{OUT_OF_FOCUS}</span>

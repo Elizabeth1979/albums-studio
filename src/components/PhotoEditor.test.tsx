@@ -1,5 +1,5 @@
 import { type ComponentProps } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PhotoEditor } from './PhotoEditor'
 import type { Photo } from '../lib/photos'
@@ -43,7 +43,7 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
     <PhotoEditor
       photo={photo()}
       position={1}
-      thumbnail="https://signed/1"
+      urls={new Map([[photo().thumbnailPath as string, 'https://signed/1']])}
       stories={[]}
       onSave={onSave}
       onAddStory={vi.fn().mockResolvedValue(undefined)}
@@ -458,5 +458,50 @@ describe('full quality', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Download full quality' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Object not found')
+  })
+})
+
+describe('the photo, larger', () => {
+  it('opens the full-size photo, and closing it leaves the editor open', () => {
+    // The editor is itself a dialog, and React passes a dialog's close event up
+    // its own tree: closing the photo must not close the editor under it.
+    const closeEditor = vi.fn()
+    const urls = new Map([
+      [photo().thumbnailPath as string, 'https://signed/thumb'],
+      [photo().storagePath, 'https://signed/full'],
+    ])
+    render(
+      <dialog open onClose={closeEditor}>
+        <PhotoEditor
+          photo={photo()}
+          position={1}
+          urls={urls}
+          stories={[]}
+          onSave={vi.fn()}
+          onAddStory={vi.fn()}
+          onEditStory={vi.fn()}
+          onDeleteStory={vi.fn()}
+          isCover={false}
+          onUseAsCover={vi.fn()}
+          onMoveEarlier={null}
+          onMoveLater={null}
+          onDelete={vi.fn()}
+          onDownloadOriginal={null}
+          onClose={closeEditor}
+        />
+      </dialog>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'View photo 1 larger' }))
+    const lightbox = document.querySelector('dialog.lightbox') as HTMLDialogElement
+    expect(lightbox).toHaveAttribute('open')
+    expect(lightbox.querySelector('img.lightbox-image')).toHaveAttribute(
+      'src',
+      'https://signed/full',
+    )
+
+    fireEvent.click(within(lightbox).getByRole('button', { name: 'Close' }))
+    expect(lightbox).not.toHaveAttribute('open')
+    expect(closeEditor).not.toHaveBeenCalled()
   })
 })
