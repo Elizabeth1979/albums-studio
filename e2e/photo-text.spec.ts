@@ -33,6 +33,19 @@ async function openPhoto(page: Page, options: StubOptions = {}) {
   return calls
 }
 
+test.describe('full quality', () => {
+  test('downloads the original as it was chosen, not the copy the album draws', async ({ page }) => {
+    await openPhoto(page)
+
+    const download = page.waitForRequest((request) => request.url().includes('/object/signed/'))
+    await page.getByRole('button', { name: 'Download full quality' }).click()
+
+    const url = new URL((await download).url())
+    expect(decodeURIComponent(url.pathname)).toMatch(/-original\.png$/)
+    expect(url.searchParams.get('download')).toMatch(/^photo-.+\.png$/)
+  })
+})
+
 test.describe('writing about a photo', () => {
   test('saves a caption, its visibility, and alt text', async ({ page }) => {
     const calls = await openPhoto(page)

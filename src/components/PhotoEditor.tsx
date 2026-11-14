@@ -189,7 +189,7 @@ export function PhotoEditor({
 
           {onDownloadOriginal ? (
             <button
-              className="secondary-button"
+              className="text-button download-original"
               type="button"
               onClick={() => handleDownload(onDownloadOriginal)}
               disabled={downloading}

@@ -1628,6 +1628,13 @@ textarea:focus-visible {
   font-size: 0.82rem;
 }
 
+/* Beside the photograph it belongs to, as a quiet action rather than a third big button. */
+.download-original {
+  display: block;
+  margin-top: 0.6rem;
+  text-align: left;
+}
+
 .similar {
   margin-top: 2.4rem;
   padding-top: 1.8rem;

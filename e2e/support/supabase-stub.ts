@@ -270,6 +270,14 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     // <img> resolves rather than dangling.
     if (path.startsWith('/storage/v1/object/sign/')) {
       const body = parseBody(request) as { paths?: string[]; expiresIn?: number }
+
+      // One object at a time is a download link; the key is in the path itself.
+      if (!body.paths) {
+        const signedPath = decodeURIComponent(path.slice('/storage/v1/object/sign/photos/'.length))
+        // Shaped like the real one: the client appends `&download=` to it.
+        return json({ signedURL: `/object/signed/${signedPath}?token=stub` })
+      }
+
       // The client prefixes its storage base onto whatever `signedURL` holds,
       // so this has to be relative to /storage/v1 rather than absolute.
       return json(

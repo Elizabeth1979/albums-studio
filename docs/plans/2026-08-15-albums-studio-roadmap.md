@@ -263,15 +263,28 @@ against the owner's storage quota (open question 12), which is how price is set;
 separate "high quality" add-on, because an owner who had not bought one would lose originals
 that buying it later could not restore.
 
-Work this needs, all in one change: raise the `photos` bucket's 5 MB file limit, which phone
-originals exceed; a column for the original's path with its insert grant; upload it as part of
-the same photograph; delete it with the photograph (rows before bytes, as everywhere); teach
-the orphan check about it; sign download URLs for visitors from the `shared-album` function;
-and add the write to `supabase/checks/client_paths.sql`. iPhone originals are HEIC, which
-Windows and Android do not always open, so the download has to say what the file is.
+Split in two, because originals carry what the redrawn copies do not: the camera's metadata,
+including **where the photograph was taken**. A share link that handed out originals would hand
+out the location of the owner's home.
 
-**Checkpoint:** a photograph uploaded from a phone downloads, for the owner and through the
-share link, byte-for-byte identical to the file that was chosen.
+- **Step 1 — keep them, and let the owner download them.** ✅ Implemented 2026-11-14, migration
+  `20261114142706_keep_full_quality_originals` applied to the hosted project. Each upload stores
+  `<id>-original.<ext>` under the file's own type, recorded in `photos.original_path`. The
+  bucket takes 50 MB and HEIC/HEIF. A type or size the bucket would refuse still uploads,
+  without an original, and the photo editor says plainly when a photograph has none. Deleting a
+  photograph or album removes it; the orphan check and removal script know about it.
+  `original_path` is `select`/`insert` for `authenticated` only: never updatable, since an
+  original cannot be made after the fact, and not readable by `anon`.
+- **Step 2 — visitors download them, with location removed.** Not started. Strip the GPS block
+  from the EXIF (JPEG and HEIC both keep it as a TIFF structure that can be blanked in place,
+  without re-encoding), then sign download URLs for visitors from the `shared-album` function.
+
+iPhones mostly hand a browser a full-resolution JPEG, converting from HEIC as the file is
+chosen (see `PhotoUploader.tsx`), so HEIC originals arrive mainly from a Mac or desktop Safari.
+
+**Checkpoint:** a photograph uploaded from a phone downloads, for the owner, byte-for-byte
+identical to the file that was chosen (step 1); and through the share link, identical except
+that its location is gone (step 2).
 
 ### Phase 4 — Text foundation: captions, story notes + manual alt text
 Add photo editing UI for:
