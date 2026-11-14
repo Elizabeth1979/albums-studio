@@ -71,7 +71,7 @@ async function referencedPaths() {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from('photos')
-      .select('storage_path, thumbnail_path')
+      .select('storage_path, thumbnail_path, display_path')
       .range(from, from + pageSize - 1)
 
     if (error) throw new Error(`Reading photos: ${error.message}`)
@@ -79,6 +79,7 @@ async function referencedPaths() {
     for (const row of data) {
       paths.add(row.storage_path)
       if (row.thumbnail_path) paths.add(row.thumbnail_path)
+      if (row.display_path) paths.add(row.display_path)
     }
 
     if (data.length < pageSize) break

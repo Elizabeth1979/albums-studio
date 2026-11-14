@@ -4,8 +4,10 @@ import { createImageProcessor } from '../lib/imaging/processor'
 import {
   type Photo,
   type TextVisibility,
+  attachDisplay,
   deletePhoto,
   listPhotos,
+  pathsOf,
   photoBytes,
   signedUrls,
   storePhoto,
@@ -29,6 +31,7 @@ import { mapWithConcurrency } from '../lib/concurrency'
 import type { FocusReading } from '../lib/imaging/measure'
 import { type FaceReading, findFacesIn, forgetDetector } from '../lib/imaging/faces'
 import { findSoftPhotos, summariseFaces, summariseFocus } from '../lib/focus'
+import { displayRendition } from '../lib/imaging/process'
 import { PhotoGallery } from './PhotoGallery'
 import { PhotoUploader } from './PhotoUploader'
 
@@ -92,9 +95,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
    * gain.
    */
   const refreshThumbnails = useCallback(async (current: Photo[]) => {
-    const paths = current
-      .flatMap((photo) => [photo.thumbnailPath, photo.storagePath])
-      .filter((path): path is string => Boolean(path))
+    const paths = current.flatMap(pathsOf)
 
     if (paths.length === 0) {
       setThumbnails(new Map())
@@ -112,6 +113,19 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   }, [])
 
   /**
+   * Never fails the caller: without the copy the tile still draws from the
+   * stored image, exactly as before, and the next open tries again.
+   */
+  const backfillDisplay = useCallback(async (photo: Photo, stored: Blob) => {
+    try {
+      const updated = await attachDisplay(photo, await displayRendition(stored))
+      setPhotos((current) => current.map((each) => (each.id === updated.id ? updated : each)))
+    } catch (caught) {
+      console.warn(`No display copy for ${photo.id}:`, caught)
+    }
+  }, [])
+
+  /**
    * Reads how well each photograph is focused, from the thumbnails the album
    * has already downloaded.
    *
@@ -121,6 +135,14 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
    * so measuring only new uploads would help nobody who needs it. Four at a
    * time, because this is background work: the album is already on screen and
    * the advice appears underneath it a moment later.
+   *
+   * Two at a time, not more. Each of these is a 2000px download, and the tiles
+   * the owner is scrolling through share the same connection; four at once
+   * left them drawing in strips on a phone.
+   *
+   * A photograph uploaded before the grid had its own mid-size copy gets one
+   * here, from the bytes already in hand, so its album is slow to draw once
+   * rather than every time.
    *
    * The bytes come through the Supabase client rather than by fetching the
    * signed URL the tiles are drawn from. An `<img>` may display a URL that
@@ -138,7 +160,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     try {
       const processor = imageProcessor()
 
-      const results = await mapWithConcurrency(measurable, 4, async (photo) => {
+      const results = await mapWithConcurrency(measurable, 2, async (photo) => {
         const bytes = await photoBytes(photo.storagePath)
 
         // The blur reading goes to the worker; finding the faces cannot, and
@@ -148,6 +170,8 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
         // once, and a phone has only so much memory for bitmaps.
         const blur = await processor.measure(bytes)
         const faces = await findFacesIn(bytes)
+
+        if (!photo.displayPath) await backfillDisplay(photo, bytes)
 
         return { blur, faces }
       })
@@ -190,7 +214,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
         return next
       })
     }
-  }, [])
+  }, [backfillDisplay])
 
   useEffect(() => {
     let active = true

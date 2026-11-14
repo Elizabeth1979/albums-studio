@@ -57,7 +57,7 @@ flowchart LR
         ShareUI["Share link<br/>create, rotate, revoke"]:::current
         Curation["Near-duplicate review<br/>groups, sharpness, best shot"]:::current
         Studio["AI Story Studio"]:::planned
-        Local["Local image processing<br/>resize, thumbnail, pHash, sharpness, EXIF"]:::current
+        Local["Local image processing<br/>resize, display copy, thumbnail, pHash, sharpness, EXIF"]:::current
         LocalModel["Local models<br/>faces, embeddings, alt drafts"]:::planned
         Upload["Upload queue<br/>4 concurrent, retry"]:::current
 
@@ -170,6 +170,7 @@ erDiagram
         uuid owner_id FK "NOT NULL"
         text storage_path UK "NOT NULL"
         text thumbnail_path
+        text display_path
         text mime
         int4 width
         int4 height

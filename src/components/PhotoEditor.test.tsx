@@ -10,6 +10,7 @@ function photo(overrides: Partial<Photo> = {}): Photo {
     id: 'photo-1',
     storagePath: 'owner/album-1/photo-1.jpg',
     thumbnailPath: 'owner/album-1/photo-1-thumb.jpg',
+    displayPath: null,
     width: 2000,
     height: 1500,
     caption: null,

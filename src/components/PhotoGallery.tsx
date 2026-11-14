@@ -1,9 +1,27 @@
-import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
+import { DISPLAY_SIZE, FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import type { Photo } from '../lib/photos'
 
 // Three columns on a wide screen and two on a narrow one, so a tile occupies
-// roughly a third of the album canvas, then half of it.
-const TILE_SIZES = '(max-width: 720px) 50vw, 33vw'
+// roughly a third of the album canvas, then half of it. The canvas stops at
+// 78rem, so past that a tile stops growing; saying 33vw there made a wide
+// retina screen fetch the 2000px image for a 26rem tile.
+export const TILE_SIZES = '(max-width: 720px) 50vw, min(33vw, 26rem)'
+
+/** A `srcset` from whichever copies are signed, smallest first. */
+export function tileSrcSet(copies: {
+  thumbnail?: string
+  display?: string
+  full?: string
+}): string | undefined {
+  const candidates = [
+    [copies.thumbnail, THUMBNAIL_SIZE],
+    [copies.display, DISPLAY_SIZE],
+    [copies.full, FULL_SIZE],
+  ] as const
+  const offered = candidates.filter(([url]) => url).map(([url, size]) => `${url} ${size}w`)
+
+  return offered.length > 1 ? offered.join(', ') : undefined
+}
 
 type PhotoGalleryProps = {
   photos: Photo[]
@@ -57,8 +75,10 @@ export function PhotoGallery({
     <ul className="photo-gallery">
       {photos.map((photo, index) => {
         const thumbnail = photo.thumbnailPath ? thumbnails.get(photo.thumbnailPath) : undefined
+        const display = photo.displayPath ? thumbnails.get(photo.displayPath) : undefined
         const full = thumbnails.get(photo.storagePath)
-        const source = full ?? thumbnail
+        const source = display ?? full ?? thumbnail
+        const srcSet = tileSrcSet({ thumbnail, display, full })
         const stories = storyCounts.get(photo.id) ?? 0
         const written = Boolean(photo.caption) || Boolean(photo.alt) || stories > 0
         const isCover = photo.id === coverPhotoId
@@ -74,18 +94,12 @@ export function PhotoGallery({
               {source ? (
                 <img
                   // A tile is around a third of a 78rem canvas, so on a retina
-                  // screen it asks for close to 800 device pixels. The 400px
-                  // thumbnail alone was being stretched to twice its size, and
-                  // an album of photographs rendered visibly soft. Offering the
-                  // stored image alongside it lets the browser take whichever
-                  // one the tile actually needs.
+                  // screen it asks for close to 800 device pixels. Offering
+                  // every copy lets the browser take the smallest that fills
+                  // it — normally the 1080px display copy, not the 2000px one.
                   src={source}
-                  srcSet={
-                    full && thumbnail
-                      ? `${thumbnail} ${THUMBNAIL_SIZE}w, ${full} ${FULL_SIZE}w`
-                      : undefined
-                  }
-                  sizes={full && thumbnail ? TILE_SIZES : undefined}
+                  srcSet={srcSet}
+                  sizes={srcSet ? TILE_SIZES : undefined}
                   // The button carries the description; repeating it on the
                   // image would make a screen reader read the photo twice.
                   alt=""

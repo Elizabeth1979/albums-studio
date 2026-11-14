@@ -82,6 +82,7 @@ export type PhotoRecord = {
   album_id: string
   storage_path: string
   thumbnail_path: string | null
+  display_path?: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -318,7 +319,8 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       }
 
       if (method === 'POST' || method === 'PUT') {
-        objects = [...objects, key]
+        // An upsert writes the same key again; Storage keeps one object.
+        objects = [...objects.filter((existing) => existing !== key), key]
         return json({ Key: `photos/${key}` })
       }
 
@@ -411,6 +413,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           album_id: String(body.album_id ?? ''),
           storage_path: String(body.storage_path ?? ''),
           thumbnail_path: (body.thumbnail_path as string | null) ?? null,
+          display_path: (body.display_path as string | null) ?? null,
           width: (body.width as number | null) ?? null,
           height: (body.height as number | null) ?? null,
           caption: null,

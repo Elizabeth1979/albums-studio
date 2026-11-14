@@ -79,6 +79,7 @@ beforeEach(() => {
   processorApi.process.mockResolvedValue({
     full: new Blob(['full']),
     thumbnail: new Blob(['thumb']),
+    display: new Blob(['display']),
     width: 2000,
     height: 1500,
     phash: '0'.repeat(64),
@@ -271,6 +272,7 @@ describe('Studio', () => {
       id: 'photo-0',
       storagePath: 'owner/album-1/photo-0.jpg',
       thumbnailPath: 'owner/album-1/photo-0-thumb.jpg',
+      displayPath: null,
       width: 2000,
       height: 1500,
       caption: null,
