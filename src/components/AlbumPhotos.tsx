@@ -7,6 +7,7 @@ import {
   attachDisplay,
   deletePhoto,
   listPhotos,
+  originalDownloadUrl,
   pathsOf,
   photoBytes,
   signedUrls,
@@ -630,6 +631,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                       : null
                   }
                   onDelete={() => handleDeletePhoto(selected)}
+                  onDownloadOriginal={
+                    selected.originalPath
+                      ? async () => window.location.assign(await originalDownloadUrl(selected))
+                      : null
+                  }
                   onClose={() => setSelectedId(null)}
                 />
               )}

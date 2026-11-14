@@ -26,6 +26,7 @@ where o.bucket_id = 'photos'
     where p.storage_path = o.name
        or p.thumbnail_path = o.name
        or p.display_path = o.name
+       or p.original_path = o.name
   )
 order by o.created_at;
 
@@ -45,6 +46,7 @@ from (
       where p.storage_path = o.name
          or p.thumbnail_path = o.name
          or p.display_path = o.name
+         or p.original_path = o.name
     ) as referenced
   from storage.objects o
   where o.bucket_id = 'photos'
