@@ -36,6 +36,35 @@ function askToRemove() {
 }
 
 describe('SimilarPhotos', () => {
+  it('offers to tick all but the sharpest, and only once focus is measured', () => {
+    // Without a reading the "sharpest" is just the first frame, so the
+    // suggestion would be arbitrary and is not offered.
+    const photos = [
+      { ...photo('photo-1', 0), sharpness: 50 },
+      { ...photo('photo-2', 1), sharpness: 100 },
+      { ...photo('photo-3', 2), sharpness: 80 },
+    ]
+    const unmeasured = [photo('photo-4', 3), photo('photo-5', 4)]
+    render(
+      <SimilarPhotos
+        groups={[
+          { photos, suggested: photos[1], spread: 2 },
+          { photos: unmeasured, suggested: unmeasured[0], spread: 2 },
+        ]}
+        thumbnails={new Map()}
+        onRemove={vi.fn()}
+      />,
+    )
+
+    const offers = screen.getAllByRole('button', { name: 'Suggest which to remove' })
+    expect(offers).toHaveLength(1)
+    fireEvent.click(offers[0])
+
+    expect(screen.getByLabelText('Remove photo 1')).toBeChecked()
+    expect(screen.getByLabelText('Remove photo 2')).not.toBeChecked()
+    expect(screen.getByLabelText('Remove photo 3')).toBeChecked()
+  })
+
   it('hands focus to the safe choice once removal is asked for', () => {
     // The button pressed is replaced by the confirmation, so focus has to go
     // somewhere: to keeping them, so a second Enter loses nothing.
