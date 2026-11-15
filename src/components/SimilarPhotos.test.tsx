@@ -54,7 +54,7 @@ describe('SimilarPhotos', () => {
     )
 
     const tags = [...document.querySelectorAll('.similar-tag')].map((tag) => tag.textContent)
-    expect(tags).toEqual(['Sharpest', 'Just as sharp', 'Softer', 'Blurry'])
+    expect(tags).toEqual(['Sharpest', 'Just as sharp', 'Slightly blurry', 'Blurry'])
   })
 
   it('hands focus to the safe choice once removal is asked for', () => {
