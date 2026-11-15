@@ -195,6 +195,11 @@ AI cost.
 - [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
   a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
   was five times too low; photographs are now judged against their own album's median.
+- [Eyes read against themselves](sessions/2026-11-15-eyes-read-against-themselves.md) — the
+  eye model finds no face on its own in a frame where a person is small, so it reads cut-outs
+  of faces the tiled detector found; a laughing face with open eyes already scores 0.26, so a
+  blink is judged against the same person in other frames, never against a fixed line. Shown,
+  not acted on, until a real blink has been seen.
 - [Find the people first](sessions/2026-09-02-find-the-people-first.md) — the first round of
   judging the subject rather than the frame: BlazeFace, self-hosted, reporting on screen and
   acting on nothing, plus five things the plan got wrong that only running it revealed (the

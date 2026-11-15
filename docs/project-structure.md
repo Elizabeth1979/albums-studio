@@ -20,7 +20,8 @@ the model out, not that it performed badly.
 | pHash (DCT), project code | Near-duplicate grouping | Browser | Project code | Shipped |
 | Laplacian sharpness, project code | Best-shot ranking | Browser | Project code | Shipped |
 | EXIF timestamps, project code | Burst grouping | Browser | Project code | Shipped |
-| Face detector and landmarks | Faces visible, eyes open | Browser, WASM | Apache-2.0, bundle still to confirm | Candidate, Phase 7 |
+| BlazeFace short-range (MediaPipe) | Finding faces | Browser, WASM, main thread | Apache-2.0 | Shipped, readings shown only |
+| Face Landmarker with blendshapes (MediaPipe), `face_landmarker.task` 3.6 MB | Eyes open or closed, per face | Browser, WASM, main thread | Apache-2.0, as MediaPipe publishes its models; the model card itself not yet read | Shipped 2026-11-15, readings shown only |
 | CLIP or SigLIP | Semantic search embeddings | Browser, ONNX | MIT, Apache-2.0 | Candidate, Phase 10 |
 | Florence-2-base | Alt text drafts | Browser, WebGPU | MIT | Candidate, Phase 11 |
 | SmolVLM 256M and 500M | Alt text drafts | Browser, WebGPU | Apache-2.0 | Candidate, Phase 11 |

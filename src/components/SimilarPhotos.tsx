@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
 import { compareSharpness, type SharpnessReading, type SimilarGroup } from '../lib/similarity'
+import { type FrameFaces, followPeople, framesWithBlinks } from '../lib/blinks'
+import type { EyeReading } from '../lib/imaging/eyes'
 import { PhotoLightbox } from './PhotoLightbox'
 import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
 import { useReturnFocus } from './useReturnFocus'
@@ -16,7 +18,81 @@ type SimilarPhotosProps = {
    * the reading therefore says something about focus rather than about subject.
    */
   readings?: Map<string, number>
+  /** Eyes read in each photograph, by photo id. Shown, never acted on yet. */
+  eyes?: Map<string, EyeReading>
   onRemove: (photos: Photo[]) => Promise<void>
+}
+
+/** What a face's eyes say, in words, against the same person in the other frames. */
+function eyesText(closed: boolean | null): string {
+  if (closed === true) return 'Eyes closed?'
+  if (closed === false) return 'Eyes open'
+  return 'Not compared'
+}
+
+/**
+ * The faces of one group, person by person, frame against frame.
+ *
+ * Shown so the owner can see a blink rather than trust a model with it, and so
+ * the model's numbers can be checked against real photographs before anything
+ * acts on them. The number beside each face is the model's eyes-closed score,
+ * 0 open to 1 shut, and is temporary in the same way as the focus readings.
+ */
+function GroupFaces({ group, eyes }: { group: SimilarGroup; eyes: Map<string, EyeReading> }) {
+  const frames: FrameFaces[] = group.photos.flatMap((photo) => {
+    const reading = eyes.get(photo.id)
+    if (reading?.kind !== 'read' || !photo.width || !photo.height) return []
+
+    return [{ photoId: photo.id, width: photo.width, height: photo.height, faces: reading.faces }]
+  })
+  const failed = group.photos
+    .map((photo) => eyes.get(photo.id))
+    .find((reading) => reading?.kind === 'unavailable')
+
+  // Only people seen in more than one frame: a face with nothing to compare
+  // against has nothing to say here.
+  const people = followPeople(frames).filter((person) => person.appearances.length > 1)
+  const blinked = framesWithBlinks(people)
+  const number = new Map(group.photos.map((photo) => [photo.id, photo.sortOrder + 1]))
+
+  if (people.length === 0 && !failed) return null
+
+  return (
+    <div className="similar-faces">
+      <h4>Eyes</h4>
+      {failed?.kind === 'unavailable' && (
+        <p className="field-hint">The eyes could not be read: {failed.detail}</p>
+      )}
+      {people.length > 0 && (
+        <p className="field-hint">
+          {blinked.size === 0
+            ? 'Nobody looks to have blinked.'
+            : `Someone may have blinked in photo ${[...blinked].map((id) => number.get(id)).join(' and ')}.`}{' '}
+          Each person is compared only with themselves in these photos. This is new and still
+          being checked, so it does not change anything yet.
+        </p>
+      )}
+      {people.map((person, personIndex) => (
+        <ul className="face-row" aria-label={`Person ${personIndex + 1}`} key={personIndex}>
+          {person.appearances.map((one) => (
+            <li className={`face-item${one.closed ? ' closed' : ''}`} key={one.photoId}>
+              {one.face.closeUp ? (
+                <img className="face-close-up" src={one.face.closeUp} alt="" />
+              ) : (
+                <span className="face-close-up empty" aria-hidden="true" />
+              )}
+              <span className="face-label">
+                Photo {number.get(one.photoId)}: {eyesText(one.closed)}
+                {one.face.blink !== null && (
+                  <span className="face-score"> {one.face.blink.toFixed(2)}</span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ))}
+    </div>
+  )
 }
 
 /** What each focus reading says out loud. */
@@ -46,6 +122,7 @@ export function SimilarPhotos({
   groups,
   thumbnails,
   readings = new Map(),
+  eyes = new Map(),
   onRemove,
 }: SimilarPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
@@ -150,6 +227,8 @@ export function SimilarPhotos({
               )
             })}
           </ul>
+
+          <GroupFaces group={group} eyes={eyes} />
         </div>
       ))}
 
