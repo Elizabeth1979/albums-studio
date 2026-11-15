@@ -2198,3 +2198,10 @@ textarea:focus-visible {
   color: #6f675c;
   font-size: 0.85rem;
 }
+
+/* Under a shared photograph, quiet, like the editor's own download. */
+.shared-download {
+  display: block;
+  margin-top: 0.4rem;
+  text-align: left;
+}

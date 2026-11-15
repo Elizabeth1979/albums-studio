@@ -261,6 +261,26 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     if (path === '/functions/v1/shared-album') {
       const wanted = url.searchParams.get('token') ?? ''
       const answer = options.shared?.[wanted]
+      const photo = url.searchParams.get('photo')
+
+      // A visitor's download of one original: only for a photograph the token's
+      // album holds and that has one, as the real function decides.
+      if (photo !== null) {
+        const held = (answer as { photos?: { id: string; hasOriginal?: boolean }[] } | undefined)
+          ?.photos?.find((one) => one.id === photo && one.hasOriginal)
+        if (!held) return json({ error: 'not found' }, 404)
+
+        return route.fulfill({
+          status: 200,
+          contentType: 'image/jpeg',
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Expose-Headers': 'content-disposition',
+            'Content-Disposition': `attachment; filename="photo-${photo}.jpg"`,
+          },
+          body: Buffer.from('location-free original'),
+        })
+      }
 
       return answer ? json(answer) : json({ error: 'not found' }, 404)
     }

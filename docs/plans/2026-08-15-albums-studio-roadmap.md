@@ -275,9 +275,14 @@ out the location of the owner's home.
   photograph or album removes it; the orphan check and removal script know about it.
   `original_path` is `select`/`insert` for `authenticated` only: never updatable, since an
   original cannot be made after the fact, and not readable by `anon`.
-- **Step 2 — visitors download them, with location removed.** Not started. Strip the GPS block
-  from the EXIF (JPEG and HEIC both keep it as a TIFF structure that can be blanked in place,
-  without re-encoding), then sign download URLs for visitors from the `shared-album` function.
+- **Step 2 — visitors download them, with location removed.** ✅ Implemented 2026-11-15,
+  `shared-album` version 5 deployed. A visitor sees "Download full quality" under each
+  photograph that has an original. The function checks the photo belongs to the token's
+  album, reads the original with the service role, blanks the EXIF GPS block and any XMP
+  coordinates in place (`supabase/functions/_shared/location.ts`, no re-encoding, same length,
+  pixels identical), and returns it as an attachment. Checked against a real JPEG written and
+  read back by Pillow: latitude, longitude and altitude gone, camera make and model kept.
+  Not yet seen end to end on a real original, because none existed when it shipped.
 
 iPhones mostly hand a browser a full-resolution JPEG, converting from HEIC as the file is
 chosen (see `PhotoUploader.tsx`), so HEIC originals arrive mainly from a Mac or desktop Safari.

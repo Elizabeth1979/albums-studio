@@ -32,8 +32,9 @@ AI cost.
   takes the bandwidth the tiles on screen need.
 - Since 2026-11-14 an upload also keeps the file exactly as it was chosen, so the owner can
   download a photograph at full quality from the photo editor. Photographs uploaded earlier
-  have no original and the editor says so. Originals are not shown to visitors: they keep the
-  camera's location, and removing it is roadmap Phase 3.5 step 2.
+  have no original and the editor says so. Visitors with the share link can download the
+  original too, with where it was taken removed by the Edge Function before it leaves the
+  server; the owner's own download keeps the location.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
