@@ -93,7 +93,7 @@ flowchart LR
             FaceSchema["Consent and face embeddings"]:::planned
         end
 
-        EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential"]:::current
+        EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential<br/>originals served with location removed"]:::current
         EdgeAI["Edge Functions<br/>AI calls, quotas, BYOK keys"]:::planned
 
         Auth --> Profiles

@@ -46,6 +46,8 @@ export type SharedPhoto = {
   thumbnailUrl: string | null
   fullUrl: string | null
   stories: string[]
+  /** Whether a full-quality original can be downloaded. Absent from older responses. */
+  hasOriginal?: boolean
 }
 
 export type SharedAlbum = {
@@ -63,6 +65,33 @@ export type SharedAlbum = {
  * private, so nothing in a browser can mint a URL for the image bytes. The Edge
  * Function holds the only key that can, and it accepts nothing but the token.
  */
+/**
+ * One photograph's full-quality original, as a visitor, with its location removed.
+ *
+ * Fetched rather than navigated to: the function sits behind the publishable
+ * key, which a plain link cannot carry. The location is removed by the function
+ * before the bytes leave the server, never here.
+ */
+export async function sharedOriginal(
+  token: string,
+  photoId: string,
+): Promise<{ blob: Blob; name: string }> {
+  const base = import.meta.env.VITE_SUPABASE_URL
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+
+  const response = await fetch(
+    `${base}/functions/v1/shared-album?token=${encodeURIComponent(token)}&photo=${encodeURIComponent(photoId)}`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  )
+
+  if (response.status === 404) throw new Error('This photo is no longer available to download.')
+  if (!response.ok) throw new Error(`The download could not start (${response.status}).`)
+
+  const named = /filename="([^"]+)"/.exec(response.headers.get('content-disposition') ?? '')
+
+  return { blob: await response.blob(), name: named?.[1] ?? `photo-${photoId}` }
+}
+
 export async function loadSharedAlbum(token: string): Promise<SharedAlbum> {
   const base = import.meta.env.VITE_SUPABASE_URL
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY

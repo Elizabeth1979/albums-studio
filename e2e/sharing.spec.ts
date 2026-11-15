@@ -96,7 +96,30 @@ test.describe('opening a shared album as a visitor', () => {
     },
   }
 
-  test('needs no account at all', async ({ page }) => {
+  test('offers the full-quality original where there is one, and saves it as a file', async ({ page }) => {
+    const WITH_ORIGINAL = {
+      'good-token': {
+        album: SHARED['good-token'].album,
+        photos: [
+          { ...TWO_PHOTOS['good-token'].photos[0], hasOriginal: true },
+          { ...TWO_PHOTOS['good-token'].photos[1], hasOriginal: false },
+        ],
+      },
+    }
+    await stubSupabase(page, { shared: WITH_ORIGINAL })
+    await page.goto('/shared/good-token')
+
+    const offers = page.getByRole('button', { name: /Download full quality/ })
+    // Only the photograph that has an original offers one.
+    await expect(offers).toHaveCount(1)
+    await expect(offers).toHaveAccessibleName('Download full quality of photograph 1')
+
+    const download = page.waitForEvent('download')
+    await offers.click()
+    expect((await download).suggestedFilename()).toBe('photo-photo-1.jpg')
+  })
+
+    test('needs no account at all', async ({ page }) => {
     // The whole point. A visitor arriving cold must never meet a sign-in form.
     await stubSupabase(page, { shared: SHARED })
 

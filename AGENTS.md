@@ -136,7 +136,10 @@ saying so.
 - The `shared-album` Edge Function runs with `verify_jwt` off, alone among anything here.
   Requiring a JWT would defeat a link that needs no account. It is not unauthenticated: the
   share token is the credential and the database checks it on every call, and the function
-  accepts no album, photo or owner id from the caller.
+  accepts no album or owner id from the caller. Its one exception is a photo id, to download
+  that photo's original, honoured only when `get_shared_album` lists that photo for the token
+  and answered exactly as a wrong token otherwise. Originals leave it with their location
+  removed (`supabase/functions/_shared/location.ts`); the owner's own download keeps it.
 - Publishable keys may be used in the browser. Secret keys and AI provider keys never may.
 
 ## Working conventions
