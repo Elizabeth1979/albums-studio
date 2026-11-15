@@ -116,3 +116,51 @@ describe('SimilarPhotos', () => {
     expect(image()).toHaveAttribute('src', 'full:photo-1')
   })
 })
+
+describe('eyes in a group', () => {
+  const face = (x: number, blink: number | null) => ({
+    x, y: 300, width: 100, height: 100, blink, closeUp: null,
+  })
+
+  function renderWithEyes(eyes: Map<string, import('../lib/imaging/eyes').EyeReading>) {
+    const photos = [photo('photo-1', 0), photo('photo-2', 1), photo('photo-3', 2)]
+    render(
+      <SimilarPhotos
+        groups={[{ photos, suggested: photos[0], spread: 2 }]}
+        thumbnails={new Map()}
+        eyes={eyes}
+        onRemove={vi.fn()}
+      />,
+    )
+  }
+
+  it('says which photo someone blinked in, and shows each face with its reading', () => {
+    renderWithEyes(
+      new Map([
+        ['photo-1', { kind: 'read', faces: [face(400, 0.26)] }],
+        ['photo-2', { kind: 'read', faces: [face(410, 0.68)] }],
+        ['photo-3', { kind: 'read', faces: [face(405, 0.27)] }],
+      ]),
+    )
+
+    expect(screen.getByText(/Someone may have blinked in photo 2\./)).toBeInTheDocument()
+    const person = screen.getByRole('list', { name: 'Person 1' })
+    expect(within(person).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Photo 1: Eyes open 0.26',
+      'Photo 2: Eyes closed? 0.68',
+      'Photo 3: Eyes open 0.27',
+    ])
+  })
+
+  it('says plainly when the eyes could not be read, rather than saying nothing', () => {
+    renderWithEyes(new Map([['photo-1', { kind: 'unavailable', detail: 'model failed to load' }]]))
+
+    expect(screen.getByText(/The eyes could not be read: model failed to load/)).toBeInTheDocument()
+  })
+
+  it('shows nothing about eyes when there are no faces to compare', () => {
+    renderWithEyes(new Map())
+
+    expect(screen.queryByRole('heading', { name: 'Eyes' })).not.toBeInTheDocument()
+  })
+})

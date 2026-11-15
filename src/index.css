@@ -1794,6 +1794,62 @@ textarea:focus-visible {
   }
 }
 
+/* Each person's face, frame against frame, under the group it belongs to. */
+.similar-faces {
+  margin-top: 0.9rem;
+}
+
+.similar-faces h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+.face-row {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.face-item {
+  flex: none;
+  width: 6.5rem;
+}
+
+.face-close-up {
+  display: block;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 0.4rem;
+  object-fit: cover;
+  background: #ece5da;
+}
+
+/* A possible blink is outlined, not hidden: the owner decides. */
+.face-item.closed .face-close-up {
+  outline: 2px solid #8d5526;
+  outline-offset: 2px;
+}
+
+.face-label {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: #4a4036;
+}
+
+.face-item.closed .face-label {
+  font-weight: 700;
+  color: #6d3f18;
+}
+
+.face-score {
+  color: #6f675c;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The photo editor, over the album. Same mechanics as the lightbox; lighter
    chrome, because this one is a workspace rather than a viewer. */
 .editor-sheet {

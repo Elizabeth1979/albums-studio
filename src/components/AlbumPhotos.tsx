@@ -31,6 +31,7 @@ import { groupSimilar } from '../lib/similarity'
 import { mapWithConcurrency } from '../lib/concurrency'
 import type { FocusReading } from '../lib/imaging/measure'
 import { type FaceReading, findFacesIn, forgetDetector } from '../lib/imaging/faces'
+import { type EyeReading, forgetEyeReader, readEyes } from '../lib/imaging/eyes'
 import { findSoftPhotos, summariseFaces, summariseFocus } from '../lib/focus'
 import { displayRendition } from '../lib/imaging/process'
 import { PhotoGallery } from './PhotoGallery'
@@ -57,6 +58,13 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // frame, and the only album that can say whether the detector finds her son
   // is hers.
   const [faceReadings, setFaceReadings] = useState<Map<string, FaceReading>>(new Map())
+  // Eyes are read only in photographs that have a near-identical sibling, since
+  // a blink means something only against another frame of the same moment.
+  const [eyeReadings, setEyeReadings] = useState<Map<string, EyeReading>>(new Map())
+  // The close-ups are object URLs. They are kept for as long as the album is
+  // open, because a later reading map still shows the same ones, and released
+  // with the album.
+  const closeUpsRef = useRef<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<UploadItem[]>([])
@@ -83,6 +91,9 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       processorRef.current?.dispose()
       processorRef.current = null
       forgetDetector()
+      forgetEyeReader()
+      for (const url of closeUpsRef.current) URL.revokeObjectURL(url)
+      closeUpsRef.current.clear()
     }
   }, [])
 
@@ -160,6 +171,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
     // that made this feature undebuggable three times over.
     try {
       const processor = imageProcessor()
+      // By hash and time alone, which is all grouping needs; the readings this
+      // pass produces only re-rank a group, never change who is in it.
+      const grouped = new Set(
+        groupSimilar(current).flatMap((group) => group.photos.map((photo) => photo.id)),
+      )
 
       const results = await mapWithConcurrency(measurable, 2, async (photo) => {
         const bytes = await photoBytes(photo.storagePath)
@@ -171,10 +187,14 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
         // once, and a phone has only so much memory for bitmaps.
         const blur = await processor.measure(bytes)
         const faces = await findFacesIn(bytes)
+        const eyes =
+          grouped.has(photo.id) && faces.kind === 'faces'
+            ? await readEyes(bytes, faces.boxes)
+            : null
 
         if (!photo.displayPath) await backfillDisplay(photo, bytes)
 
-        return { blur, faces }
+        return { blur, faces, eyes }
       })
 
       setFocusReadings((known) => {
@@ -199,6 +219,19 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               ? result.value.faces
               : { kind: 'unavailable', detail: describe(result.reason, 'the photo could not be read') },
           )
+        })
+        return next
+      })
+
+      setEyeReadings((known) => {
+        const next = new Map(known)
+        results.forEach((result, index) => {
+          const eyes = result.status === 'fulfilled' ? result.value.eyes : null
+          if (!eyes) return
+          if (eyes.kind === 'read') {
+            for (const face of eyes.faces) if (face.closeUp) closeUpsRef.current.add(face.closeUp)
+          }
+          next.set(measurable[index].id, eyes)
         })
         return next
       })
@@ -544,6 +577,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 groups={similarGroups}
                 thumbnails={thumbnails}
                 readings={detailReadings}
+                eyes={eyeReadings}
                 onRemove={handleRemoveChosen}
               />
               <SoftPhotos

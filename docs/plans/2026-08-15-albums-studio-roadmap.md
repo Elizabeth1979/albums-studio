@@ -384,6 +384,12 @@ side with useful signals:
   only tracks focus while the subject is held still. Using the second for the first put a
   sharp portrait on the list for deletion.
 - Later: faces visible / eyes open. Decided 2026-11-14:
+  - **Shown 2026-11-15, not yet acted on.** Each group with faces gets an "Eyes" row: every
+    person's close-up frame by frame, the model's score beside it, and "Eyes closed?" where
+    that person reads open in another frame. It changes no suggestion. Next: the owner checks
+    it on a real burst with a blink; the margin (`BLINK_MARGIN`, 0.25) is set from that, and
+    only then does a blink mark a frame down. See
+    [the session log](../sessions/2026-11-15-eyes-read-against-themselves.md).
   - **Eyes are compared only across frames of the same moment.** A frame is marked down when
     the same person has their eyes open in another frame of its group — a blink. A kiss or a
     laugh photographed five times has closed eyes in all five and none is marked down. A

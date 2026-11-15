@@ -24,7 +24,18 @@ npm package. MediaPipe publishes it separately at
 
     sha256  b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f
 
-So it is committed rather than fetched: a build that reaches out to Google's
+`face_landmarker.task` (3.6 MB) reads the eyes in each face the detector found.
+Also not in the npm package; published at
+
+    https://storage.googleapis.com/mediapipe-models/face_landmarker/
+      face_landmarker/float16/1/face_landmarker.task
+
+    sha256  64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff
+
+It is fetched by the browser only when an album has near-identical photographs
+with faces in them.
+
+Both are committed rather than fetched: a build that reaches out to Google's
 storage is a build that fails when Google's storage does, and a deploy should
 not depend on a third party being up. 224 KB is a fair price for that.
 
