@@ -119,7 +119,7 @@ describe('SimilarPhotos', () => {
 
 describe('eyes in a group', () => {
   const face = (x: number, blink: number | null) => ({
-    x, y: 300, width: 100, height: 100, blink, closeUp: null,
+    x, y: 300, width: 100, height: 100, blink, closeUp: null, smile: null, turn: null,
   })
 
   function renderWithEyes(eyes: Map<string, import('../lib/imaging/eyes').EyeReading>) {
@@ -152,6 +152,26 @@ describe('eyes in a group', () => {
     ])
   })
 
+  it('says whether each face smiles and faces the camera, with the numbers behind it', () => {
+    const smiling = { ...face(400, 0.26), smile: 0.95, turn: { sideways: 2, upDown: 4 } }
+    const away = { ...face(410, 0.28), smile: 0.1, turn: { sideways: 40, upDown: 3 } }
+    renderWithEyes(
+      new Map([
+        ['photo-1', { kind: 'read', faces: [smiling] }],
+        ['photo-2', { kind: 'read', faces: [away] }],
+      ]),
+    )
+
+    const [first, second] = within(screen.getByRole('list', { name: 'Person 1' })).getAllByRole(
+      'listitem',
+    )
+    expect(first).toHaveTextContent('Smiling')
+    expect(first).toHaveTextContent('Facing the camera')
+    expect(first).toHaveTextContent('smile 0.95 · turned 4°')
+    expect(second).toHaveTextContent('Not smiling')
+    expect(second).toHaveTextContent('Turned away')
+  })
+
   it('says plainly when the eyes could not be read, rather than saying nothing', () => {
     renderWithEyes(new Map([['photo-1', { kind: 'unavailable', detail: 'model failed to load' }]]))
 
@@ -161,6 +181,6 @@ describe('eyes in a group', () => {
   it('shows nothing about eyes when there are no faces to compare', () => {
     renderWithEyes(new Map())
 
-    expect(screen.queryByRole('heading', { name: 'Eyes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Faces' })).not.toBeInTheDocument()
   })
 })

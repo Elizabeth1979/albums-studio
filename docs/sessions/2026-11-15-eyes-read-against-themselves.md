@@ -53,3 +53,25 @@ up by 0.08, which a margin of 0.25 tolerates and a smaller one might not.
 
 The owner photographs a short burst with a deliberate blink and opens it in the album. The
 scores on screen set `BLINK_MARGIN`. Only then does a blink lower a frame's ranking.
+
+## Then: smiling, and facing the camera
+
+The same model, with its face transform switched on, read the same portrait:
+
+| Input | Smile (0-1) | Head turn, sideways / up-down | Eye-direction score (highest of eight) |
+| --- | --- | --- | --- |
+| Facing the camera, laughing | 0.95 | 2° / 4° | 0.18 |
+| Mirrored | 0.95 | -2° / 3° | 0.31 |
+| Eyes edited shut | 0.94 | 2° / 5° | **0.67** |
+| Tilted 20° | 0.86 | 5° / 5° (tilt itself read as 21°) | 0.31 |
+
+- **Smile is steady,** so a face reads as smiling at 0.5 or above (`SMILE_LINE`). No real
+  neutral face has been measured; the line is provisional.
+- **Facing the camera is judged by the head, not the eyes.** The head angles are accurate —
+  a 20° tilt read as 21° — while the eye-direction scores jumped from 0.18 to 0.67 when the
+  eyes were merely closed. Using eye direction would turn every blink into "looking away"
+  as well. A head turned more than 25° either way (`TURN_LIMIT`) reads as turned away.
+- Turning a head cannot be faked in a flat photograph, so the sideways limit has not been
+  seen to fire on a real face. The matrix arithmetic behind it is tested on its own.
+
+Both show beside the eyes in the same row, and like them change nothing yet.

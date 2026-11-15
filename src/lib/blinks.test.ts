@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { BLINK_MARGIN, type EyeFace, type FrameFaces, followPeople, framesWithBlinks } from './blinks'
+import {
+  BLINK_MARGIN,
+  type EyeFace,
+  type FrameFaces,
+  SMILE_LINE,
+  TURN_LIMIT,
+  facesCamera,
+  followPeople,
+  framesWithBlinks,
+  isSmiling,
+} from './blinks'
 
 function face(x: number, blink: number | null, y = 300): EyeFace {
-  return { x, y, width: 100, height: 100, blink, closeUp: null }
+  return { x, y, width: 100, height: 100, blink, closeUp: null, smile: null, turn: null }
 }
 
 function frame(photoId: string, faces: EyeFace[]): FrameFaces {
@@ -83,5 +93,21 @@ describe('followPeople', () => {
     ])
 
     expect(people[0].appearances.map((one) => one.photoId)).toEqual(['a', 'b'])
+  })
+})
+
+describe('isSmiling', () => {
+  it('reads a smile at or above the line, and says nothing when there is no reading', () => {
+    expect(isSmiling({ ...face(0, 0.3), smile: SMILE_LINE })).toBe(true)
+    expect(isSmiling({ ...face(0, 0.3), smile: SMILE_LINE - 0.01 })).toBe(false)
+    expect(isSmiling(face(0, 0.3))).toBeNull()
+  })
+})
+
+describe('facesCamera', () => {
+  it('counts a head turned up to the limit either way, sideways or up and down, as facing', () => {
+    expect(facesCamera({ ...face(0, 0.3), turn: { sideways: -TURN_LIMIT, upDown: 4 } })).toBe(true)
+    expect(facesCamera({ ...face(0, 0.3), turn: { sideways: 2, upDown: TURN_LIMIT + 1 } })).toBe(false)
+    expect(facesCamera(face(0, 0.3))).toBeNull()
   })
 })

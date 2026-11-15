@@ -390,6 +390,11 @@ side with useful signals:
     it on a real burst with a blink; the margin (`BLINK_MARGIN`, 0.25) is set from that, and
     only then does a blink mark a frame down. See
     [the session log](../sessions/2026-11-15-eyes-read-against-themselves.md).
+  - **Smiling and facing the camera, shown 2026-11-15, not yet acted on.** Same model, same
+    row. "Smiling" from the smile score (`SMILE_LINE`, 0.5); "Facing the camera" from the
+    head's turn (`TURN_LIMIT`, 25 degrees). Not from eye direction: the model read shut eyes
+    as looking down (0.18 to 0.67), so using it would count every blink twice. Both lines are
+    provisional until real photographs set them.
   - **Eyes are compared only across frames of the same moment.** A frame is marked down when
     the same person has their eyes open in another frame of its group — a blink. A kiss or a
     laugh photographed five times has closed eyes in all five and none is marked down. A
