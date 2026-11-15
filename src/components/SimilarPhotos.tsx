@@ -23,7 +23,7 @@ type SimilarPhotosProps = {
 const READING_TEXT: Record<SharpnessReading, string> = {
   sharpest: 'Sharpest',
   close: 'Just as sharp',
-  softer: 'Softer',
+  softer: 'Slightly blurry',
   blurrier: 'Blurry',
   unmeasured: 'Not measured',
 }

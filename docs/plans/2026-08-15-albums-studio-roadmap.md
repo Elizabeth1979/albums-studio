@@ -392,8 +392,10 @@ side with useful signals:
   - **Face close-ups.** Each group shows every face it found, cropped and side by side frame
     against frame, so a blink is seen by the owner rather than trusted to a detector. This
     also covers the detector's known gaps, since a face it misses is still in the photograph.
-  - **Plain labels.** "Sharpest / Just as sharp / Slightly blurry / Blurry" replace "Nearly as
-    sharp / A little softer / Noticeably softer", which read as photographers' jargon.
+  - **Plain labels.** ✅ Done 2026-11-15. "Sharpest / Just as sharp / Slightly blurry / Blurry"
+    replace "Nearly as sharp / A little softer / Noticeably softer", which read as
+    photographers' jargon. The thresholds behind them (90% and 60% of the sharpest frame's
+    reading) are still round numbers, never checked against a real album.
 - App suggestion for best one or two photos.
 
 Implementation should start with Python/browser-friendly free options before any paid model:
