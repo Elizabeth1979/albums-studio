@@ -26,6 +26,7 @@ function photo(id: string, sortOrder: number): Photo {
     storagePath: `owner/album/${id}.jpg`,
     thumbnailPath: `owner/album/${id}-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -100,6 +101,16 @@ describe('runUploads', () => {
 
     const store = deps.store as ReturnType<typeof vi.fn>
     expect(store.mock.calls[0][0].sortOrder).toBe(7)
+  })
+
+  it('hands the chosen file itself to be kept as the original', async () => {
+    const { deps } = harness()
+    const chosen = file('one.jpg')
+
+    await runUploads('album-1', [{ id: 'a', file: chosen }], 0, deps)
+
+    const store = deps.store as ReturnType<typeof vi.fn>
+    expect(store.mock.calls[0][0].original).toBe(chosen)
   })
 
   it('retries a failed upload and succeeds', async () => {

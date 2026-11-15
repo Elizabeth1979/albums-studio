@@ -11,6 +11,7 @@ function photo(overrides: Partial<Photo> = {}): Photo {
     storagePath: 'owner/album-1/photo-1.jpg',
     thumbnailPath: 'owner/album-1/photo-1-thumb.jpg',
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -53,6 +54,7 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
       onMoveEarlier={vi.fn().mockResolvedValue(undefined)}
       onMoveLater={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
+      onDownloadOriginal={null}
       onClose={vi.fn()}
       {...props}
     />,
@@ -433,6 +435,32 @@ describe('when a photograph was taken', () => {
   })
 })
 
+describe('full quality', () => {
+  it('offers the original when there is one', async () => {
+    const onDownloadOriginal = vi.fn().mockResolvedValue(undefined)
+    renderEditor({ onDownloadOriginal })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download full quality' }))
+
+    await waitFor(() => expect(onDownloadOriginal).toHaveBeenCalledOnce())
+  })
+
+  it('says so when a photograph has no original, rather than hiding the question', () => {
+    renderEditor({ onDownloadOriginal: null })
+
+    expect(screen.queryByRole('button', { name: 'Download full quality' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Full quality is not available for this photo/)).toBeInTheDocument()
+  })
+
+  it('says why a download could not start', async () => {
+    renderEditor({ onDownloadOriginal: vi.fn().mockRejectedValue(new Error('Object not found')) })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download full quality' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Object not found')
+  })
+})
+
 describe('the photo, larger', () => {
   it('opens the full-size photo, and closing it leaves the editor open', () => {
     // The editor is itself a dialog, and React passes a dialog's close event up
@@ -458,6 +486,7 @@ describe('the photo, larger', () => {
           onMoveEarlier={null}
           onMoveLater={null}
           onDelete={vi.fn()}
+          onDownloadOriginal={null}
           onClose={closeEditor}
         />
       </dialog>,

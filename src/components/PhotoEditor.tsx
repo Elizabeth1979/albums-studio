@@ -32,6 +32,11 @@ type PhotoEditorProps = {
   onMoveEarlier: (() => Promise<void>) | null
   onMoveLater: (() => Promise<void>) | null
   onDelete: () => Promise<void>
+  /**
+   * Starts the download of the file exactly as it was chosen. Null when there is
+   * no original to download, which the editor says rather than hiding.
+   */
+  onDownloadOriginal: (() => Promise<void>) | null
   onClose: () => void
 }
 
@@ -69,6 +74,7 @@ export function PhotoEditor({
   onMoveEarlier,
   onMoveLater,
   onDelete,
+  onDownloadOriginal,
   onClose,
 }: PhotoEditorProps) {
   const [caption, setCaption] = useState(photo.caption ?? '')
@@ -85,6 +91,23 @@ export function PhotoEditor({
   const removeOpener = useReturnFocus(confirmingDelete)
   const [placeError, setPlaceError] = useState<string | null>(null)
   const [viewing, setViewing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+
+  async function handleDownload(download: () => Promise<void>) {
+    setDownloading(true)
+    setDownloadError(null)
+
+    try {
+      await download()
+    } catch (caughtError) {
+      setDownloadError(
+        caughtError instanceof Error ? caughtError.message : 'Could not start the download.',
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   async function move(action: () => Promise<void>) {
     setMoving(true)
@@ -166,6 +189,28 @@ export function PhotoEditor({
 
           {photo.takenAt && (
             <p className="photo-taken">Taken {formatTakenAt(photo.takenAt)}</p>
+          )}
+
+          {onDownloadOriginal ? (
+            <button
+              className="text-button download-original"
+              type="button"
+              onClick={() => handleDownload(onDownloadOriginal)}
+              disabled={downloading}
+            >
+              {downloading ? 'Preparing download…' : 'Download full quality'}
+            </button>
+          ) : (
+            // Said rather than hidden: an absent button reads as "not offered
+            // here", when the truth is that this photograph has no original.
+            <p className="field-hint">
+              Full quality is not available for this photo. Only a 2000-pixel copy was kept.
+            </p>
+          )}
+          {downloadError && (
+            <p className="form-message error" role="alert">
+              {downloadError}
+            </p>
           )}
 
           {isCover ? (

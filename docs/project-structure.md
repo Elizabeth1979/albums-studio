@@ -171,6 +171,7 @@ erDiagram
         text storage_path UK "NOT NULL"
         text thumbnail_path
         text display_path
+        text original_path
         text mime
         int4 width
         int4 height
