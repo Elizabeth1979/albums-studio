@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
 import { compareSharpness, type SharpnessReading, type SimilarGroup } from '../lib/similarity'
-import { type FrameFaces, followPeople, framesWithBlinks } from '../lib/blinks'
+import { type FrameFaces, facesCamera, followPeople, framesWithBlinks, isSmiling } from '../lib/blinks'
 import type { EyeReading } from '../lib/imaging/eyes'
 import { PhotoLightbox } from './PhotoLightbox'
 import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
@@ -27,7 +27,18 @@ type SimilarPhotosProps = {
 function eyesText(closed: boolean | null): string {
   if (closed === true) return 'Eyes closed?'
   if (closed === false) return 'Eyes open'
-  return 'Not compared'
+  return 'Eyes not compared'
+}
+
+/** The rest of what a face says, in words, leaving out what could not be read. */
+function faceText(face: Parameters<typeof isSmiling>[0]): string[] {
+  const smiling = isSmiling(face)
+  const facing = facesCamera(face)
+
+  return [
+    ...(smiling === null ? [] : [smiling ? 'Smiling' : 'Not smiling']),
+    ...(facing === null ? [] : [facing ? 'Facing the camera' : 'Turned away']),
+  ]
 }
 
 /**
@@ -59,7 +70,7 @@ function GroupFaces({ group, eyes }: { group: SimilarGroup; eyes: Map<string, Ey
 
   return (
     <div className="similar-faces">
-      <h4>Eyes</h4>
+      <h4>Faces</h4>
       {failed?.kind === 'unavailable' && (
         <p className="field-hint">The eyes could not be read: {failed.detail}</p>
       )}
@@ -68,8 +79,9 @@ function GroupFaces({ group, eyes }: { group: SimilarGroup; eyes: Map<string, Ey
           {blinked.size === 0
             ? 'Nobody looks to have blinked.'
             : `Someone may have blinked in photo ${[...blinked].map((id) => number.get(id)).join(' and ')}.`}{' '}
-          Each person is compared only with themselves in these photos. This is new and still
-          being checked, so it does not change anything yet.
+          Smiles and where each person faces are shown too. Blinks are judged against the same
+          person in the other photos. This is new and still being checked, so it does not change
+          anything yet.
         </p>
       )}
       {people.map((person, personIndex) => (
@@ -81,12 +93,29 @@ function GroupFaces({ group, eyes }: { group: SimilarGroup; eyes: Map<string, Ey
               ) : (
                 <span className="face-close-up empty" aria-hidden="true" />
               )}
-              <span className="face-label">
+              <span className="face-label face-eyes">
                 Photo {number.get(one.photoId)}: {eyesText(one.closed)}
                 {one.face.blink !== null && (
                   <span className="face-score"> {one.face.blink.toFixed(2)}</span>
                 )}
               </span>
+              {faceText(one.face).map((line) => (
+                <span className="face-label" key={line}>
+                  {line}
+                </span>
+              ))}
+              {(one.face.smile !== null || one.face.turn !== null) && (
+                <span className="face-score face-numbers">
+                  {[
+                    one.face.smile === null ? null : `smile ${one.face.smile.toFixed(2)}`,
+                    one.face.turn === null
+                      ? null
+                      : `turned ${Math.round(Math.max(Math.abs(one.face.turn.sideways), Math.abs(one.face.turn.upDown)))}°`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              )}
             </li>
           ))}
         </ul>

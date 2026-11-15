@@ -48,6 +48,7 @@ async function reader(): Promise<FaceLandmarker> {
       runningMode: 'IMAGE',
       numFaces: 1,
       outputFaceBlendshapes: true,
+      outputFacialTransformationMatrixes: true,
     })
   })()
 
@@ -89,6 +90,29 @@ export function cutOut(
     x: Math.round(Math.min(Math.max(centreX - size / 2, 0), frame.width - size)),
     y: Math.round(Math.min(Math.max(centreY - size / 2, 0), frame.height - size)),
     size: Math.round(size),
+  }
+}
+
+/**
+ * How far the head is turned, from the model's 4x4 face transform.
+ *
+ * The matrix is column-major, so row r of column c is at c * 4 + r. Sideways is
+ * the turn about the vertical axis and up-down about the horizontal one, both
+ * in degrees and both zero for a face looking straight at the camera. Checked
+ * on a real portrait: 2 and 4 degrees facing the camera, and a 20-degree tilt
+ * read as 21 on the axis this ignores.
+ */
+export function headTurn(
+  matrix: ArrayLike<number> | undefined,
+): { sideways: number; upDown: number } | null {
+  if (!matrix || matrix.length < 16) return null
+
+  const at = (row: number, column: number) => matrix[column * 4 + row]
+  const degrees = (radians: number) => (radians * 180) / Math.PI
+
+  return {
+    sideways: degrees(Math.asin(Math.max(-1, Math.min(1, at(0, 2))))),
+    upDown: degrees(Math.atan2(-at(1, 2), at(2, 2))),
   }
 }
 
@@ -145,6 +169,8 @@ export async function readEyes(photograph: Blob, boxes: FaceBox[]): Promise<EyeR
       const score = (name: string) => shapes.find((one) => one.categoryName === name)?.score
       const left = score('eyeBlinkLeft')
       const right = score('eyeBlinkRight')
+      const smileLeft = score('mouthSmileLeft')
+      const smileRight = score('mouthSmileRight')
 
       faces.push({
         x: box.x,
@@ -153,6 +179,9 @@ export async function readEyes(photograph: Blob, boxes: FaceBox[]): Promise<EyeR
         height: box.height,
         blink: left === undefined || right === undefined ? null : (left + right) / 2,
         closeUp: await closeUpOf(canvas),
+        smile:
+          smileLeft === undefined || smileRight === undefined ? null : (smileLeft + smileRight) / 2,
+        turn: headTurn(result.facialTransformationMatrixes?.[0]?.data),
       })
     }
 

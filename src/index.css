@@ -1835,12 +1835,16 @@ textarea:focus-visible {
 
 .face-label {
   display: block;
-  margin-top: 0.3rem;
+  margin-top: 0.15rem;
   font-size: 0.78rem;
   color: #4a4036;
 }
 
-.face-item.closed .face-label {
+.similar-faces .field-hint {
+  max-width: 40rem;
+}
+
+.face-item.closed .face-eyes {
   font-weight: 700;
   color: #6d3f18;
 }
@@ -1848,6 +1852,11 @@ textarea:focus-visible {
 .face-score {
   color: #6f675c;
   font-variant-numeric: tabular-nums;
+}
+
+.face-numbers {
+  display: block;
+  font-size: 0.72rem;
 }
 
 /* The photo editor, over the album. Same mechanics as the lightbox; lighter

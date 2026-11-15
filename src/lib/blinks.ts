@@ -41,6 +41,29 @@ export const BLINK_MARGIN = 0.25
  */
 export const SAME_PERSON_DISTANCE = 0.12
 
+/**
+ * The smile score, 0-1, at or above which a face reads as smiling.
+ *
+ * Provisional. A laughing portrait read 0.95, and still 0.86 tilted 20 degrees;
+ * no real neutral face has been measured here. A fixed line suits a smile better
+ * than it suits a blink, because the score follows the mouth directly rather
+ * than an eye half-hidden by the cheeks — but the album still decides.
+ */
+export const SMILE_LINE = 0.5
+
+/**
+ * How far a head can be turned, in degrees left-right or up-down, and still be
+ * facing the camera.
+ *
+ * Judged by the head and not by the eyes. Measured on a real portrait, the
+ * model's eye-direction scores rose from 0.18 to 0.67 when the eyes were merely
+ * closed, because it reads shut eyes as looking down; counting that would make
+ * every blink a "looking away" as well. The head angle read 2 degrees facing
+ * the camera and reported a 20-degree tilt as 21, so it is the steadier signal.
+ * The limit itself is provisional.
+ */
+export const TURN_LIMIT = 25
+
 /** One face as read in one frame, in the frame's own pixels. */
 export type EyeFace = {
   x: number
@@ -54,6 +77,22 @@ export type EyeFace = {
   blink: number | null
   /** A small picture of this face, for showing frame against frame. */
   closeUp: string | null
+  /** The model's smile score, 0-1, as the mean of both corners of the mouth. */
+  smile: number | null
+  /** How far the head is turned from facing the camera, in degrees. */
+  turn: { sideways: number; upDown: number } | null
+}
+
+/** True when the face reads as smiling, null when it could not be read. */
+export function isSmiling(face: EyeFace): boolean | null {
+  return face.smile === null ? null : face.smile >= SMILE_LINE
+}
+
+/** True when the head is turned toward the camera, null when it could not be read. */
+export function facesCamera(face: EyeFace): boolean | null {
+  if (face.turn === null) return null
+
+  return Math.abs(face.turn.sideways) <= TURN_LIMIT && Math.abs(face.turn.upDown) <= TURN_LIMIT
 }
 
 /** One photograph of a group, with the faces read in it. */
