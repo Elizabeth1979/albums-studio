@@ -9,6 +9,7 @@ import {
   renameAlbum,
   setAlbumCover,
   setAlbumVisibility,
+  setAlbumStory,
   updateAlbumDetails,
 } from '../lib/albums'
 import type { Identity } from '../lib/identity'
@@ -33,6 +34,7 @@ type AlbumRouteProps = {
   loading: boolean
   onRename: (album: Album, title: string) => Promise<void>
   onChangeDescription: (album: Album, description: string) => Promise<void>
+  onChangeStory: (album: Album, story: string, draftId: string | null) => Promise<void>
   onDelete: (album: Album) => Promise<void>
   onCoverChosen: (album: Album, photoId: string) => Promise<void>
   onChangeVisibility: (album: Album, visibility: AlbumVisibility) => Promise<void>
@@ -49,6 +51,7 @@ function AlbumRoute({
   loading,
   onRename,
   onChangeDescription,
+  onChangeStory,
   onDelete,
   onCoverChosen,
   onChangeVisibility,
@@ -66,6 +69,7 @@ function AlbumRoute({
         onBack={() => navigate('/')}
         onRename={(title) => onRename(album, title)}
         onChangeDescription={(description) => onChangeDescription(album, description)}
+        onChangeStory={(story, draftId) => onChangeStory(album, story, draftId)}
         onDelete={() => onDelete(album)}
         onCoverChosen={(photoId) => onCoverChosen(album, photoId)}
         onChangeVisibility={(visibility) => onChangeVisibility(album, visibility)}
@@ -193,6 +197,9 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             albums={albums}
             loading={loading}
             onRename={async (album, title) => replace(await renameAlbum(album.id, title))}
+            onChangeStory={async (album, story, draftId) =>
+              replace(await setAlbumStory(album.id, story, draftId))
+            }
             onChangeDescription={async (album, description) =>
               replace(await updateAlbumDetails(album.id, { description }))
             }

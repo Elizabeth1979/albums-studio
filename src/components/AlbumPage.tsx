@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import type { Album, AlbumVisibility } from '../lib/albums'
 import type { Identity } from '../lib/identity'
 import { AlbumPhotos } from './AlbumPhotos'
+import { AlbumStory } from './AlbumStory'
 import { ShareAlbum } from './ShareAlbum'
 import { AppHeader } from './AppHeader'
 import { useConfirmation } from './useConfirmation'
@@ -14,6 +15,7 @@ type AlbumPageProps = {
   onBack: () => void
   onRename: (title: string) => Promise<void>
   onChangeDescription: (description: string) => Promise<void>
+  onChangeStory: (story: string, draftId: string | null) => Promise<void>
   onDelete: () => Promise<void>
   onCoverChosen: (photoId: string) => Promise<void>
   onChangeVisibility: (visibility: AlbumVisibility) => Promise<void>
@@ -26,6 +28,7 @@ export function AlbumPage({
   onBack,
   onRename,
   onChangeDescription,
+  onChangeStory,
   onDelete,
   onCoverChosen,
   onChangeVisibility,
@@ -197,6 +200,8 @@ export function AlbumPage({
         </section>
 
         {error && <p className="form-message error" role="alert">{error}</p>}
+
+        <AlbumStory album={album} onChangeStory={onChangeStory} />
 
         <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
 

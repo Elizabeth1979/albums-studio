@@ -21,6 +21,8 @@ function album(overrides: Partial<Album> = {}): Album {
     coverPhotoId: null,
     visibility: 'private',
     createdAt: '2026-08-16T10:00:00Z',
+    story: null,
+    storyDraftId: null,
     ...overrides,
   }
 }
@@ -35,6 +37,7 @@ function renderAlbumPage(props: Partial<ComponentProps<typeof AlbumPage>> = {}) 
       onRename={vi.fn().mockResolvedValue(undefined)}
       onChangeDescription={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
+      onChangeStory={vi.fn().mockResolvedValue(undefined)}
       onCoverChosen={vi.fn().mockResolvedValue(undefined)}
       onChangeVisibility={vi.fn().mockResolvedValue(undefined)}
       {...props}

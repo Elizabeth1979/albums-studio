@@ -119,6 +119,17 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
         <p className="eyebrow">A shared album</p>
         <h1>{album.album.title}</h1>
         {album.album.description && <p className="shared-description">{album.album.description}</p>}
+        {album.album.story && (
+          <div className="shared-story-text">
+            {album.album.story
+              .split(/\n\s*\n/)
+              .map((paragraph) => paragraph.trim())
+              .filter(Boolean)
+              .map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+          </div>
+        )}
       </header>
 
       {album.photos.length === 0 ? (

@@ -33,6 +33,7 @@ declare
   album_b uuid;
   photo_a uuid;
   story_a uuid;
+  draft_a uuid;
   token uuid;
   old_token uuid;
   new_token uuid;
@@ -134,6 +135,38 @@ begin
     log := log || E'\n  FAIL  update album -> ' || sqlerrm; fails := fails + 1;
   end;
 
+  -- Phase 5: a draft is written by the Edge Function with the service role,
+  -- never by the client; the owner settles it and puts the story on the album.
+  begin
+    insert into public.ai_drafts (owner_id, album_id, draft_type, body, model)
+    values (alice, album_a, 'album_story', 'Not hers to invent.', 'probe');
+    log := log || E'\n  FAIL  the client could write a draft'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    the client cannot write a draft';
+  end;
+
+  reset role;
+  insert into public.ai_drafts (owner_id, album_id, draft_type, body, model, input_tokens, output_tokens)
+  values (alice, album_a, 'album_story', 'We arrived in the rain.', 'probe', 17000, 3500)
+  returning id into draft_a;
+  set local role authenticated;
+
+  begin
+    update public.ai_drafts set status = 'accepted' where id = draft_a;
+    update public.albums set story = 'We arrived in the rain, laughing.', story_draft_id = draft_a
+    where id = album_a;
+    log := log || E'\n  ok    accept a draft and put the story on the album';
+  exception when others then
+    log := log || E'\n  FAIL  accept a draft -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  begin
+    update public.ai_drafts set body = 'rewritten' where id = draft_a;
+    log := log || E'\n  FAIL  a draft could be rewritten after the fact'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a draft cannot be rewritten after the fact';
+  end;
+
   begin
     insert into public.photo_stories (photo_id, owner_id, body, visibility)
     values (photo_a, alice, 'The long version.', 'hidden')
@@ -179,6 +212,14 @@ begin
     log := log || E'\n  ok    cannot see her story note';
   else
     log := log || E'\n  FAIL  can see her story note'; fails := fails + 1;
+  end if;
+
+  seen_id := null;
+  select id into seen_id from public.ai_drafts where id = draft_a;
+  if seen_id is null then
+    log := log || E'\n  ok    cannot see her AI draft';
+  else
+    log := log || E'\n  FAIL  can see her AI draft'; fails := fails + 1;
   end if;
 
   begin
@@ -249,6 +290,13 @@ begin
   end;
 
   begin
+    select body into seen from public.ai_drafts where id = draft_a;
+    log := log || E'\n  FAIL  can read AI drafts through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    cannot read AI drafts through the Data API';
+  end;
+
+  begin
     select taken_at::text into seen from public.photos where id = photo_a;
     log := log || E'\n  FAIL  can read capture times through the Data API'; fails := fails + 1;
   exception when insufficient_privilege then
@@ -286,6 +334,13 @@ begin
   -- The album a visitor is shown should be arranged the way its owner arranged
   -- it. This column was missing from the function's result for a while, and the
   -- shared page silently fell back to one column.
+  select story into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = 'We arrived in the rain, laughing.' then
+    log := log || E'\n  ok    the accepted story reaches a share link';
+  else
+    log := log || format(E'\n  FAIL  story reached a share link as %L', seen); fails := fails + 1;
+  end if;
+
   select layout into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = 'masonry' then
     log := log || E'\n  ok    the layout the owner chose reaches a share link';
