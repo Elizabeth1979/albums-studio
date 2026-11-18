@@ -91,6 +91,12 @@ subscription, Supabase, RLS, share links, Family Travels.
   photograph to its last (`supabase/functions/_shared/storyPhotos.ts`), and the server makes
   the same spread when it is sent no choice. Before this a story read the first 20 only, so a
   long album got a story about its first afternoon.
+- ✅ **Phase 5: speaking instead of typing (2026-11-18).** A "Speak" button beside the
+  story's notes and beside every photo's story note; what is said lands in the box as text,
+  to correct like anything typed. It uses the browser's own speech recognition: free, no
+  key, no recording kept, and the screen says the browser's maker turns the audio into text.
+  Not offered in Firefox, which has none. Not yet: keeping the audio itself, and confirmed
+  on the owner's own phone.
 
 **Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
 checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:

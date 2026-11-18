@@ -8,6 +8,8 @@ import {
   spreadAcross,
 } from '../lib/albumStory'
 import { type Photo, listPhotos, signedUrls } from '../lib/photos'
+import { joinDictated } from '../lib/dictation'
+import { DictateButton } from './DictateButton'
 import { LiveStatus } from './LiveStatus'
 
 type AlbumStoryProps = {
@@ -194,6 +196,11 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
               disabled={stage.kind === 'drafting'}
             />
           </label>
+          <DictateButton
+            target="what the story should say"
+            onWords={(words) => setNotes((current) => joinDictated(current, words).slice(0, 2000))}
+            disabled={stage.kind === 'drafting'}
+          />
           <fieldset className="story-photos" disabled={stage.kind === 'drafting'}>
             <legend>Photos for the story</legend>
             {choice.kind === 'loading' && <p className="field-hint">Loading your photos…</p>}

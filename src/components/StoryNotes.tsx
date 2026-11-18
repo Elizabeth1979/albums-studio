@@ -1,4 +1,6 @@
 import { type FormEvent, useState } from 'react'
+import { joinDictated } from '../lib/dictation'
+import { DictateButton } from './DictateButton'
 import type { TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
 import { useReturnFocus } from './useReturnFocus'
@@ -210,6 +212,11 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
             placeholder="We had been walking since six and nobody wanted to admit they were tired."
           />
         </label>
+        <DictateButton
+          target="the story"
+          onWords={(words) => setBody((current) => joinDictated(current, words).slice(0, 5000))}
+          disabled={pending}
+        />
 
         <fieldset className="visibility-choice">
           <legend>Who is this for?</legend>
