@@ -1,24 +1,29 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { createClient } from 'jsr:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk@1.8.0'
 import { STORY_PHOTO_LIMIT, spreadAcross } from '../_shared/storyPhotos.ts'
+import {
+  CORS,
+  NO_KEY,
+  PHOTO_FIELDS,
+  type PhotoRow,
+  UUID,
+  caller,
+  json,
+  notesFor,
+  photoBlocks,
+  recordUse,
+  tokensIn,
+  usedThisMonth,
+} from '../_shared/studio.ts'
 
 /**
  * Drafts an album's story from its photographs and its owner's words.
  *
- * Phase 5's first slice. The owner asks; this looks at the photographs and
- * everything the owner has written about them, and returns a draft. Nothing is
- * published here: the draft is saved as a draft, and only the owner's own
- * "use this story" puts text on the album.
- *
- * Runs with JWT verification on. Who is asking is the signed-in owner, and the
- * album and its photographs are read through a client carrying their token, so
- * row-level security decides what they may draft from — never an id taken on
- * trust. The service role is used only for what the owner cannot do directly:
- * reading image bytes, saving the draft, and counting the use.
- *
- * The AI key lives here as a function secret, `ANTHROPIC_API_KEY`, and never in
- * a browser.
+ * The owner asks; this looks at the photographs and everything the owner has
+ * written about them, and returns a draft. Nothing is published here: the draft
+ * is saved as a draft, and only the owner's own "use this story" puts text on
+ * the album. Runs with JWT verification on; see `_shared/studio.ts` for how the
+ * caller and their photographs are read.
  */
 
 /** Drafts each owner may ask for in a calendar month, on the platform's key. */
@@ -28,20 +33,11 @@ const FREE_STORY_DRAFTS_PER_MONTH = 5
 const MAX_NOTES = 2000
 
 /**
- * Claude Sonnet 5.5, at half Opus 5.5's price (about 7 US cents for 15 photographs
- * against 14). The owner's call, 2026-11-18: a 350-word family story does not need
- * the largest model until a real draft shows otherwise. One line to change back.
+ * Claude Sonnet 5.5, at half Opus 5.5's price: the owner's call, 2026-11-18. The
+ * first real draft, from 20 photographs, cost about 5 US cents. One line to change.
  */
 const MODEL = 'claude-sonnet-5-5'
 const OPERATION = 'album_story'
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
 
 /**
  * What the model is asked to do. Kept stable, so it can be cached and so a
@@ -55,43 +51,12 @@ Write the story in the owner's voice, warmly and plainly, as they might tell it 
 
 Aim for two to five short paragraphs, under 350 words unless the owner asks otherwise. No title, no headings, no lists, no hashtags. Return only the story.`
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-  })
-}
-
-type PhotoRow = {
-  id: string
-  storage_path: string
-  display_path: string | null
-  caption: string | null
-  caption_visibility: string
-  alt: string | null
-  taken_at: string | null
-  sort_order: number
-}
-
-function base64(bytes: Uint8Array): string {
-  let text = ''
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    text += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-  }
-  return btoa(text)
-}
-
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
-  const authorization = request.headers.get('Authorization') ?? ''
-  const url = Deno.env.get('SUPABASE_URL') ?? ''
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-
-  // Said plainly, because the owner can act on it: the key is a function secret
-  // they add in the Supabase dashboard.
-  if (!apiKey) return json({ error: 'Story drafting is not set up yet: no AI key on the server.' }, 503)
+  if (!apiKey) return json({ error: NO_KEY }, 503)
 
   let input: { albumId?: unknown; photoIds?: unknown; notes?: unknown }
   try {
@@ -112,37 +77,14 @@ Deno.serve(async (request) => {
         .slice(0, STORY_PHOTO_LIMIT)
     : []
 
-  // As the owner: RLS answers "is this yours" for the album and its photographs.
-  const asOwner = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false },
-  })
-  const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', {
-    auth: { persistSession: false },
-  })
+  const who = await caller(request)
+  if (!who) return json({ error: 'Please sign in again.' }, 401)
 
-  const { data: claims } = await asOwner.auth.getUser()
-  const ownerId = claims.user?.id
-  if (!ownerId) return json({ error: 'Please sign in again.' }, 401)
-
-  const album = await asOwner
-    .from('albums')
-    .select('id, title, description')
-    .eq('id', albumId)
-    .maybeSingle()
+  const album = await who.asOwner.from('albums').select('id, title, description').eq('id', albumId).maybeSingle()
   if (album.error) return json({ error: album.error.message }, 500)
   if (!album.data) return json({ error: 'not found' }, 404)
 
-  const period = new Date().toISOString().slice(0, 8) + '01'
-  const usage = await service
-    .from('ai_usage')
-    .select('count')
-    .eq('owner_id', ownerId)
-    .eq('period', period)
-    .eq('operation', OPERATION)
-    .eq('byok', false)
-    .maybeSingle()
-  const used = usage.data?.count ?? 0
+  const used = await usedThisMonth(who, OPERATION)
   if (used >= FREE_STORY_DRAFTS_PER_MONTH) {
     return json(
       {
@@ -154,9 +96,9 @@ Deno.serve(async (request) => {
     )
   }
 
-  let photosQuery = asOwner
+  let photosQuery = who.asOwner
     .from('photos')
-    .select('id, storage_path, display_path, caption, caption_visibility, alt, taken_at, sort_order')
+    .select(PHOTO_FIELDS)
     .eq('album_id', albumId)
     .order('sort_order', { ascending: true })
   if (chosen.length > 0) photosQuery = photosQuery.in('id', chosen)
@@ -167,16 +109,6 @@ Deno.serve(async (request) => {
   // same default the album page offers her.
   const rows = spreadAcross((photos.data ?? []) as PhotoRow[])
   if (rows.length === 0) return json({ error: 'Add some photographs to the album first.' }, 400)
-
-  const stories = await asOwner
-    .from('photo_stories')
-    .select('photo_id, body, visibility')
-    .in('photo_id', rows.map((row) => row.id))
-  const notesByPhoto = new Map<string, string[]>()
-  for (const story of (stories.data ?? []) as { photo_id: string; body: string; visibility: string }[]) {
-    const line = story.visibility === 'visible' ? story.body : `(private) ${story.body}`
-    notesByPhoto.set(story.photo_id, [...(notesByPhoto.get(story.photo_id) ?? []), line])
-  }
 
   const content: Anthropic.Beta.BetaContentBlockParam[] = [
     {
@@ -189,33 +121,8 @@ Deno.serve(async (request) => {
         .filter(Boolean)
         .join('\n'),
     },
+    ...(await photoBlocks(who, rows, await notesFor(who, rows.map((row) => row.id)))),
   ]
-
-  for (const [index, row] of rows.entries()) {
-    const stored = await service.storage.from('photos').download(row.display_path ?? row.storage_path)
-    if (stored.error || !stored.data) continue
-
-    const said = [
-      row.taken_at ? `taken ${row.taken_at.replace('T', ' ').slice(0, 16)}` : null,
-      row.caption
-        ? row.caption_visibility === 'visible'
-          ? `caption: ${row.caption}`
-          : `private caption: ${row.caption}`
-        : null,
-      row.alt ? `description: ${row.alt}` : null,
-      ...(notesByPhoto.get(row.id) ?? []).map((line) => `note: ${line}`),
-    ].filter(Boolean)
-
-    content.push({ type: 'text', text: `Photograph ${index + 1}${said.length ? ` — ${said.join('; ')}` : ''}` })
-    content.push({
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: 'image/jpeg',
-        data: base64(new Uint8Array(await stored.data.arrayBuffer())),
-      },
-    })
-  }
 
   const claude = new Anthropic({ apiKey })
 
@@ -243,8 +150,7 @@ Deno.serve(async (request) => {
     throw error
   }
 
-  // Every completed call is counted, whatever came back: each one was paid for.
-  await service.rpc('record_ai_use', { p_owner: ownerId, p_operation: OPERATION })
+  await recordUse(who, OPERATION)
 
   if (response.stop_reason === 'refusal') {
     return json({ error: 'The story writer declined to draft this album.' }, 422)
@@ -256,29 +162,22 @@ Deno.serve(async (request) => {
     .trim()
   if (!body) return json({ error: 'The story writer returned nothing. Try again.' }, 502)
 
-  const saved = await service
+  const saved = await who.service
     .from('ai_drafts')
     .insert({
-      owner_id: ownerId,
+      owner_id: who.ownerId,
       album_id: albumId,
       draft_type: OPERATION,
       prompt: notes || null,
       input_refs: rows.map((row) => row.id),
       body,
       model: response.model,
-      input_tokens:
-        response.usage.input_tokens +
-        (response.usage.cache_read_input_tokens ?? 0) +
-        (response.usage.cache_creation_input_tokens ?? 0),
+      input_tokens: tokensIn(response.usage),
       output_tokens: response.usage.output_tokens,
     })
     .select('id, body')
     .single()
   if (saved.error) return json({ error: saved.error.message }, 500)
 
-  return json({
-    draft: saved.data,
-    used: used + 1,
-    limit: FREE_STORY_DRAFTS_PER_MONTH,
-  })
+  return json({ draft: saved.data, used: used + 1, limit: FREE_STORY_DRAFTS_PER_MONTH })
 })

@@ -23,6 +23,7 @@ import {
   updateStory,
 } from '../lib/stories'
 import { type UploadItem, runUploads } from '../lib/uploads'
+import { AlbumQuestions } from './AlbumQuestions'
 import { PhotoEditor } from './PhotoEditor'
 import { SimilarPhotos } from './SimilarPhotos'
 import { SoftPhotos } from './SoftPhotos'
@@ -584,6 +585,13 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 soft={softPhotos}
                 thumbnails={thumbnails}
                 onRemove={handleRemoveChosen}
+              />
+              <AlbumQuestions
+                albumId={album.id}
+                photos={photos}
+                thumbnails={thumbnails}
+                stories={stories}
+                onAnswer={(photoId, note) => handleAddStory(photoId, { body: note, visibility: 'hidden' })}
               />
 
               {focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 && (

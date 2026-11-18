@@ -129,10 +129,14 @@ AI cost.
 - An album can carry a story, drafted by AI from its photographs and the owner's words, edited
   by the owner, and shown at the top of the shared album only once used. Drafts go through
   the `story-draft` Edge Function, which alone holds the AI key; five free drafts per person
-  per month, each recorded in `ai_drafts` with its token count. It needs the
-  `ANTHROPIC_API_KEY` function secret before it can draft anything.
-- Next: the rest of Phase 5 (voice, suggestions), after a real story draft has been tried
-  and costed. Phases 1 to 4, 6 and 7 are done and deployed.
+  per month, each recorded in `ai_drafts` with its token count. The owner chooses which
+  photographs it reads, and can speak instead of type wherever she writes a memory.
+- The studio asks about photographs with nothing written about them: up to five questions,
+  answered (typed or spoken) into a private note on the photograph, or set aside. Through the
+  `album-questions` Edge Function, five requests a month; open questions live in
+  `ai_suggestions`. Nothing is ever sent to another person.
+- Next: confirming Phase 5's checkpoint on the owner's own album and phone. Phases 1 to 4, 6
+  and 7 are done and deployed.
 
 ## Plans
 

@@ -92,15 +92,16 @@ flowchart LR
             Stories[(photo_stories)]:::current
             Usage[(ai_usage)]:::current
             Drafts[(ai_drafts)]:::current
+            Questions[(ai_suggestions)]:::current
             Tokens[(private album_share_tokens)]:::current
-            AISchema["Interactions, suggestions"]:::planned
+            AISchema["Interactions"]:::planned
             SearchSchema["Full-text and semantic search"]:::planned
             OutputSchema["Collages, slideshows, exports"]:::planned
             FaceSchema["Consent and face embeddings"]:::planned
         end
 
         EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential<br/>originals served with location removed"]:::current
-        EdgeStory["Edge Function story-draft<br/>verify_jwt on, reads as the owner<br/>counts each draft against the month"]:::current
+        EdgeStory["Edge Functions story-draft, album-questions<br/>verify_jwt on, read as the owner<br/>count each use against the month"]:::current
         EdgeAI["Edge Functions<br/>other AI calls, BYOK keys"]:::planned
 
         Auth --> Profiles
@@ -109,7 +110,7 @@ flowchart LR
         RPC --> Albums & Photos & Tokens
         EdgeShare --> RPC
         EdgeShare --> Storage
-        EdgeStory --> Albums & Photos & Stories & Drafts & Usage
+        EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage
         EdgeStory --> Storage
         EdgeAI --> Database
         EdgeAI --> Vault
@@ -146,6 +147,7 @@ erDiagram
     AUTH_USERS ||--o{ PHOTO_STORIES : writes
     AUTH_USERS ||--o{ AI_USAGE : consumes
     ALBUMS ||--o{ AI_DRAFTS : "is drafted for"
+    PHOTOS ||--o{ AI_SUGGESTIONS : "is asked about"
     ALBUMS o|--o| AI_DRAFTS : "story came from"
     ALBUMS ||--o{ PHOTOS : contains
     ALBUMS ||--|| ALBUM_SHARE_TOKENS : has
@@ -220,6 +222,20 @@ erDiagram
         text operation PK
         int4 count "NOT NULL"
         boolean byok PK
+    }
+
+    AI_SUGGESTIONS {
+        uuid id PK
+        uuid owner_id FK "NOT NULL; with photo_id and album_id"
+        uuid album_id FK "NOT NULL"
+        uuid photo_id FK "NOT NULL; the photograph asked about"
+        text suggestion_type "NOT NULL; missing_context"
+        text body "NOT NULL; the question, never rewritten"
+        text reason "who might know, or why it matters"
+        text status "open, answered, dismissed"
+        text model "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
     }
 
     AI_DRAFTS {
@@ -327,7 +343,10 @@ albums-studio/
 |   |-- checks/                  current probes run against the real database
 |   `-- functions/
 |       |-- shared-album/        current trusted Edge Function for share links
-|       `-- story-draft/         current AI story drafts, the only place the AI key is used
+|       |-- _shared/             current code both sides share: the photo spread, questions,
+|       |                        location removal, and the AI functions' common plumbing
+|       |-- album-questions/     current AI questions about photographs with no words yet
+|       `-- story-draft/         current AI story drafts; these two alone use the AI key
 |-- docs/
 |   |-- project-structure.md     this visual architecture map
 |   |-- plans/                   phased roadmap

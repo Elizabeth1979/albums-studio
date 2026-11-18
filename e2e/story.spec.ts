@@ -118,4 +118,37 @@ test.describe("an album's story", () => {
     await notes.fill('Mention the rain on day three')
     await expect(notes).toHaveValue('Mention the rain on day three')
   })
+
+  test('asks about photos with no words, and keeps the answer as a private note', async ({ page }) => {
+    const calls = await openAlbum(page, {
+      albumQuestions: {
+        status: 200,
+        body: {
+          questions: [
+            { id: 'q1', photo_id: 'photo-2', body: 'Who was up to see the dawn?', reason: 'Whoever took it would know.' },
+          ],
+          used: 1,
+          limit: 5,
+        },
+      },
+    })
+
+    await expect(page.getByText('3 of 3 photos have nothing written about them yet.')).toBeVisible()
+    await page.getByRole('button', { name: 'Suggest questions with AI' }).click()
+    await expect(page.getByText('Who was up to see the dawn?')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Answer: Who was up to see the dawn?' }).click()
+    await page.getByLabel('Your answer', { exact: true }).fill('Just me and the dog.')
+    await page.getByRole('button', { name: 'Save answer' }).click()
+
+    await expect(page.getByText('Answer kept as a private note on the photo.')).toBeVisible()
+    expect(calls.stories()).toEqual([
+      expect.objectContaining({ photo_id: 'photo-2', body: 'Who was up to see the dawn?\nJust me and the dog.', visibility: 'hidden' }),
+    ])
+    expect(calls.all.find((call) => call.method === 'PATCH' && call.path.endsWith('/rest/v1/ai_suggestions'))?.body).toEqual({
+      status: 'answered',
+    })
+    // The answered photo now has words, so the count follows at once.
+    await expect(page.getByText('2 of 3 photos have nothing written about them yet.')).toBeVisible()
+  })
 })
