@@ -16,6 +16,17 @@ async function openAlbum(page: Page, options: StubOptions = {}) {
 }
 
 /**
+ * Opens the folded "Technical readings", as a person would.
+ *
+ * The readouts start closed, so a test that read them through the fold would
+ * pass for text nobody can see. Opening it first keeps every assertion about
+ * them an assertion about what is on screen.
+ */
+async function openReadings(page: Page) {
+  await page.locator('summary', { hasText: 'Technical readings' }).click({ timeout: 30_000 })
+}
+
+/**
  * The size the fixtures are served at.
  *
  * The stored image, not the thumbnail — that is what the album now measures,
@@ -63,6 +74,7 @@ test.describe('finding the people in a photograph', () => {
       },
     })
 
+    await openReadings(page)
     const line = page.locator('p.focus-unchecked', { hasText: 'People:' })
 
     await expect(line).toContainText('found someone in 1 of 2', { timeout: 30_000 })
@@ -94,6 +106,7 @@ test.describe('finding the people in a photograph', () => {
       },
     })
 
+    await openReadings(page)
     const line = page.locator('p.focus-unchecked', { hasText: 'People:' })
 
     await expect(line).toContainText('found someone in 1 of 2', { timeout: 30_000 })
@@ -116,6 +129,13 @@ test.describe('finding the people in a photograph', () => {
       },
     })
 
+    // Folded is not silent: the closed summary itself says something failed.
+    await expect(page.locator('summary', { hasText: 'Technical readings' })).toContainText(
+      'some photos could not be checked',
+      { timeout: 30_000 },
+    )
+
+    await openReadings(page)
     const line = page.locator('p.focus-unchecked', { hasText: 'People:' })
 
     await expect(line).toContainText('could not run on 2', { timeout: 30_000 })
@@ -173,7 +193,27 @@ test.describe('photos that are out of focus', () => {
       objectRead: { status: 403, body: { message: 'not allowed' } },
     })
 
+    await expect(page.locator('summary', { hasText: 'Technical readings' })).toContainText(
+      'some photos could not be checked',
+      { timeout: 30_000 },
+    )
+    await openReadings(page)
     await expect(page.getByText(/could not read 2/)).toBeVisible()
+  })
+
+  test('keeps the technical readings folded away until asked', async ({ page }) => {
+    // The readouts are for tuning, not for the album. Closed by default, the
+    // numbers on the tiles go with them; opening the fold brings both back.
+    await openAlbum(page, oneOfEach)
+
+    const summary = page.locator('summary', { hasText: 'Technical readings' })
+    await expect(summary).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('p.focus-unchecked', { hasText: 'Focus check:' })).toBeHidden()
+    await expect(page.locator('.photo-focus-mark')).toHaveCount(0)
+
+    await summary.click()
+    await expect(page.locator('p.focus-unchecked', { hasText: 'Focus check:' })).toBeVisible()
+    await expect(page.locator('.photo-focus-mark')).toHaveCount(2)
   })
 
   test('says nothing about an album that is in focus', async ({ page }) => {
