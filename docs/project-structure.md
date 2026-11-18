@@ -25,7 +25,7 @@ the model out, not that it performed badly.
 | CLIP or SigLIP | Semantic search embeddings | Browser, ONNX | MIT, Apache-2.0 | Candidate, Phase 10 |
 | Florence-2-base | Alt text drafts | Browser, WebGPU | MIT | Candidate, Phase 11 |
 | SmolVLM 256M and 500M | Alt text drafts | Browser, WebGPU | Apache-2.0 | Candidate, Phase 11 |
-| Claude Opus 5.5 (`claude-opus-5-5`, Anthropic API) | Album story drafts | Edge Function `story-draft` to provider | Commercial API terms; inputs not used for training under them | Shipped 2026-11-18, draft-first, 5 free drafts a month |
+| Claude Sonnet 5.5 (`claude-sonnet-5-5`, Anthropic API) | Album story drafts | Edge Function `story-draft` to provider | Commercial API terms; inputs not used for training under them | Shipped 2026-11-18, draft-first, 5 free drafts a month |
 | Hosted vision model | Alt drafts | Edge Function to provider | Commercial terms | Planned, Phase 11 |
 | Whisper | Voice transcription | Browser or hosted | MIT | Unmeasured, Phase 5 |
 | InsightFace `buffalo_*`, ArcFace | Face grouping embeddings | Browser, ONNX | Code MIT, weights non-commercial research only | Blocked for a paid tier |

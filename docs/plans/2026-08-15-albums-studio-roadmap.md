@@ -78,12 +78,12 @@ subscription, Supabase, RLS, share links, Family Travels.
 
 - 🟡 **Phase 5, first slice built and deployed 2026-11-18, not yet tried with a real
   draft.** The owner asks for a story, optionally saying what it should mention; the
-  `story-draft` Edge Function shows Claude Opus 5.5 up to 20 of the album's photographs with
+  `story-draft` Edge Function shows Claude Sonnet 5.5 up to 20 of the album's photographs with
   every caption and note, private ones included but never to be quoted, and returns a draft.
   The owner edits it and uses it or discards it. Only "Use this story" puts text on the album
   and the share link; every draft is kept in `ai_drafts` with its status and its measured
   token count. The platform pays, five drafts per person per calendar month, counted in
-  `ai_usage` for every completed call. Estimated at about 14 US cents for 15 photographs; the
+  `ai_usage` for every completed call. Estimated at about 7 US cents for 15 photographs; the
   first real drafts' token counts confirm or change the five. Waiting on: the
   `ANTHROPIC_API_KEY` function secret, which only the owner can add. Not in this slice: voice,
   transcripts, proactive suggestions, choosing which photographs, captions and alt drafts.
@@ -383,9 +383,9 @@ it, and sees the accepted story in an album layout while the raw draft remains t
 **Decided 2026-11-18, first slice.** Story drafts before voice and suggestions: it is the
 smallest piece that runs the whole loop — photographs and owner words in, AI draft, owner
 edit, published result — so cost, quality and the review flow are measured on something
-real before the rest is built on them. Claude Opus 5.5 at medium effort, because a story is
-written once and read by family for years, and twenty photographs cost cents either way;
-with server-side fallback, so an ordinary family album is not lost to an over-cautious
+real before the rest is built on them. Claude Sonnet 5.5 at medium effort, at half Opus
+5.5's price: the owner chose it over Opus on cost, the difference being about 7 US cents a
+story, and Opus is one line away if real drafts read flat. With server-side fallback, so an ordinary family album is not lost to an over-cautious
 refusal. The platform's key with a monthly allowance rather than BYOK first: owners should
 not need an AI account to try the studio. The client can read its drafts and set their
 status, nothing more; a draft's text is never rewritten after the fact. On the album page

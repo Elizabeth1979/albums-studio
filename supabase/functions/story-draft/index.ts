@@ -29,7 +29,12 @@ const MAX_PHOTOS = 20
 /** The longest note the owner can send with a request. */
 const MAX_NOTES = 2000
 
-const MODEL = 'claude-opus-5-5'
+/**
+ * Claude Sonnet 5.5, at half Opus 5.5's price (about 7 US cents for 15 photographs
+ * against 14). The owner's call, 2026-11-18: a 350-word family story does not need
+ * the largest model until a real draft shows otherwise. One line to change back.
+ */
+const MODEL = 'claude-sonnet-5-5'
 const OPERATION = 'album_story'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
