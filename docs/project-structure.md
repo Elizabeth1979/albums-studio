@@ -6,11 +6,13 @@ review exist; AI generation and its trusted server functions remain planned.
 
 ## Models and libraries
 
-Nothing in the product runs a machine-learning model today. Every signal it shows — the
-near-duplicate groups, the sharpness reading, the best shot, the burst grouping — is
-arithmetic over measurements the browser takes at upload time. That is the baseline this
-table exists to protect: a model earns a row here only when a deterministic method cannot do
-the job.
+Most of what the product shows is arithmetic over measurements the browser takes at upload
+time: the near-duplicate groups, the sharpness reading, the best shot, the burst grouping.
+Three things are models, each because arithmetic could not do the job: finding faces and
+reading eyes, smiles and head angle (MediaPipe, in the browser), drafting an album's story
+(Claude, through an Edge Function), and turning speech into text (the browser's own
+recognition). That is the baseline this table exists to protect: a model earns a row here
+only when a deterministic method cannot do the job.
 
 Read `Status` before anything else. `Blocked` means a licence or a product invariant rules
 the model out, not that it performed badly.
@@ -27,7 +29,8 @@ the model out, not that it performed badly.
 | SmolVLM 256M and 500M | Alt text drafts | Browser, WebGPU | Apache-2.0 | Candidate, Phase 11 |
 | Claude Sonnet 5.5 (`claude-sonnet-5-5`, Anthropic API) | Album story drafts | Edge Function `story-draft` to provider | Commercial API terms; inputs not used for training under them | Shipped 2026-11-18, draft-first, 5 free drafts a month |
 | Hosted vision model | Alt drafts | Edge Function to provider | Commercial terms | Planned, Phase 11 |
-| Whisper | Voice transcription | Browser or hosted | MIT | Unmeasured, Phase 5 |
+| Browser speech recognition (Web Speech API) | Speaking a memory or a story's notes instead of typing | Browser; the browser sends the audio to its maker (Google in Chrome and Edge, Apple in Safari) to turn it into text | The browser maker's terms; nothing reaches this project but the text | Shipped 2026-11-18; not offered in Firefox, which has none |
+| Whisper | Voice transcription | Browser or hosted | MIT | Not needed while the browser's own recognition serves; measure before adopting |
 | InsightFace `buffalo_*`, ArcFace | Face grouping embeddings | Browser, ONNX | Code MIT, weights non-commercial research only | Blocked for a paid tier |
 
 Three rules decide the `Where it runs` column, and between them they are why no Python

@@ -82,4 +82,40 @@ test.describe("an album's story", () => {
     await expect(page.getByText('We arrived in the rain.')).toBeVisible()
     await expect(page.getByText('By Friday nobody wanted to leave.')).toBeVisible()
   })
+
+  test('can be spoken instead of typed, and the words can be corrected', async ({ page }) => {
+    // The browser's recognizer, standing in for Chrome's: it hears one sentence.
+    await page.addInitScript(() => {
+      class HearsOneSentence {
+        lang = ''
+        continuous = false
+        interimResults = false
+        onresult: ((event: unknown) => void) | null = null
+        onerror: ((event: unknown) => void) | null = null
+        onend: (() => void) | null = null
+        start() {
+          setTimeout(() => {
+            const result = Object.assign([{ transcript: 'mention the rain on day two' }], { isFinal: true })
+            this.onresult?.({ resultIndex: 0, results: Object.assign([result], { length: 1 }) })
+          }, 50)
+        }
+        stop() {
+          this.onend?.()
+        }
+      }
+      const scope = window as unknown as Record<string, unknown>
+      scope.SpeechRecognition = HearsOneSentence
+      scope.webkitSpeechRecognition = HearsOneSentence
+    })
+    await openAlbum(page)
+
+    await page.getByRole('button', { name: 'Draft the story with AI' }).click()
+    const notes = page.getByLabel(/Anything the story should say/)
+    await page.getByRole('button', { name: 'Speak into what the story should say' }).click()
+    await expect(notes).toHaveValue('Mention the rain on day two')
+    await page.getByRole('button', { name: 'Stop speaking into what the story should say' }).click()
+
+    await notes.fill('Mention the rain on day three')
+    await expect(notes).toHaveValue('Mention the rain on day three')
+  })
 })

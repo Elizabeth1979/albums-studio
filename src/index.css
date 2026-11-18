@@ -2241,6 +2241,27 @@ textarea:focus-visible {
   min-height: 6rem;
 }
 
+/* Speaking into a box: the button, the words still being heard, and where they go. */
+.dictate {
+  margin: 0.4rem 0 0.9rem;
+}
+
+.dictate-button[aria-pressed='true'] {
+  border-color: #8d5526;
+  background: #f6ece1;
+  color: #6d3f18;
+}
+
+.dictate-guess {
+  margin: 0.4rem 0 0;
+  color: #6f675c;
+  font-style: italic;
+}
+
+.dictate-note {
+  margin: 0.35rem 0 0;
+}
+
 /* Choosing the photos a story reads: small enough that a long album still fits. */
 .story-photos {
   margin: 0 0 0.9rem;
