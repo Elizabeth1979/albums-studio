@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
-import { compareSharpness, type SharpnessReading, type SimilarGroup } from '../lib/similarity'
+import type { SimilarGroup } from '../lib/similarity'
 import { type FrameFaces, facesCamera, followPeople, framesWithBlinks, isSmiling } from '../lib/blinks'
 import type { EyeReading } from '../lib/imaging/eyes'
 import { PhotoLightbox } from './PhotoLightbox'
@@ -11,13 +11,6 @@ type SimilarPhotosProps = {
   groups: SimilarGroup[]
   /** Signed thumbnail URLs, by storage path. */
   thumbnails: Map<string, string>
-  /**
-   * Detail readings measured from the thumbnails, by photo id.
-   *
-   * Used only to rank within a group, where every frame is the same picture and
-   * the reading therefore says something about focus rather than about subject.
-   */
-  readings?: Map<string, number>
   /** Eyes read in each photograph, by photo id. Shown, never acted on yet. */
   eyes?: Map<string, EyeReading>
   onRemove: (photos: Photo[]) => Promise<void>
@@ -124,33 +117,25 @@ function GroupFaces({ group, eyes }: { group: SimilarGroup; eyes: Map<string, Ey
   )
 }
 
-/** What each focus reading says out loud. */
-const READING_TEXT: Record<SharpnessReading, string> = {
-  sharpest: 'Sharpest',
-  close: 'Just as sharp',
-  softer: 'Slightly blurry',
-  blurrier: 'Blurry',
-  unmeasured: 'Not measured',
-}
-
 /**
  * Near-duplicates, side by side, for the owner to decide about.
  *
  * Deliberately not a cleanup that runs itself. The grouping is arithmetic on a
- * perceptual hash and the suggestion is a focus measurement, and neither knows
- * which frame someone was smiling in. So nothing is preselected, nothing is
- * ticked on the owner's behalf (a "tick all but the sharpest" shortcut was
- * removed at her request), and removing anything takes two deliberate actions.
+ * perceptual hash, which knows nothing of who was smiling or moving. So nothing
+ * is preselected, nothing is ticked on the owner's behalf (a "tick all but the
+ * sharpest" shortcut was removed at her request), and removing anything takes
+ * two deliberate actions. Every tick box says "Remove" beside it rather than
+ * sitting unlabelled on the picture.
  *
- * The wording carries that: every tick box says "Remove" beside it rather than
- * sitting unlabelled on the picture, and the measurement is spoken as a
- * comparison ("just as sharp") instead of the raw variance, which read as a
- * score nobody could act on.
+ * No frame is called the sharpest. It used to be, from a whole-frame measure
+ * that in a real burst read the lawn and the paving rather than the children,
+ * named a different frame on a phone and on a laptop, and put a child smeared
+ * by movement above two frames where everyone came out: see
+ * `docs/sessions/2026-11-18-sharpest-read-the-lawn.md`.
  */
 export function SimilarPhotos({
   groups,
   thumbnails,
-  readings = new Map(),
   eyes = new Map(),
   onRemove,
 }: SimilarPhotosProps) {
@@ -167,13 +152,7 @@ export function SimilarPhotos({
 
   const viewedGroup = viewing ? groups[viewing.group] : undefined
   const viewedPhotos = viewedGroup
-    ? viewedGroup.photos.map((photo) =>
-        toLightboxPhoto(
-          photo,
-          thumbnails,
-          READING_TEXT[compareSharpness(photo, viewedGroup, readings)],
-        ),
-      )
+    ? viewedGroup.photos.map((photo) => toLightboxPhoto(photo, thumbnails, null))
     : []
 
   const chosen = groups.flatMap((group) => group.photos).filter((photo) => marked.has(photo.id))
@@ -211,9 +190,8 @@ export function SimilarPhotos({
         {groups.length === 1
           ? 'One set of photographs looks like the same picture taken more than once.'
           : `${groups.length} sets of photographs look like the same picture taken more than once.`}{' '}
-        Tick the ones you do not want to keep, then remove them — nothing goes until you say
-        so. Sharpness is measured automatically and only compares how well each frame is in
-        focus, so the last word is yours.
+        Tap a photo to see it full size, tick the ones you do not want to keep, then remove
+        them — nothing goes until you say so.
       </p>
 
       {groups.map((group, groupIndex) => (
@@ -222,7 +200,6 @@ export function SimilarPhotos({
 
           <ul className="similar-row">
             {group.photos.map((photo, photoIndex) => {
-              const reading = compareSharpness(photo, group, readings)
               const isMarked = marked.has(photo.id)
 
               return (
@@ -232,13 +209,6 @@ export function SimilarPhotos({
                     urls={thumbnails}
                     onOpen={() => setViewing({ group: groupIndex, index: photoIndex })}
                   />
-
-                  {/* Every frame wears its reading on the picture, as a short tag:
-                      a line under each tile read as a caption. The sharpest is
-                      the one in bold. */}
-                  <span className={`similar-tag${reading === 'sharpest' ? ' best' : ''}`}>
-                    {READING_TEXT[reading]}
-                  </span>
 
                   <label className="similar-choice">
                     <input

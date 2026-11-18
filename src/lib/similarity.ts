@@ -44,8 +44,6 @@ export const BURST_DISTANCE = 20
 export type SimilarGroup = {
   /** Photographs that belong together, in album order. */
   photos: Photo[]
-  /** The one to keep, if nothing else is known: the sharpest of them. */
-  suggested: Photo
   /** The widest gap inside the group, as a rough "how alike" reading. */
   spread: number
 }
@@ -115,7 +113,6 @@ function alike(one: Photo, two: Photo, distance: number): boolean {
 export function groupSimilar(
   photos: Photo[],
   distance: number = NEAR_DUPLICATE_DISTANCE,
-  readings: Map<string, number> = new Map(),
 ): SimilarGroup[] {
   const usable = photos.filter((photo) => isHash(photo.phash))
   const parent = usable.map((_, index) => index)
@@ -151,45 +148,9 @@ export function groupSimilar(
     .filter((group) => group.length > 1)
     .map((group) => ({
       photos: group,
-      suggested: sharpest(group, readings),
       spread: widestGap(group),
     }))
     .sort((one, two) => one.photos[0].sortOrder - two.photos[0].sortOrder)
-}
-
-/**
- * How sharp one photograph is, for ranking it against the others in its group.
- *
- * Prefers the reading measured from the thumbnail when the album has one, and
- * falls back to the whole-frame variance stored at upload.
- *
- * The measured reading counts fine detail relative to contrast, which is a
- * property of the subject as much as of the focus — useless for judging a
- * portrait against a seascape, and it was withdrawn from the blur advice for
- * exactly that reason. **Inside one group it is the right measure**, because a
- * group is the same picture taken more than once: the subject is held still, so
- * the only thing left varying is how well it came out. It reads local squares
- * rather than the whole frame, so a face sharp against a blurred background is
- * ranked on the face, and it discounts the false detail that 8-bit rounding
- * adds — neither of which the stored number does.
- */
-function detail(photo: Photo, readings: Map<string, number>): number {
-  const measured = readings.get(photo.id)
-
-  return measured ?? photo.sharpness ?? -1
-}
-
-/**
- * The sharpest of a group, as a suggestion only.
- *
- * Offered as a starting point and never acted on without the owner saying so.
- * Ties keep album order, which makes the suggestion stable rather than
- * dependent on how the rows arrived.
- */
-export function sharpest(photos: Photo[], readings: Map<string, number> = new Map()): Photo {
-  return photos.reduce((best, photo) =>
-    detail(photo, readings) > detail(best, readings) ? photo : best,
-  )
 }
 
 /** The largest distance between any two photographs in a group. */
@@ -206,38 +167,4 @@ function widestGap(photos: Photo[]): number {
   }
 
   return widest
-}
-
-/**
- * How one photograph's focus reads against the sharpest of its group.
- *
- * A Laplacian variance means nothing to the person looking at it -- 7432 is
- * neither good nor bad, and only becomes a fact once there is something to
- * compare it to. So the number stays out of the interface and this says where a
- * photograph sits relative to the best of the same picture, which is the only
- * question being asked on that screen.
- */
-export type SharpnessReading = 'unmeasured' | 'sharpest' | 'close' | 'softer' | 'blurrier'
-
-/** Where `photo` sits against the sharpest of `group`. */
-export function compareSharpness(
-  photo: Photo,
-  group: SimilarGroup,
-  readings: Map<string, number> = new Map(),
-): SharpnessReading {
-  const best = readings.get(group.suggested.id) ?? group.suggested.sharpness
-  const mine = readings.get(photo.id) ?? photo.sharpness
-
-  if (mine === null || mine === undefined || best === null || best <= 0) return 'unmeasured'
-  if (photo.id === group.suggested.id) return 'sharpest'
-
-  const share = mine / best
-
-  // Two frames within a tenth of each other are, in practice, the same photo
-  // twice: worth saying so, because "sharpest" would otherwise imply a
-  // difference someone could see.
-  if (share >= 0.9) return 'close'
-  if (share >= 0.6) return 'softer'
-
-  return 'blurrier'
 }

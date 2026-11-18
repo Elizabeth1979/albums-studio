@@ -16,8 +16,8 @@ const SHARP = BLURRED_ENOUGH - 0.06
 const BLURRED = BLURRED_ENOUGH + 0.2
 
 /** A photograph the app looked at and measured the edges of. */
-function measured(blur: number, texture: number | null = 4): FocusReading {
-  return { kind: 'measured', blur, edgeWidth: 2, texture }
+function measured(blur: number): FocusReading {
+  return { kind: 'measured', blur, edgeWidth: 2 }
 }
 
 function photo(overrides: Partial<Photo> & { id: string }): Photo {
@@ -71,11 +71,11 @@ describe('findSoftPhotos', () => {
     // even though it carries a fraction of their detail. The measure this
     // replaced read the same photographs five-fold apart.
     const readings = new Map([
-      ['water-a', measured(SHARP - 0.01, 9.1)],
-      ['water-b', measured(SHARP, 6.4)],
-      ['water-c', measured(SHARP - 0.01, 7.7)],
-      ['water-d', measured(SHARP + 0.01, 5.2)],
-      ['sharp-portrait', measured(SHARP + 0.01, 2.4)],
+      ['water-a', measured(SHARP - 0.01)],
+      ['water-b', measured(SHARP)],
+      ['water-c', measured(SHARP - 0.01)],
+      ['water-d', measured(SHARP + 0.01)],
+      ['sharp-portrait', measured(SHARP + 0.01)],
     ])
 
     expect(findSoftPhotos(album, readings)).toEqual([])

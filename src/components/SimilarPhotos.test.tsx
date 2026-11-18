@@ -27,7 +27,7 @@ function askToRemove() {
   const photos = [photo('photo-1', 0), photo('photo-2', 1)]
   render(
     <SimilarPhotos
-      groups={[{ photos, suggested: photos[0], spread: 2 }]}
+      groups={[{ photos, spread: 2 }]}
       thumbnails={new Map()}
       onRemove={vi.fn()}
     />,
@@ -38,23 +38,17 @@ function askToRemove() {
 }
 
 describe('SimilarPhotos', () => {
-  it('tags every frame with how sharp it is next to the best', () => {
+  it('calls no frame the sharpest', () => {
+    // A whole-frame measure named the lawn rather than the children, and a
+    // different frame on a phone than on a laptop. Until something judges the
+    // people in a frame, nothing on this screen claims to know which came out.
     const photos = [
       { ...photo('photo-1', 0), sharpness: 100 },
-      { ...photo('photo-2', 1), sharpness: 95 },
-      { ...photo('photo-3', 2), sharpness: 70 },
-      { ...photo('photo-4', 3), sharpness: 30 },
+      { ...photo('photo-2', 1), sharpness: 30 },
     ]
-    render(
-      <SimilarPhotos
-        groups={[{ photos, suggested: photos[0], spread: 2 }]}
-        thumbnails={new Map()}
-        onRemove={vi.fn()}
-      />,
-    )
+    render(<SimilarPhotos groups={[{ photos, spread: 2 }]} thumbnails={new Map()} onRemove={vi.fn()} />)
 
-    const tags = [...document.querySelectorAll('.similar-tag')].map((tag) => tag.textContent)
-    expect(tags).toEqual(['Sharpest', 'Just as sharp', 'Slightly blurry', 'Blurry'])
+    expect(screen.queryByText(/sharp|blurry|not measured/i)).toBeNull()
   })
 
   it('hands focus to the safe choice once removal is asked for', () => {
@@ -97,8 +91,8 @@ describe('SimilarPhotos', () => {
     render(
       <SimilarPhotos
         groups={[
-          { photos, suggested: photos[0], spread: 2 },
-          { photos: other, suggested: other[0], spread: 2 },
+          { photos, spread: 2 },
+          { photos: other, spread: 2 },
         ]}
         thumbnails={urls}
         onRemove={vi.fn()}
@@ -126,7 +120,7 @@ describe('eyes in a group', () => {
     const photos = [photo('photo-1', 0), photo('photo-2', 1), photo('photo-3', 2)]
     render(
       <SimilarPhotos
-        groups={[{ photos, suggested: photos[0], spread: 2 }]}
+        groups={[{ photos, spread: 2 }]}
         thumbnails={new Map()}
         eyes={eyes}
         onRemove={vi.fn()}

@@ -1,7 +1,7 @@
 import { toLuma } from './luma'
 import { fitWithin } from './process'
 import { blurRatio } from './reblur'
-import { edgeWidth, focusScore } from './sharpness'
+import { edgeWidth } from './sharpness'
 
 /**
  * The size focus is judged at.
@@ -60,13 +60,6 @@ export type FocusReading =
        * moves either of them to 0.77.
        */
       blur: number | null
-      /**
-       * How much fine detail the frame carries, relative to its contrast.
-       * Depends heavily on the subject, so it is worthless for comparing a
-       * portrait against a seascape — and good for ranking the frames of one
-       * burst, where the subject is held still.
-       */
-      texture: number | null
     }
   /** Fog, a blank wall: real pixels, nothing in them to judge. */
   | { kind: 'unjudgeable' }
@@ -119,7 +112,6 @@ export async function measureFocus(source: Blob): Promise<FocusReading> {
           kind: 'measured',
           edgeWidth: width,
           blur: blurRatio(luma, size.width, size.height),
-          texture: focusScore(luma, size.width, size.height),
         }
   } catch (error) {
     return { kind: 'failed', detail: describe(error) }

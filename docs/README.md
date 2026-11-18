@@ -11,12 +11,11 @@ AI cost.
 - The React and TypeScript application has email/password authentication, an album library
   (create, open, rename, describe, delete), and photo upload.
 - Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
-  sharpness in a Web Worker, then uploaded four at a time with retry. Those measurements
-  are what Phase 7 duplicate grouping and best-shot ranking run on, so neither needs a
-  model call. Focus is read twice over: against the other frames of a near-duplicate group
-  at upload time, and — for every photograph, including ones uploaded years earlier — from
-  the thumbnail when an album opens, which is what catches a blurred photograph taken only
-  once.
+  sharpness in a Web Worker, then uploaded four at a time with retry. The hash is what
+  Phase 7 duplicate grouping runs on. Near-duplicate groups name no sharpest frame: the
+  whole-frame ranking read the background, not the people (see the 2026-11-18 session). Focus
+  is read for every photograph, including ones uploaded years earlier, when an album opens,
+  which is what catches a blurred photograph taken only once.
 - Owners sign their own image URLs from the browser; Storage checks its policy against
   the caller's token first. Shared viewers have no token, so Phase 6 signs on their behalf
   from an Edge Function.
@@ -196,6 +195,11 @@ AI cost.
 - [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
   a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
   was five times too low; photographs are now judged against their own album's median.
+- ["Sharpest" read the lawn](sessions/2026-11-18-sharpest-read-the-lawn.md) — in a night
+  burst of children the burst ranking counted the grass and paving, called a frame with a
+  child smeared by movement the sharpest, and named a different frame on a phone than on a
+  laptop. The verdicts are off the screen; measuring blur inside each person's box, child
+  against the same child, ranked the burst correctly and is the next step.
 - [Eyes read against themselves](sessions/2026-11-15-eyes-read-against-themselves.md) — the
   eye model finds no face on its own in a frame where a person is small, so it reads cut-outs
   of faces the tiled detector found; a laughing face with open eyes already scores 0.26, so a

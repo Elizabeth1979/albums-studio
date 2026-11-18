@@ -459,16 +459,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
   // Recomputed from the photos themselves, so removing one re-groups the rest
   // without another round trip.
-  // The measured detail readings, for ranking the frames of one burst against
-  // each other. Only meaningful inside a group, where the subject is the same
-  // picture taken twice — which is exactly where this is used.
-  const detailReadings = new Map(
-    [...focusReadings].flatMap(([id, reading]) =>
-      reading.kind === 'measured' && reading.texture !== null ? [[id, reading.texture]] : [],
-    ),
-  )
-
-  const similarGroups = groupSimilar(photos, undefined, detailReadings)
+  const similarGroups = groupSimilar(photos)
 
   // Blurred photographs that no group already speaks for. Grouped ones are
   // handled a section above, where there is something to compare them against.
@@ -576,7 +567,6 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               <SimilarPhotos
                 groups={similarGroups}
                 thumbnails={thumbnails}
-                readings={detailReadings}
                 eyes={eyeReadings}
                 onRemove={handleRemoveChosen}
               />
