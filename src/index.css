@@ -2406,3 +2406,104 @@ textarea:focus-visible {
   margin: 0 0 0.9rem;
   line-height: 1.6;
 }
+
+/* Slideshow ---------------------------------------------------------------- */
+
+/* The owner's hint and the Play button share a line, so the button costs the
+   album's first screen nothing on a wide one and one short row on a phone. */
+.album-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 0.9rem;
+}
+
+/* Never wrapped below the hint: on a phone that row cost 86px of the first
+   screen, past the budget the phone layout test holds. The hint takes two short
+   lines beside the button instead. */
+.album-hint-row .album-hint {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.album-hint-row .slideshow-start {
+  flex: none;
+}
+
+.slideshow-start {
+  /* The secondary button, a size smaller: it shares a line with a hint. */
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.shared-heading .slideshow-start {
+  margin-top: 1.2rem;
+}
+
+.lightbox.slideshow {
+  /* Sideways drags are the swipe; vertical ones still scroll a long caption. */
+  touch-action: pan-y;
+}
+
+.lightbox.slideshow .lightbox-image {
+  /* A slideshow is for looking at: give the photograph more of the screen. */
+  max-height: 76dvh;
+}
+
+.lightbox-slide {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Fills the space between the bar and the steps, so the story sits in the
+   middle of the screen rather than under the bar. */
+.lightbox.slideshow .lightbox-slide {
+  flex: 1 1 auto;
+  /* Held together in the middle: stretched rows left the caption floating
+     halfway between the photograph and the steps. */
+  align-content: center;
+}
+
+.lightbox.slideshow .lightbox-words {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.lightbox-intro {
+  display: grid;
+  gap: 1rem;
+  max-width: 40rem;
+  margin: auto;
+  padding: 2rem 0;
+  font-size: 1.15rem;
+  line-height: 1.75;
+}
+
+.lightbox-intro p {
+  margin: 0;
+}
+
+.lightbox-intro .lightbox-intro-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  line-height: 1.1;
+}
+
+/* Only for people who have not asked for less motion; for everyone else the
+   photograph simply replaces the last one. */
+@media (prefers-reduced-motion: no-preference) {
+  .lightbox.slideshow .lightbox-image,
+  .lightbox.slideshow .lightbox-intro {
+    animation: slideshow-fade 0.6s ease-out;
+  }
+}
+
+@keyframes slideshow-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

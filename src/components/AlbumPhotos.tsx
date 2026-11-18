@@ -26,6 +26,7 @@ import { type UploadItem, runUploads } from '../lib/uploads'
 import { AlbumQuestions } from './AlbumQuestions'
 import { PhotoEditor } from './PhotoEditor'
 import { SimilarPhotos } from './SimilarPhotos'
+import { Slideshow, ownerSlideshowPhotos } from './Slideshow'
 import { SoftPhotos } from './SoftPhotos'
 import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
@@ -573,7 +574,14 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
               <h2 className="visually-hidden" id="album-photos-title">
                 {photos.length === 1 ? '1 photo' : `${photos.length} photos`}
               </h2>
-              <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
+              <div className="album-hint-row">
+                <p className="album-hint">Choose a photo to add a caption, a story, or alt text.</p>
+                <Slideshow
+                  photos={ownerSlideshowPhotos(photos, thumbnails)}
+                  title={album.title}
+                  story={album.story}
+                />
+              </div>
               <PhotoGallery
                 photos={photos}
                 thumbnails={thumbnails}
