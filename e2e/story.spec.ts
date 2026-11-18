@@ -133,7 +133,7 @@ test.describe("an album's story", () => {
       },
     })
 
-    await expect(page.getByText('3 of 3 photos have nothing written about them yet.')).toBeVisible()
+    await expect(page.getByText('None of the 3 photos has anything written about it yet.')).toBeVisible()
     await page.getByRole('button', { name: 'Suggest questions with AI' }).click()
     await expect(page.getByText('Who was up to see the dawn?')).toBeVisible()
 

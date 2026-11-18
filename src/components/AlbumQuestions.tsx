@@ -27,6 +27,15 @@ type AlbumQuestionsProps = {
 
 const ANSWER_LIMIT = 5000
 
+/** How many photographs have no words yet, said as a person would say it. */
+export function silenceSummary(silent: number, total: number): string {
+  if (silent === 0) return total === 1 ? 'This photo has something written about it.' : 'Every photo has something written about it.'
+  if (total === 1) return 'This photo has nothing written about it yet.'
+  if (silent === total) return `None of the ${total} photos has anything written about it yet.`
+  if (silent === 1) return `1 of ${total} photos has nothing written about it yet.`
+  return `${silent} of ${total} photos have nothing written about them yet.`
+}
+
 /**
  * The studio asks about photographs nobody has written about yet.
  *
@@ -120,11 +129,7 @@ export function AlbumQuestions({ albumId, photos, thumbnails, stories, onAnswer 
       <LiveStatus>{status}</LiveStatus>
 
       <p className="album-note">
-        {silent.length === 0
-          ? 'Every photo has something written about it.'
-          : silent.length === 1
-            ? `1 of ${photos.length} photos has nothing written about it yet.`
-            : `${silent.length} of ${photos.length} photos have nothing written about them yet.`}
+        {silenceSummary(silent.length, photos.length)}
       </p>
 
       {shown.length > 0 && (
