@@ -39,8 +39,9 @@ words, and a real share link returns the `story` field.
   first photograph past the middle of a phone screen, which the phone-layout test caught.
   Visitors still read it first.
 
-## Open
+## Measured
 
-- The `ANTHROPIC_API_KEY` function secret, which only the owner can add.
-- The first real draft: its quality, and its cost from `ai_drafts.input_tokens` and
-  `output_tokens`, before the allowance is called final.
+The owner added the key and drafted a story for a real album: 20 photographs, 23,106 input
+tokens and 464 output tokens on Claude Sonnet 5.5, no fallback, about 5 US cents. Images are
+nearly all of the input, at roughly 1,150 tokens each. Five drafts a month therefore cost at
+most about 25 cents a person, and the allowance stands. She accepted the draft.

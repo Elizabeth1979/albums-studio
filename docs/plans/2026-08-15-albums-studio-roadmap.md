@@ -76,16 +76,15 @@ subscription, Supabase, RLS, share links, Family Travels.
   signal. This document does not record the checkpoint having been confirmed on a real
   album.
 
-- 🟡 **Phase 5, first slice built and deployed 2026-11-18, not yet tried with a real
-  draft.** The owner asks for a story, optionally saying what it should mention; the
+- ✅ **Phase 5, first slice built, deployed and used on a real album 2026-11-18.** The owner asks for a story, optionally saying what it should mention; the
   `story-draft` Edge Function shows Claude Sonnet 5.5 up to 20 of the album's photographs with
   every caption and note, private ones included but never to be quoted, and returns a draft.
   The owner edits it and uses it or discards it. Only "Use this story" puts text on the album
   and the share link; every draft is kept in `ai_drafts` with its status and its measured
   token count. The platform pays, five drafts per person per calendar month, counted in
-  `ai_usage` for every completed call. Estimated at about 7 US cents for 15 photographs; the
-  first real drafts' token counts confirm or change the five. Waiting on: the
-  `ANTHROPIC_API_KEY` function secret, which only the owner can add. Not in this slice: voice,
+  `ai_usage` for every completed call. Measured on the owner's first real draft: 20 photographs, 23,106 tokens in and 464 out on
+  Claude Sonnet 5.5, about 5 US cents, so five drafts cost a person at most about 25 cents
+  a month and the allowance stands. Not in this slice: voice,
   transcripts, proactive suggestions, choosing which photographs, captions and alt drafts.
 
 **Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
