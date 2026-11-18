@@ -54,6 +54,8 @@ const album: Album = {
   coverPhotoId: null,
   visibility: 'private',
   createdAt: '2026-08-16T20:27:38Z',
+  story: null,
+  storyDraftId: null,
 }
 
 const onCoverChosen = vi.fn()

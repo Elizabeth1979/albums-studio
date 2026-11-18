@@ -126,7 +126,13 @@ AI cost.
   counterweight — it runs the client's real writes against the real schema as `authenticated`
   and `anon`, then rolls back. Run it after any migration. It reproduces all four faults that
   reached the deployed app past a green suite.
-- Next: Phase 5 AI Story Studio. Phases 1 to 4 are done and deployed.
+- An album can carry a story, drafted by AI from its photographs and the owner's words, edited
+  by the owner, and shown at the top of the shared album only once used. Drafts go through
+  the `story-draft` Edge Function, which alone holds the AI key; five free drafts per person
+  per month, each recorded in `ai_drafts` with its token count. It needs the
+  `ANTHROPIC_API_KEY` function secret before it can draft anything.
+- Next: the rest of Phase 5 (voice, suggestions), after a real story draft has been tried
+  and costed. Phases 1 to 4, 6 and 7 are done and deployed.
 
 ## Plans
 
@@ -196,6 +202,9 @@ AI cost.
 - [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
   a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
   was five times too low; photographs are now judged against their own album's median.
+- [The first AI draft](sessions/2026-11-18-the-first-ai-draft.md) — album stories drafted
+  by Claude from photographs and the owner's words, kept as drafts until used, five free a
+  month on the platform's key, with the real cost per draft still to be measured.
 - [Eyes read against themselves](sessions/2026-11-15-eyes-read-against-themselves.md) — the
   eye model finds no face on its own in a frame where a person is small, so it reads cut-outs
   of faces the tiled detector found; a laughing face with open eyes already scores 0.26, so a

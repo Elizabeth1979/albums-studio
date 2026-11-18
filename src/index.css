@@ -2205,3 +2205,41 @@ textarea:focus-visible {
   margin-top: 0.4rem;
   text-align: left;
 }
+
+/* The album's story, between its description and its photographs. */
+.album-story {
+  margin: 1.5rem 0 2rem;
+  max-width: 42rem;
+}
+
+.album-story h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+}
+
+.album-story-text p {
+  margin: 0 0 0.9rem;
+  line-height: 1.6;
+}
+
+.album-story-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+.album-story .rename-form textarea {
+  min-height: 6rem;
+}
+
+.shared-story-text {
+  max-width: 42rem;
+  margin-top: 1.2rem;
+}
+
+.shared-story-text p {
+  margin: 0 0 0.9rem;
+  line-height: 1.6;
+}

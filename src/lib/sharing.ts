@@ -54,6 +54,8 @@ export type SharedAlbum = {
   album: {
     title: string
     description: string | null
+    /** The story the owner accepted, or absent. */
+    story?: string | null
   }
   photos: SharedPhoto[]
 }

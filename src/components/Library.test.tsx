@@ -13,6 +13,8 @@ function album(overrides: Partial<Album> = {}): Album {
     coverPhotoId: null,
     visibility: 'private',
     createdAt: '2026-08-16T10:00:00Z',
+    story: null,
+    storyDraftId: null,
     ...overrides,
   }
 }

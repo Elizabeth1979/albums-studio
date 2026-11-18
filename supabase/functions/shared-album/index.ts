@@ -59,6 +59,7 @@ type SharedRow = {
   title: string
   description: string | null
   layout: string
+  story: string | null
   photo_id: string | null
   storage_path: string | null
   thumbnail_path: string | null
@@ -181,6 +182,8 @@ Deno.serve(async (request) => {
       // Anything unrecognised reads as masonry, which keeps each photograph's
       // own proportions and so cannot crop one on the visitor's behalf.
       layout: rows[0].layout === 'grid' ? 'grid' : 'masonry',
+      // Only ever the story its owner chose to use; drafts never leave the studio.
+      story: rows[0].story ?? null,
     },
     photos: photos.map((row) => ({
       id: row.photo_id,
