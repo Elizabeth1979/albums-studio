@@ -2241,6 +2241,68 @@ textarea:focus-visible {
   min-height: 6rem;
 }
 
+/* The studio's questions about photographs with no words yet. */
+.album-questions {
+  margin: 1.5rem 0 2rem;
+  max-width: 42rem;
+}
+
+.album-questions h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+}
+
+.question-list {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.question {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.question img,
+.question-photo-missing {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.question-photo-missing {
+  display: grid;
+  place-items: center;
+  background: #e9e3da;
+  color: #6f675c;
+  font-size: 0.75rem;
+}
+
+.question-body {
+  min-width: 0;
+}
+
+.question-text {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.question-body .field-hint {
+  margin: 0 0 0.5rem;
+}
+
+.question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+}
+
 /* Speaking into a box: the button, the words still being heard, and where they go. */
 .dictate {
   margin: 0.4rem 0 0.9rem;

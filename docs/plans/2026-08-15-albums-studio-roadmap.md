@@ -97,6 +97,14 @@ subscription, Supabase, RLS, share links, Family Travels.
   key, no recording kept, and the screen says the browser's maker turns the audio into text.
   Not offered in Firefox, which has none. Not yet: keeping the audio itself, and confirmed
   on the owner's own phone.
+- ✅ **Phase 5: the studio asks (2026-11-18).** Below the photographs, a count of how many have
+  no caption and no note, free and always shown. "Suggest questions with AI" shows the model up
+  to 12 of them, spread across the album, with what the owner wrote elsewhere, and saves up to
+  five questions in `ai_suggestions`, each with who might know when her own words say so.
+  Answered, typed or spoken, the question and answer become a private note on the photograph;
+  or the question is set aside. Nothing is sent to anyone. Five requests a month, about 3 US
+  cents each by estimate. `ai_suggestions` holds only `missing_context` for now; the other
+  suggestion types wait for a use.
 
 **Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
 checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:

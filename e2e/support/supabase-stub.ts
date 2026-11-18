@@ -170,6 +170,10 @@ export type StubOptions = {
   photoUpdate?: { status: number; body: object }
   /** What the `story-draft` Edge Function answers, as status and body. */
   storyDraft?: { status: number; body: object }
+  /** Questions already waiting in the fake `ai_suggestions` table, as rows. */
+  questions?: { id: string; photo_id: string; body: string; reason: string | null }[]
+  /** What the `album-questions` Edge Function answers, as status and body. */
+  albumQuestions?: { status: number; body: object }
   /** Status and body returned by writes to `photo_stories`, for failure cases. */
   storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
@@ -297,6 +301,16 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
         body: { draft: { id: 'draft-1', body: 'We arrived in the rain.' }, used: 1, limit: 5 },
       }
       return json(answer.body, answer.status)
+    }
+
+    // The Edge Function that asks about photographs with no words yet.
+    if (path === '/functions/v1/album-questions') {
+      const answer = options.albumQuestions ?? { status: 200, body: { questions: [], used: 1, limit: 5 } }
+      return json(answer.body, answer.status)
+    }
+
+    if (path.endsWith('/rest/v1/ai_suggestions')) {
+      return method === 'GET' ? json(options.questions ?? []) : json([])
     }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL

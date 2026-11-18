@@ -34,6 +34,7 @@ declare
   photo_a uuid;
   story_a uuid;
   draft_a uuid;
+  question_a uuid;
   token uuid;
   old_token uuid;
   new_token uuid;
@@ -167,6 +168,44 @@ begin
     log := log || E'\n  ok    a draft cannot be rewritten after the fact';
   end;
 
+  -- The studio's questions: written by the Edge Function with the service role,
+  -- answered or set aside by the owner, and never rewritten.
+  begin
+    insert into public.ai_suggestions (owner_id, album_id, photo_id, suggestion_type, body, model)
+    values (alice, album_a, photo_a, 'missing_context', 'Not hers to invent.', 'probe');
+    log := log || E'\n  FAIL  the client could write a question'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    the client cannot write a question';
+  end;
+
+  reset role;
+  insert into public.ai_suggestions (owner_id, album_id, photo_id, suggestion_type, body, reason, model)
+  values (alice, album_a, photo_a, 'missing_context', 'Who was up to see the dawn?', 'Whoever took it.', 'probe')
+  returning id into question_a;
+
+  begin
+    insert into public.ai_suggestions (owner_id, album_id, photo_id, suggestion_type, body, model)
+    values (bob, album_a, photo_a, 'missing_context', 'Pointing at her photo.', 'probe');
+    log := log || E'\n  FAIL  a question could point at another owner''s photo'; fails := fails + 1;
+  exception when foreign_key_violation then
+    log := log || E'\n  ok    a question cannot point at another owner''s photo';
+  end;
+  set local role authenticated;
+
+  begin
+    update public.ai_suggestions set status = 'answered' where id = question_a;
+    log := log || E'\n  ok    answer a question';
+  exception when others then
+    log := log || E'\n  FAIL  answer a question -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  begin
+    update public.ai_suggestions set body = 'rewritten' where id = question_a;
+    log := log || E'\n  FAIL  a question could be rewritten after the fact'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a question cannot be rewritten after the fact';
+  end;
+
   begin
     insert into public.photo_stories (photo_id, owner_id, body, visibility)
     values (photo_a, alice, 'The long version.', 'hidden')
@@ -220,6 +259,14 @@ begin
     log := log || E'\n  ok    cannot see her AI draft';
   else
     log := log || E'\n  FAIL  can see her AI draft'; fails := fails + 1;
+  end if;
+
+  seen_id := null;
+  select id into seen_id from public.ai_suggestions where id = question_a;
+  if seen_id is null then
+    log := log || E'\n  ok    cannot see the studio''s questions to her';
+  else
+    log := log || E'\n  FAIL  can see the studio''s questions to her'; fails := fails + 1;
   end if;
 
   begin
@@ -294,6 +341,13 @@ begin
     log := log || E'\n  FAIL  can read AI drafts through the Data API'; fails := fails + 1;
   exception when insufficient_privilege then
     log := log || E'\n  ok    cannot read AI drafts through the Data API';
+  end;
+
+  begin
+    select body into seen from public.ai_suggestions where id = question_a;
+    log := log || E'\n  FAIL  can read the studio''s questions through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    cannot read the studio''s questions through the Data API';
   end;
 
   begin
