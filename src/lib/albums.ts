@@ -35,6 +35,10 @@ export type Album = {
   coverPhotoId: string | null
   visibility: AlbumVisibility
   createdAt: string
+  /** The story the owner accepted for the top of the album, or null. */
+  story: string | null
+  /** The AI draft that story came from, when it came from one. */
+  storyDraftId: string | null
 }
 
 type AlbumRow = {
@@ -45,10 +49,12 @@ type AlbumRow = {
   cover_photo_id: string | null
   visibility: AlbumVisibility
   created_at: string
+  story?: string | null
+  story_draft_id?: string | null
 }
 
 const ALBUM_COLUMNS =
-  'id, title, slug, description, cover_photo_id, visibility, created_at'
+  'id, title, slug, description, cover_photo_id, visibility, created_at, story, story_draft_id'
 
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = '23505'
@@ -62,6 +68,8 @@ function toAlbum(row: AlbumRow): Album {
     coverPhotoId: row.cover_photo_id,
     visibility: row.visibility,
     createdAt: row.created_at,
+    story: row.story ?? null,
+    storyDraftId: row.story_draft_id ?? null,
   }
 }
 
@@ -166,6 +174,21 @@ export async function updateAlbumDetails(
   }
 
   return updateAlbum(id, columns)
+}
+
+/**
+ * Puts a story at the top of the album, or takes it away.
+ *
+ * The draft it came from is recorded beside it when there was one, so an
+ * accepted story stays traceable to what produced it. A story the owner writes
+ * or edits by hand keeps that link: the AI draft is still where it began.
+ */
+export async function setAlbumStory(
+  id: string,
+  story: string,
+  draftId: string | null,
+): Promise<Album> {
+  return updateAlbum(id, { story: story.trim() || null, story_draft_id: draftId })
 }
 
 /**

@@ -76,6 +76,28 @@ subscription, Supabase, RLS, share links, Family Travels.
   signal. This document does not record the checkpoint having been confirmed on a real
   album.
 
+- ✅ **Phase 5, first slice built, deployed and used on a real album 2026-11-18.** The owner asks for a story, optionally saying what it should mention; the
+  `story-draft` Edge Function shows Claude Sonnet 5.5 up to 20 of the album's photographs with
+  every caption and note, private ones included but never to be quoted, and returns a draft.
+  The owner edits it and uses it or discards it. Only "Use this story" puts text on the album
+  and the share link; every draft is kept in `ai_drafts` with its status and its measured
+  token count. The platform pays, five drafts per person per calendar month, counted in
+  `ai_usage` for every completed call. Measured on the owner's first real draft: 20 photographs, 23,106 tokens in and 464 out on
+  Claude Sonnet 5.5, about 5 US cents, so five drafts cost a person at most about 25 cents
+  a month and the allowance stands. Not in this slice: voice,
+  transcripts, proactive suggestions, captions and alt drafts.
+- ✅ **Phase 5: the owner chooses which photographs a story reads (2026-11-18).** Up to 20,
+  ticked on thumbnails; twenty are chosen to start with, spread evenly from the album's first
+  photograph to its last (`supabase/functions/_shared/storyPhotos.ts`), and the server makes
+  the same spread when it is sent no choice. Before this a story read the first 20 only, so a
+  long album got a story about its first afternoon.
+- ✅ **Phase 5: speaking instead of typing (2026-11-18).** A "Speak" button beside the
+  story's notes and beside every photo's story note; what is said lands in the box as text,
+  to correct like anything typed. It uses the browser's own speech recognition: free, no
+  key, no recording kept, and the screen says the browser's maker turns the audio into text.
+  Not offered in Firefox, which has none. Not yet: keeping the audio itself, and confirmed
+  on the owner's own phone.
+
 **Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
 checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:
 captions, story notes, and alt text, each already marked with who it is for. Drafted alt
@@ -367,6 +389,18 @@ someone.
 **Checkpoint:** owner selects photos, speaks or types a memory/instruction, sees a
 transcript, receives proactive suggestions, generates a story/blog draft, edits it, accepts
 it, and sees the accepted story in an album layout while the raw draft remains traceable.
+
+**Decided 2026-11-18, first slice.** Story drafts before voice and suggestions: it is the
+smallest piece that runs the whole loop — photographs and owner words in, AI draft, owner
+edit, published result — so cost, quality and the review flow are measured on something
+real before the rest is built on them. Claude Sonnet 5.5 at medium effort, at half Opus
+5.5's price: the owner chose it over Opus on cost, the difference being about 7 US cents a
+story, and Opus is one line away if real drafts read flat. With server-side fallback, so an ordinary family album is not lost to an over-cautious
+refusal. The platform's key with a monthly allowance rather than BYOK first: owners should
+not need an AI account to try the studio. The client can read its drafts and set their
+status, nothing more; a draft's text is never rewritten after the fact. On the album page
+the story sits below the photographs, as sharing does, because above them it pushed the
+first photograph past the middle of a phone screen; visitors still read it first.
 
 ### Phase 6 — Sharing
 Visibility switch (`private` / `link` / `public`), share-link generation, token rotation as
