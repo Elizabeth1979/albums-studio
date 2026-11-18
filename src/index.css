@@ -2406,3 +2406,45 @@ textarea:focus-visible {
   margin: 0 0 0.9rem;
   line-height: 1.6;
 }
+
+/* Suggested alt text: a draft beside the owner's own box, never inside it until she chooses. */
+.alt-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+
+.alt-suggest .field-hint {
+  margin: 0;
+  flex: 1 1 14rem;
+}
+
+.alt-suggestion {
+  padding: 0.9rem 1rem;
+  border: 1px solid #e7dfd3;
+  border-left: 3px solid #8a6a3f;
+  border-radius: 8px;
+  background: #fbf8f3;
+}
+
+.alt-suggestion h4 {
+  margin: 0 0 0.4rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+}
+
+.alt-suggestion-body {
+  margin: 0 0 0.6rem;
+  line-height: 1.55;
+}
+
+.alt-suggestion .field-hint {
+  margin: 0 0 0.7rem;
+}
+
+.alt-suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}

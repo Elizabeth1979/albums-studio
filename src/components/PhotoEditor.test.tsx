@@ -1,9 +1,17 @@
 import { type ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhotoEditor } from './PhotoEditor'
 import type { Photo } from '../lib/photos'
 import type { Story } from '../lib/stories'
+
+const { draftAlt, settleDraft } = vi.hoisted(() => ({ draftAlt: vi.fn(), settleDraft: vi.fn() }))
+
+vi.mock('../lib/altDraft', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/altDraft')>()),
+  draftAlt,
+  settleDraft,
+}))
 
 function photo(overrides: Partial<Photo> = {}): Photo {
   return {
@@ -503,5 +511,94 @@ describe('the photo, larger', () => {
     fireEvent.click(within(lightbox).getByRole('button', { name: 'Close' }))
     expect(lightbox).not.toHaveAttribute('open')
     expect(closeEditor).not.toHaveBeenCalled()
+  })
+})
+
+describe('suggested alt text', () => {
+  beforeEach(() => {
+    draftAlt.mockReset()
+    settleDraft.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('shows a suggestion without putting it in the box', async () => {
+    draftAlt.mockResolvedValue({ id: 'draft-1', body: 'Two children on a jetty.', used: 1, limit: 50 })
+    renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a description' }))
+
+    const panel = await screen.findByRole('region', { name: 'Suggested description' })
+    expect(within(panel).getByText('Two children on a jetty.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Alt text')).toHaveValue('')
+    expect(draftAlt).toHaveBeenCalledWith('photo-1')
+    // Focus lands on the suggestion, so a screen reader says it arrived, and
+    // what is read there includes the suggestion and what is left this month.
+    expect(panel).toHaveFocus()
+    expect(panel).toHaveAccessibleDescription(/Two children on a jetty\..*49 of 50 left this month/)
+  })
+
+  it('never touches what the owner already wrote', async () => {
+    draftAlt.mockResolvedValue({ id: 'draft-1', body: 'A jetty.', used: 1, limit: 50 })
+    const { onSave } = renderEditor({ photo: photo({ alt: 'Mia and Leo at the lake' }) })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a different description' }))
+    await screen.findByRole('region', { name: 'Suggested description' })
+
+    expect(screen.getByLabelText('Alt text')).toHaveValue('Mia and Leo at the lake')
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('saves a suggestion used as it came as the AI’s, and marks the draft accepted', async () => {
+    draftAlt.mockResolvedValue({ id: 'draft-1', body: 'Two children on a jetty.', used: 1, limit: 50 })
+    const { onSave } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a description' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Use this' }))
+
+    expect(screen.getByLabelText('Alt text')).toHaveValue('Two children on a jetty.')
+    expect(screen.getByLabelText('Alt text')).toHaveFocus()
+    expect(onSave).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alt: 'Two children on a jetty.',
+          altDraft: 'Two children on a jetty.',
+        }),
+      ),
+    )
+    await waitFor(() => expect(settleDraft).toHaveBeenCalledWith('draft-1', 'accepted'))
+  })
+
+  it('sets a discarded suggestion aside', async () => {
+    draftAlt.mockResolvedValue({ id: 'draft-1', body: 'A jetty.', used: 1, limit: 50 })
+    renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a description' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard' }))
+
+    expect(screen.queryByRole('region', { name: 'Suggested description' })).not.toBeInTheDocument()
+    expect(settleDraft).toHaveBeenCalledWith('draft-1', 'rejected')
+    expect(screen.getByLabelText('Alt text')).toHaveValue('')
+  })
+
+  it('says why when no suggestion could be made', async () => {
+    draftAlt.mockRejectedValue(new Error('You have used all 50 suggested descriptions for this month.'))
+    renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a description' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('You have used all 50')
+  })
+
+  it('leaves alt text and its authorship alone when only the caption changes', async () => {
+    const { onSave } = renderEditor({ photo: photo({ alt: 'Two children on a jetty.' }) })
+
+    fireEvent.change(screen.getByLabelText('Caption'), { target: { value: 'Dinner' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty('alt')
   })
 })

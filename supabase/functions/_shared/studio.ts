@@ -104,7 +104,8 @@ export async function notesFor(who: Caller, photoIds: string[]): Promise<Map<str
   return byPhoto
 }
 
-function base64(bytes: Uint8Array): string {
+/** Image bytes as the base64 the model's image blocks take. */
+export function base64(bytes: Uint8Array): string {
   let text = ''
   for (let i = 0; i < bytes.length; i += 0x8000) {
     text += String.fromCharCode(...bytes.subarray(i, i + 0x8000))

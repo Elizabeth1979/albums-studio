@@ -372,3 +372,53 @@ test.describe('writing about a photo', () => {
     await expect(page.getByLabel('Caption')).toHaveValue('Dinner on the last night')
   })
 })
+
+test.describe('suggested alt text', () => {
+  test('is only a suggestion until the owner uses it and saves', async ({ page }) => {
+    const calls = await openPhoto(page)
+
+    await page.getByRole('button', { name: 'Suggest a description' }).click()
+    const suggestion = page.getByRole('region', { name: 'Suggested description' })
+    await expect(suggestion).toContainText('A long table set for twelve, lit by candles.')
+    await expect(suggestion).toBeFocused()
+    await expect(suggestion).toContainText('49 of 50 left this month.')
+    expect(calls.find('/functions/v1/alt-draft')?.body).toEqual({ photoId: 'photo-1' })
+
+    // Nothing reached the photograph yet.
+    await expect(page.getByLabel('Alt text')).toHaveValue('')
+    expect(calls.photos()[0].alt ?? null).toBeNull()
+
+    await suggestion.getByRole('button', { name: 'Use this' }).click()
+    await expect(page.getByLabel('Alt text')).toHaveValue('A long table set for twelve, lit by candles.')
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText('Saved.')).toBeVisible()
+
+    expect(calls.photos()[0].alt).toBe('A long table set for twelve, lit by candles.')
+    expect(calls.photos()[0].alt_source).toBe('ai')
+    await expect
+      .poll(() => calls.all.find((call) => call.method === 'PATCH' && call.path.endsWith('/rest/v1/ai_drafts'))?.body)
+      .toEqual({ status: 'accepted' })
+  })
+
+  test('is the owner’s once she changes it', async ({ page }) => {
+    const calls = await openPhoto(page)
+
+    await page.getByRole('button', { name: 'Suggest a description' }).click()
+    await page.getByRole('button', { name: 'Use this' }).click()
+    await page.getByLabel('Alt text').fill('Our table for twelve on the last night, lit by candles.')
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText('Saved.')).toBeVisible()
+
+    expect(calls.photos()[0].alt_source).toBe('human')
+  })
+
+  test("says in the server's words why no suggestion could be made", async ({ page }) => {
+    await openPhoto(page, {
+      altDraft: { status: 429, body: { error: 'You have used all 50 suggested descriptions for this month.' } },
+    })
+
+    await page.getByRole('button', { name: 'Suggest a description' }).click()
+    await expect(page.getByRole('alert')).toHaveText('You have used all 50 suggested descriptions for this month.')
+  })
+})
+

@@ -29,7 +29,7 @@ the model out, not that it performed badly.
 | Florence-2-base | Alt text drafts | Browser, WebGPU | MIT | Candidate, Phase 11 |
 | SmolVLM 256M and 500M | Alt text drafts | Browser, WebGPU | Apache-2.0 | Candidate, Phase 11 |
 | Claude Sonnet 5.5 (`claude-sonnet-5-5`, Anthropic API) | Album story drafts | Edge Function `story-draft` to provider | Commercial API terms; inputs not used for training under them | Shipped 2026-11-18, draft-first, 5 free drafts a month |
-| Hosted vision model | Alt drafts | Edge Function to provider | Commercial terms | Planned, Phase 11 |
+| Claude Sonnet 5.5 (`claude-sonnet-5-5`, Anthropic API) | Alt text drafts, one photograph at a time | Edge Function `alt-draft` to provider; only text visitors can already read goes with the photo | Commercial API terms; inputs not used for training under them | Built 2026-11-18, draft-first, 50 free a month |
 | Browser speech recognition (Web Speech API) | Speaking a memory or a story's notes instead of typing | Browser; the browser sends the audio to its maker (Google in Chrome and Edge, Apple in Safari) to turn it into text | The browser maker's terms; nothing reaches this project but the text | Shipped 2026-11-18; not offered in Firefox, which has none |
 | Whisper | Voice transcription | Browser or hosted | MIT | Not needed while the browser's own recognition serves; measure before adopting |
 | InsightFace `buffalo_*`, ArcFace | Face grouping embeddings | Browser, ONNX | Code MIT, weights non-commercial research only | Blocked for a paid tier |
@@ -103,6 +103,7 @@ flowchart LR
 
         EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential<br/>originals served with location removed"]:::current
         EdgeStory["Edge Functions story-draft, album-questions<br/>verify_jwt on, read as the owner<br/>count each use against the month"]:::current
+        EdgeAlt["Edge Function alt-draft<br/>verify_jwt on, reads as the owner<br/>sends only public text with the photo"]:::current
         EdgeAI["Edge Functions<br/>other AI calls, BYOK keys"]:::planned
 
         Auth --> Profiles
@@ -113,6 +114,8 @@ flowchart LR
         EdgeShare --> Storage
         EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage
         EdgeStory --> Storage
+        EdgeAlt --> Albums & Photos & Stories & Drafts & Usage
+        EdgeAlt --> Storage
         EdgeAI --> Database
         EdgeAI --> Vault
     end
@@ -125,6 +128,8 @@ flowchart LR
     PhotoUI -. "owner signs own thumbnails" .-> Storage
     Studio --> EdgeStory
     EdgeStory -. "up to 20 photographs leave the device here" .-> Provider
+    TextUI --> EdgeAlt
+    EdgeAlt -. "one photograph and its public text leave the device here" .-> Provider
     Studio --> EdgeAI
     EdgeAI -. "photographs leave the device here" .-> Provider
     Viewer --> EdgeShare
@@ -243,7 +248,8 @@ erDiagram
         uuid id PK
         uuid owner_id FK "NOT NULL"
         uuid album_id FK "NOT NULL; with owner_id"
-        text draft_type "NOT NULL; album_story"
+        text draft_type "NOT NULL; album_story or alt"
+        uuid photo_id FK "required for alt; with owner_id"
         text prompt "what the owner asked for"
         jsonb input_refs "photo ids it was shown"
         text body "NOT NULL; never rewritten"
@@ -276,6 +282,10 @@ The human-facing text fields have separate purposes:
   text the owner put there: an AI draft lives in `ai_drafts` until the owner uses it, and
   `story_draft_id` keeps the link back. The client may change a draft's `status` and
   nothing else, and only the `story-draft` function, with the service role, writes one.
+- An alt draft (`draft_type = 'alt'`) belongs to one photograph through `(photo_id,
+  owner_id)`, and goes when the photograph does. Only the `alt-draft` function writes one,
+  and it never writes `photos.alt`: the owner's Save does. `photos.alt_source` is `'ai'`
+  when she saved a suggestion word for word and `'human'` when she wrote or changed it.
 - `photos.caption` provides context for one photo, and `photos.caption_visibility` decides
   whether a shared viewer ever reads it. Hidden is the default.
 - `photos.alt` is owner-approved accessibility text for screen readers. It is delivered to
@@ -347,7 +357,8 @@ albums-studio/
 |       |-- _shared/             current code both sides share: the photo spread, questions,
 |       |                        location removal, and the AI functions' common plumbing
 |       |-- album-questions/     current AI questions about photographs with no words yet
-|       `-- story-draft/         current AI story drafts; these two alone use the AI key
+|       |-- story-draft/         current AI story drafts
+|       `-- alt-draft/           current AI alt text drafts; these three alone use the AI key
 |-- docs/
 |   |-- project-structure.md     this visual architecture map
 |   |-- plans/                   phased roadmap

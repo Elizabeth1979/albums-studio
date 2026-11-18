@@ -362,6 +362,34 @@ describe('updatePhotoText', () => {
     })
   })
 
+  it('records that the AI wrote alt text saved exactly as suggested', async () => {
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', {
+      alt: 'Two children on a jetty at sunset',
+      altDraft: 'Two children on a jetty at sunset',
+    })
+
+    expect(update).toHaveBeenCalledWith({
+      alt: 'Two children on a jetty at sunset',
+      alt_source: 'ai',
+    })
+  })
+
+  it('records that a person wrote a suggestion they changed first', async () => {
+    const update = updateBuilder()
+
+    await updatePhotoText('photo-1', {
+      alt: 'Mia and Leo on the jetty at sunset',
+      altDraft: 'Two children on a jetty at sunset',
+    })
+
+    expect(update).toHaveBeenCalledWith({
+      alt: 'Mia and Leo on the jetty at sunset',
+      alt_source: 'human',
+    })
+  })
+
   it('clears the authorship when the alt text is removed', async () => {
     const update = updateBuilder()
 

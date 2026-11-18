@@ -393,7 +393,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
 
   async function handleSaveText(
     photoId: string,
-    patch: { caption?: string; captionVisibility?: TextVisibility; alt?: string },
+    patch: Parameters<typeof updatePhotoText>[1],
   ) {
     replacePhoto(await updatePhotoText(photoId, patch))
   }
