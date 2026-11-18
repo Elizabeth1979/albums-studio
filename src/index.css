@@ -2241,6 +2241,94 @@ textarea:focus-visible {
   min-height: 6rem;
 }
 
+/* Choosing the photos a story reads: small enough that a long album still fits. */
+.story-photos {
+  margin: 0 0 0.9rem;
+  padding: 0;
+  border: 0;
+}
+
+.story-photos legend {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.story-photos .field-hint {
+  margin: 0 0 0.4rem;
+}
+
+.story-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.story-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.4rem;
+  max-height: 22rem;
+  margin: 0;
+  padding: 0.2rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.story-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  background: #e9e3da;
+  cursor: pointer;
+}
+
+.story-photo img,
+.story-photo-missing {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-photo-missing {
+  padding: 0.3rem;
+  overflow: hidden;
+  color: #6f675c;
+  font-size: 0.7rem;
+}
+
+/* Left out is dimmed, so what the story will read stands out at a glance. */
+.story-photo:not(:has(input:checked)) img {
+  opacity: 0.45;
+}
+
+.story-photo:has(input:checked) {
+  border-color: #8d5526;
+}
+
+.story-photo:has(input:focus-visible) {
+  outline: 3px solid #d89045;
+  outline-offset: 2px;
+}
+
+.story-photo input {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: #8d5526;
+}
+
+.story-photo:has(input:disabled) {
+  cursor: not-allowed;
+}
+
 .shared-story-text {
   max-width: 42rem;
   margin-top: 1.2rem;

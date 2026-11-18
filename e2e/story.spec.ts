@@ -1,8 +1,14 @@
 import { type Page, expect, test } from '@aee/cli/test'
-import { albumRecord, stubSupabase, type StubOptions } from './support/supabase-stub'
+import { albumRecord, photoRecord, stubSupabase, type StubOptions } from './support/supabase-stub'
+
+const PHOTOS = [
+  photoRecord({ id: 'photo-1', sort_order: 0, alt: 'Arriving in the rain' }),
+  photoRecord({ id: 'photo-2', sort_order: 1, alt: 'The lake at dawn' }),
+  photoRecord({ id: 'photo-3', sort_order: 2, alt: 'Dinner on the last night' }),
+]
 
 async function openAlbum(page: Page, options: StubOptions = {}) {
-  const calls = await stubSupabase(page, { albums: [albumRecord()], ...options })
+  const calls = await stubSupabase(page, { albums: [albumRecord()], photos: PHOTOS, ...options })
 
   await page.goto('/')
   await page.getByLabel('Email', { exact: true }).fill('person@example.com')
@@ -19,10 +25,17 @@ test.describe("an album's story", () => {
 
     await page.getByRole('button', { name: 'Draft the story with AI' }).click()
     await page.getByLabel(/Anything the story should say/).fill('The rain on day two was the best part.')
+    // Leave the dawn photograph out of this story.
+    await page.getByRole('checkbox', { name: 'The lake at dawn' }).uncheck()
+    await expect(page.getByText('2 of up to 20 chosen.')).toBeVisible()
     await page.getByRole('button', { name: 'Draft the story' }).click()
 
     const draft = page.getByLabel(/Draft — edit it as you like/)
     await expect(draft).toHaveValue('We arrived in the rain.')
+    expect(calls.find('/functions/v1/story-draft')?.body).toMatchObject({
+      albumId: 'album-1',
+      photoIds: ['photo-1', 'photo-3'],
+    })
     // A draft is not a story: nothing has been written to the album yet.
     expect(calls.albums()[0].story ?? null).toBeNull()
 
@@ -44,6 +57,7 @@ test.describe("an album's story", () => {
     })
 
     await page.getByRole('button', { name: 'Draft the story with AI' }).click()
+    await expect(page.getByRole('checkbox')).toHaveCount(3)
     await page.getByRole('button', { name: 'Draft the story' }).click()
 
     await expect(page.getByRole('alert')).toHaveText('You have used all 5 story drafts for this month.')

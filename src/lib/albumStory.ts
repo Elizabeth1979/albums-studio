@@ -1,6 +1,8 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
+export { STORY_PHOTO_LIMIT, spreadAcross } from '../../supabase/functions/_shared/storyPhotos'
+
 /** A story drafted for an album, waiting for its owner to decide. */
 export type StoryDraft = {
   id: string
@@ -21,9 +23,14 @@ export type DraftOutcome = 'accepted' | 'rejected'
  * error when it refuses — "you have used all 5 drafts this month" is something
  * the owner can act on, where a status code is not.
  */
-export async function draftAlbumStory(albumId: string, notes: string): Promise<StoryDraft> {
+export async function draftAlbumStory(
+  albumId: string,
+  notes: string,
+  photoIds: string[] = [],
+): Promise<StoryDraft> {
+  // No photo ids means "you choose": the server spreads its pick across the album.
   const { data, error } = await supabase.functions.invoke('story-draft', {
-    body: { albumId, notes },
+    body: photoIds.length > 0 ? { albumId, notes, photoIds } : { albumId, notes },
   })
 
   if (error) {

@@ -1,6 +1,13 @@
 import { type FormEvent, useState } from 'react'
 import type { Album } from '../lib/albums'
-import { type StoryDraft, draftAlbumStory, settleDraft } from '../lib/albumStory'
+import {
+  STORY_PHOTO_LIMIT,
+  type StoryDraft,
+  draftAlbumStory,
+  settleDraft,
+  spreadAcross,
+} from '../lib/albumStory'
+import { type Photo, listPhotos, signedUrls } from '../lib/photos'
 import { LiveStatus } from './LiveStatus'
 
 type AlbumStoryProps = {
@@ -15,6 +22,12 @@ type Stage =
   | { kind: 'drafting' }
   | { kind: 'reviewing'; draft: StoryDraft; text: string }
   | { kind: 'editing'; text: string }
+
+/** The album's photographs to choose from, or why there are none to show. */
+type Choice =
+  | { kind: 'loading' }
+  | { kind: 'ready'; photos: Photo[]; thumbnails: Map<string, string> }
+  | { kind: 'unavailable' }
 
 /** Paragraphs as the owner wrote them, one per blank line. */
 function paragraphs(text: string): string[] {
@@ -38,6 +51,44 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
   const [allowance, setAllowance] = useState<string | null>(null)
   // What just happened, said once: a story appearing on the page is silent otherwise.
   const [done, setDone] = useState('')
+  const [choice, setChoice] = useState<Choice>({ kind: 'loading' })
+  const [chosen, setChosen] = useState<Set<string>>(new Set())
+
+  /**
+   * Opens the form, and loads the photographs to choose from as it does: on
+   * first use rather than on mount, so an album nobody drafts for costs nothing.
+   * Twenty are chosen to start with, spread from the first photograph to the
+   * last, which is also what the server would pick on its own.
+   */
+  async function openForm() {
+    setStage({ kind: 'asking' })
+    setChoice({ kind: 'loading' })
+    try {
+      const photos = await listPhotos(album.id)
+      const paths = photos.flatMap((photo) => (photo.thumbnailPath ? [photo.thumbnailPath] : []))
+      const urls = await signedUrls(paths)
+      const thumbnails = new Map<string, string>()
+      for (const photo of photos) {
+        const url = photo.thumbnailPath ? urls.get(photo.thumbnailPath) : undefined
+        if (url) thumbnails.set(photo.id, url)
+      }
+      setChoice({ kind: 'ready', photos, thumbnails })
+      setChosen(new Set(spreadAcross(photos).map((photo) => photo.id)))
+    } catch {
+      // Drafting still works without the picker: the server spreads its own pick.
+      setChoice({ kind: 'unavailable' })
+      setChosen(new Set())
+    }
+  }
+
+  function toggle(id: string) {
+    setChosen((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else if (next.size < STORY_PHOTO_LIMIT) next.add(id)
+      return next
+    })
+  }
 
   async function handleDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -46,7 +97,12 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
     setStage({ kind: 'drafting' })
 
     try {
-      const draft = await draftAlbumStory(album.id, notes)
+      // In album order, whatever order they were ticked in.
+      const photoIds =
+        choice.kind === 'ready'
+          ? choice.photos.filter((photo) => chosen.has(photo.id)).map((photo) => photo.id)
+          : []
+      const draft = await draftAlbumStory(album.id, notes, photoIds)
       setAllowance(`${draft.used} of ${draft.limit} story drafts used this month.`)
       setStage({ kind: 'reviewing', draft, text: draft.body })
     } catch (caught) {
@@ -108,7 +164,7 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
             </p>
           )}
           <div className="album-story-actions">
-            <button className="secondary-button" type="button" onClick={() => setStage({ kind: 'asking' })}>
+            <button className="secondary-button" type="button" onClick={() => void openForm()}>
               {album.story ? 'Draft a new story with AI' : 'Draft the story with AI'}
             </button>
             {album.story && (
@@ -138,13 +194,78 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
               disabled={stage.kind === 'drafting'}
             />
           </label>
+          <fieldset className="story-photos" disabled={stage.kind === 'drafting'}>
+            <legend>Photos for the story</legend>
+            {choice.kind === 'loading' && <p className="field-hint">Loading your photos…</p>}
+            {choice.kind === 'unavailable' && (
+              <p className="field-hint">
+                Your photos could not be shown here, so the draft will use {STORY_PHOTO_LIMIT} spread
+                across the album.
+              </p>
+            )}
+            {choice.kind === 'ready' && choice.photos.length === 0 && (
+              <p className="field-hint">Add photos to the album first.</p>
+            )}
+            {choice.kind === 'ready' && choice.photos.length > 0 && (
+              <>
+                <p className="field-hint" aria-live="polite">
+                  {chosen.size} of up to {STORY_PHOTO_LIMIT} chosen
+                  {choice.photos.length > STORY_PHOTO_LIMIT
+                    ? `, from ${choice.photos.length}. Spread across the album to start with.`
+                    : '.'}
+                </p>
+                <div className="story-photo-actions">
+                  <button className="text-button" type="button" onClick={() => setChosen(new Set())}>
+                    Choose none
+                  </button>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => setChosen(new Set(spreadAcross(choice.photos).map((photo) => photo.id)))}
+                  >
+                    {choice.photos.length > STORY_PHOTO_LIMIT ? 'Spread across the album' : 'Choose all'}
+                  </button>
+                </div>
+                <ul className="story-photo-grid">
+                  {choice.photos.map((photo, index) => {
+                    const isChosen = chosen.has(photo.id)
+                    const url = choice.thumbnails.get(photo.id)
+                    return (
+                      <li key={photo.id}>
+                        <label className="story-photo">
+                          <input
+                            type="checkbox"
+                            checked={isChosen}
+                            disabled={!isChosen && chosen.size >= STORY_PHOTO_LIMIT}
+                            onChange={() => toggle(photo.id)}
+                          />
+                          {url ? (
+                            <img src={url} alt={photo.alt ?? `Photo ${index + 1}`} loading="lazy" />
+                          ) : (
+                            <span className="story-photo-missing">{photo.alt ?? `Photo ${index + 1}`}</span>
+                          )}
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </>
+            )}
+          </fieldset>
           <p className="field-hint">
-            The draft uses up to 20 photos and everything you have written about them, including
-            notes kept to yourself. It is only a draft: nothing appears on the album until you
-            use it.
+            The draft reads the photos you choose and everything you have written about them,
+            including notes kept to yourself. It is only a draft: nothing appears on the album until
+            you use it.
           </p>
           <div className="rename-actions">
-            <button className="primary-button" type="submit" disabled={stage.kind === 'drafting'}>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={
+                stage.kind === 'drafting' ||
+                (choice.kind === 'ready' && (choice.photos.length === 0 || chosen.size === 0))
+              }
+            >
               {stage.kind === 'drafting' ? 'Drafting…' : 'Draft the story'}
             </button>
             <button
