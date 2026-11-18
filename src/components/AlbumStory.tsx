@@ -36,10 +36,13 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [allowance, setAllowance] = useState<string | null>(null)
+  // What just happened, said once: a story appearing on the page is silent otherwise.
+  const [done, setDone] = useState('')
 
   async function handleDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    setDone('')
     setStage({ kind: 'drafting' })
 
     try {
@@ -59,6 +62,7 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
     try {
       await onChangeStory(text, draftId)
       if (outcome) await settleDraft(outcome.id, 'accepted')
+      setDone(text.trim() ? 'The story is on the album.' : 'The story was removed from the album.')
       setStage({ kind: 'idle' })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save the story.')
@@ -69,6 +73,7 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
 
   async function discard(draft: StoryDraft) {
     setError(null)
+    setDone('Draft discarded. The album is unchanged.')
     setStage({ kind: 'idle' })
     // Recorded, not deleted. A failure here costs nothing the owner can see.
     await settleDraft(draft.id, 'rejected').catch(() => {})
@@ -79,7 +84,9 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
       ? 'Drafting the story from your photos and notes. This takes up to a minute.'
       : stage.kind === 'reviewing'
         ? `A draft is ready to edit. ${allowance ?? ''}`
-        : ''
+        : stage.kind === 'idle'
+          ? done
+          : ''
 
   return (
     <section className="album-story" aria-labelledby="story-title">

@@ -59,6 +59,8 @@ describe('AlbumStory', () => {
       expect(onChangeStory).toHaveBeenCalledWith('We arrived in the rain, laughing.', 'draft-1'),
     )
     expect(settleDraft).toHaveBeenCalledWith('draft-1', 'accepted')
+    // Said, not only shown: a screen reader hears nothing when text merely appears.
+    expect(screen.getByRole('status')).toHaveTextContent('The story is on the album.')
   })
 
   it('sets a discarded draft aside without touching the album', async () => {
@@ -72,6 +74,7 @@ describe('AlbumStory', () => {
     await waitFor(() => expect(settleDraft).toHaveBeenCalledWith('draft-2', 'rejected'))
     expect(onChangeStory).not.toHaveBeenCalled()
     expect(screen.getByText(/No story yet/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Draft discarded. The album is unchanged.')
   })
 
   it('says why a draft could not be made, in the server own words', async () => {
