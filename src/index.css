@@ -1807,7 +1807,12 @@ textarea:focus-visible {
   background: #ece5da;
 }
 
-/* A possible blink is outlined, not hidden: the owner decides. */
+/* A whole person in a square: from the head down, so the face is in it. */
+.face-close-up.body {
+  object-position: top;
+}
+
+/* A possible blink or blur is outlined, not hidden: the owner decides. */
 .face-item.closed .face-close-up {
   outline: 2px solid #8d5526;
   outline-offset: 2px;

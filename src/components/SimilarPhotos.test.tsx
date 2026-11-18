@@ -175,6 +175,79 @@ describe('eyes in a group', () => {
   it('shows nothing about eyes when there are no faces to compare', () => {
     renderWithEyes(new Map())
 
-    expect(screen.queryByRole('heading', { name: 'Faces' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'People' })).not.toBeInTheDocument()
+  })
+})
+
+describe('people in a group', () => {
+  const black: [number, number, number] = [74, 65, 58]
+  const person = (x: number, blur: number) => ({
+    x, y: 200, width: 300, height: 900, confidence: 0.85, blur, colour: black, closeUp: null,
+  })
+  const face = (x: number, blink: number) => ({
+    x, y: 300, width: 100, height: 100, blink, closeUp: null, smile: null, turn: null,
+  })
+
+  function renderWith(
+    bodies: Map<string, import('../lib/imaging/bodies').BodyReading>,
+    eyes = new Map<string, import('../lib/imaging/eyes').EyeReading>(),
+  ) {
+    const photos = [photo('photo-1', 0), photo('photo-2', 1), photo('photo-3', 2)]
+    render(
+      <SimilarPhotos
+        groups={[{ photos, spread: 2 }]}
+        thumbnails={new Map()}
+        eyes={eyes}
+        bodies={bodies}
+        onRemove={vi.fn()}
+      />,
+    )
+  }
+
+  it('says who came out blurred, even where no face could be found', () => {
+    // At night a child's face is often too small or smeared for the face
+    // detector, but the child is still found whole.
+    renderWith(
+      new Map([
+        ['photo-1', { kind: 'read', bodies: [person(1000, 0.4)] }],
+        ['photo-2', { kind: 'read', bodies: [person(1010, 0.33)] }],
+        ['photo-3', { kind: 'read', bodies: [person(1005, 0.31)] }],
+      ]),
+    )
+
+    expect(screen.getByText(/Someone looks blurred in photo 1\./)).toBeInTheDocument()
+    const row = screen.getByRole('list', { name: 'Person 1' })
+    expect(within(row).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Photo 1Blurred 0.40',
+      'Photo 2Sharp 0.33',
+      'Photo 3Sharp 0.31',
+    ])
+  })
+
+  it('puts a face and the body it belongs to in one row', () => {
+    renderWith(
+      new Map([
+        ['photo-1', { kind: 'read', bodies: [person(1000, 0.31)] }],
+        ['photo-2', { kind: 'read', bodies: [person(1010, 0.32)] }],
+      ]),
+      new Map([
+        ['photo-1', { kind: 'read', faces: [face(1100, 0.05)] }],
+        ['photo-2', { kind: 'read', faces: [face(1110, 0.7)] }],
+      ]),
+    )
+
+    expect(screen.getAllByRole('list', { name: /Person/ })).toHaveLength(1)
+    const [first, second] = within(screen.getByRole('list', { name: 'Person 1' })).getAllByRole(
+      'listitem',
+    )
+    expect(first).toHaveTextContent('Photo 1: Eyes open 0.05')
+    expect(first).toHaveTextContent('Sharp 0.31')
+    expect(second).toHaveTextContent('Photo 2: Eyes closed? 0.70')
+  })
+
+  it('says plainly when people could not be looked for', () => {
+    renderWith(new Map([['photo-1', { kind: 'unavailable', detail: 'model failed to load' }]]))
+
+    expect(screen.getByText(/People could not be found: model failed to load/)).toBeInTheDocument()
   })
 })
