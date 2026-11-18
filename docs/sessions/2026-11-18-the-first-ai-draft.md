@@ -25,11 +25,12 @@ words, and a real share link returns the `story` field.
 
 - **Stories before voice and suggestions.** The smallest slice that runs the whole loop, so
   cost, quality and review are measured on something real first.
-- **Claude Opus 5.5, medium effort, server-side fallback.** A story is read for years; the
-  model difference is cents per draft. Fallback keeps an ordinary family album from being lost
+- **Claude Sonnet 5.5, medium effort, server-side fallback.** Opus 5.5 was the first choice;
+  the owner moved it to Sonnet 5.5 on cost, at half the price (about 7 US cents a story
+  against 14). Opus is one line away if real drafts read flat. Fallback keeps an ordinary family album from being lost
   to an over-cautious refusal.
 - **Platform key, five drafts a month, counted on every completed call.** Owners should not
-  need an AI account to try the studio. Five is provisional: estimated at about 14 US cents
+  need an AI account to try the studio. Five is provisional: estimated at about 7 US cents
   for 15 photographs, to be confirmed from the token counts the first real drafts record.
 - **Private notes go to the model, marked private, with an instruction not to quote them.**
   They are often the context that makes the story true; the owner is told so beside the
@@ -38,8 +39,9 @@ words, and a real share link returns the `story` field.
   first photograph past the middle of a phone screen, which the phone-layout test caught.
   Visitors still read it first.
 
-## Open
+## Measured
 
-- The `ANTHROPIC_API_KEY` function secret, which only the owner can add.
-- The first real draft: its quality, and its cost from `ai_drafts.input_tokens` and
-  `output_tokens`, before the allowance is called final.
+The owner added the key and drafted a story for a real album: 20 photographs, 23,106 input
+tokens and 464 output tokens on Claude Sonnet 5.5, no fallback, about 5 US cents. Images are
+nearly all of the input, at roughly 1,150 tokens each. Five drafts a month therefore cost at
+most about 25 cents a person, and the allowance stands. She accepted the draft.

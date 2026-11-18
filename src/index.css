@@ -2217,6 +2217,13 @@ textarea:focus-visible {
   font-size: 1.1rem;
 }
 
+/* A confirmation set apart from the story it confirms, so it does not read as its first line. */
+.album-story .live-status:not(:empty) {
+  margin: 0 0 1rem;
+  color: #6f675c;
+  font-size: 0.9rem;
+}
+
 .album-story-text p {
   margin: 0 0 0.9rem;
   line-height: 1.6;
