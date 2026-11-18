@@ -63,9 +63,9 @@ subscription, Supabase, RLS, share links, Family Travels.
   Phase 5 deliberately, so that the hidden/published distinction Phase 4 introduced had
   somewhere real to prove itself before AI began generating text.
 - ✅ **Phase 7 implemented against its checkpoint.** Photographs are grouped by pHash
-  Hamming distance and by burst-like timing read from EXIF, compared side by side with a
-  sharpness reading and a sharpest-of-the-group badge, and nothing is removed until the
-  owner confirms. A second review offers photographs that are blurred on their own, which
+  Hamming distance and by burst-like timing read from EXIF, compared side by side, and
+  nothing is removed until the owner confirms. The sharpest-of-the-group badge was withdrawn
+  on 2026-11-18: in a real night burst it read the lawn rather than the children. A second review offers photographs that are blurred on their own, which
   is what a group-relative reading structurally cannot see: a soft frame taken only once has
   no sibling to be compared against. It judges the sharpest part of a frame against that
   part's own contrast, so a blurred background or a misty lake is not mistaken for a
@@ -383,11 +383,17 @@ Group photos by pHash Hamming distance and burst-like timing/order. Show cluster
 side with useful signals:
 
 - Near-duplicate score.
-- Sharpness / blur score. Two measures, doing two different jobs: edge width for "is this
-  photograph out of focus", because blur widens edges whatever the subject is; local detail
-  relative to contrast for "which frame of this burst came out best", because counting detail
-  only tracks focus while the subject is held still. Using the second for the first put a
-  sharp portrait on the list for deletion.
+- Sharpness / blur score, for "is this photograph out of focus" on its own.
+- Which frame of a burst came out best. **Withdrawn 2026-11-18.** It counted local detail
+  over the whole frame, on the premise that the subject is held still within a burst. Children
+  are not: in the owner's night burst it counted the grass and paving, called a frame with a
+  child smeared by movement the sharpest, and named a different frame on a phone than on a
+  laptop. **Next: person by person.** Find each person (EfficientDet-Lite0, 7.3 MB, Apache
+  2.0), measure blur inside each one, compare each person only with themselves in the other
+  frames, and rank a frame by its worst-off person. On her four frames this gave her own
+  order where every whole-frame measure failed. Shown beside each frame, not acted on, until
+  daytime bursts agree. See
+  [the session log](../sessions/2026-11-18-sharpest-read-the-lawn.md).
 - Later: faces visible / eyes open. Decided 2026-11-14:
   - **Shown 2026-11-15, not yet acted on.** Each group with faces gets an "Eyes" row: every
     person's close-up frame by frame, the model's score beside it, and "Eyes closed?" where
@@ -408,10 +414,9 @@ side with useful signals:
   - **Face close-ups.** Each group shows every face it found, cropped and side by side frame
     against frame, so a blink is seen by the owner rather than trusted to a detector. This
     also covers the detector's known gaps, since a face it misses is still in the photograph.
-  - **Plain labels.** ✅ Done 2026-11-15. "Sharpest / Just as sharp / Slightly blurry / Blurry"
-    replace "Nearly as sharp / A little softer / Noticeably softer", which read as
-    photographers' jargon. The thresholds behind them (90% and 60% of the sharpest frame's
-    reading) are still round numbers, never checked against a real album.
+  - **Plain labels.** Done 2026-11-15, withdrawn with the ranking 2026-11-18. When the
+    person-by-person reading returns, it says which person is soft in which frame rather than
+    grading the frame.
 - App suggestion for best one or two photos.
 
 Implementation should start with Python/browser-friendly free options before any paid model:
