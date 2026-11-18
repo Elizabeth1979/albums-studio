@@ -201,9 +201,12 @@ export function AlbumPage({
 
         {error && <p className="form-message error" role="alert">{error}</p>}
 
-        <AlbumStory album={album} onChangeStory={onChangeStory} />
-
         <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
+
+        {/* After the photographs, for the same reason as sharing: a story is
+            written once they are in, and above them it pushed the first one
+            below the middle of a phone screen. Visitors still read it first. */}
+        <AlbumStory album={album} onChangeStory={onChangeStory} />
 
         {/* After the album, not before it. Sharing is what you do once the
             photographs are in, and above them it stood between the owner and

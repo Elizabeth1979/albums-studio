@@ -171,7 +171,6 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
               autoFocus
             />
           </label>
-          {allowance && <p className="field-hint">{allowance}</p>}
           <div className="rename-actions">
             <button className="primary-button" type="submit" disabled={saving || !stage.text.trim()}>
               {saving ? 'Saving…' : 'Use this story'}

@@ -50,7 +50,7 @@ describe('AlbumStory', () => {
     expect(draftAlbumStory).toHaveBeenCalledWith('album-1', 'The rain on day two was the best part.')
     expect(draft).toHaveValue('We arrived in the rain.')
     expect(onChangeStory).not.toHaveBeenCalled()
-    expect(screen.getAllByText('1 of 5 story drafts used this month.').length).toBeGreaterThan(0)
+    expect(screen.getByRole('status')).toHaveTextContent('1 of 5 story drafts used this month.')
 
     fireEvent.change(draft, { target: { value: 'We arrived in the rain, laughing.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Use this story' }))

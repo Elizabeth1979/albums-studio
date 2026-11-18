@@ -60,6 +60,8 @@ export type AlbumRecord = {
   cover_photo_id: string | null
   visibility: string
   created_at: string
+  story?: string | null
+  story_draft_id?: string | null
 }
 
 export function albumRecord(overrides: Partial<AlbumRecord> = {}): AlbumRecord {
@@ -106,7 +108,7 @@ export type StoryRecord = {
 
 /** What the Edge Function would return for a share link. */
 export type SharedResponse = {
-  album: { title: string; description: string | null; layout: 'masonry' | 'grid' }
+  album: { title: string; description: string | null; layout: 'masonry' | 'grid'; story?: string | null }
   photos: {
     id: string
     caption: string | null
@@ -166,6 +168,8 @@ export type StubOptions = {
    * that has to happen first.
    */
   photoUpdate?: { status: number; body: object }
+  /** What the `story-draft` Edge Function answers, as status and body. */
+  storyDraft?: { status: number; body: object }
   /** Status and body returned by writes to `photo_stories`, for failure cases. */
   storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
@@ -283,6 +287,16 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       }
 
       return answer ? json(answer) : json({ error: 'not found' }, 404)
+    }
+
+    // The Edge Function that drafts an album's story. It holds the AI key, so
+    // the browser's only way to a draft is through it.
+    if (path === '/functions/v1/story-draft') {
+      const answer = options.storyDraft ?? {
+        status: 200,
+        body: { draft: { id: 'draft-1', body: 'We arrived in the rain.' }, used: 1, limit: 5 },
+      }
+      return json(answer.body, answer.status)
     }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL
