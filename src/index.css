@@ -2179,6 +2179,37 @@ textarea:focus-visible {
   font-size: 0.85rem;
 }
 
+/*
+ * The tuning readouts, folded away. They are for whoever is tuning the focus
+ * check, so they start closed and sit at the weight of a footnote; the summary
+ * still says when something could not be checked.
+ */
+.tuning-readings {
+  margin-top: 1.2rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #e6ded2;
+  color: #6f675c;
+  font-size: 0.85rem;
+}
+
+.tuning-readings > summary {
+  padding: 0.6rem 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tuning-readings > summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.tuning-readings .focus-unchecked {
+  margin-top: 0.4rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
 /* Under a shared photograph, quiet, like the editor's own download. */
 .shared-download {
   display: block;

@@ -40,7 +40,11 @@ windsurf board behind him — has never been detected, across seven merged pull 
 **Temporary and must be removed when the feature is finished:** the per-tile number badge, and
 the "Focus check: read N of M …" line in `AlbumPhotos.tsx` that ends "This line is here while the
 setting is being tuned and will come out afterwards." The "People: found someone in N of M …"
-line beside it comes out with them.
+line beside it comes out with them. Until then all three sit inside a "Technical readings" fold
+below the review sections, closed by default (the owner found them unreadable on the page); the
+tile badges show only while it is open, and the closed summary says "some photos could not be
+checked" whenever a read or the detector failed, so a failure is never folded into silence. To
+get a reading from her, ask her to open "Technical readings" before taking the screenshot.
 
 ## The five measures tried, and how each died
 

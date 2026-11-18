@@ -72,6 +72,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const [busy, setBusy] = useState(false)
   const [stories, setStories] = useState<Story[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // The tuning readouts are folded away by default: they are for whoever is
+  // tuning the focus check, not for the album. The per-photo numbers follow
+  // the fold, so the gallery is clean unless someone has asked to see them.
+  const [showReadings, setShowReadings] = useState(false)
 
   // One worker for the life of the screen rather than one per batch: spinning a
   // worker up costs more than the first photo takes to process.
@@ -475,6 +479,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // answer: does the detector find the people in her album at all?
   const faceSummary = summariseFaces(photos, faceReadings)
 
+  const hasReadings =
+    focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 ||
+    faceSummary.withFaces + faceSummary.withoutFaces + faceSummary.unavailable > 0
+  const readingTrouble = focusSummary.failed > 0 || faceSummary.unavailable > 0
+
   /**
    * One reading per photograph, for the tile it belongs to.
    *
@@ -563,7 +572,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 onSelect={(photoId) =>
                   setSelectedId((current) => (current === photoId ? null : photoId))
                 }
-                focusNotes={focusNotes}
+                focusNotes={showReadings ? focusNotes : undefined}
               />
               <SimilarPhotos
                 groups={similarGroups}
@@ -584,45 +593,60 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 onAnswer={(photoId, note) => handleAddStory(photoId, { body: note, visibility: 'hidden' })}
               />
 
-              {focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 && (
-                <p className="album-note focus-unchecked">
-                  <strong>Focus check:</strong> read {focusSummary.measured} of{' '}
-                  {focusSummary.total}
-                  {focusSummary.failed > 0 && `, could not read ${focusSummary.failed}`}
-                  {focusSummary.unjudgeable > 0 &&
-                    `, too little contrast to judge ${focusSummary.unjudgeable}`}
-                  {focusSummary.readings.length > 0 &&
-                    `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
-                  {focusSummary.line !== null &&
-                    ` — anything over ${focusSummary.line.toFixed(2)} is offered above`}
-                  . Each photograph shows how much of its detail survives being blurred again;
-                  higher is blurrier. This line is here while the setting is being tuned and will
-                  come out afterwards.
-                </p>
-              )}
+              {hasReadings && (
+                <details
+                  className="tuning-readings"
+                  open={showReadings}
+                  onToggle={(event) => setShowReadings(event.currentTarget.open)}
+                >
+                  <summary>
+                    Technical readings
+                    {/* Folded is not the same as silent. If something could not
+                        be read, the fold says so, so an album where nothing
+                        worked never looks like one with nothing to report. */}
+                    {readingTrouble && <span> — some photos could not be checked</span>}
+                  </summary>
+                  {focusSummary.measured + focusSummary.failed + focusSummary.unjudgeable > 0 && (
+                    <p className="album-note focus-unchecked">
+                      <strong>Focus check:</strong> read {focusSummary.measured} of{' '}
+                      {focusSummary.total}
+                      {focusSummary.failed > 0 && `, could not read ${focusSummary.failed}`}
+                      {focusSummary.unjudgeable > 0 &&
+                        `, too little contrast to judge ${focusSummary.unjudgeable}`}
+                      {focusSummary.readings.length > 0 &&
+                        `. Readings ${focusSummary.readings.map((one) => one.toFixed(2)).join(', ')}`}
+                      {focusSummary.line !== null &&
+                        ` — anything over ${focusSummary.line.toFixed(2)} is offered above`}
+                      . Each photograph shows how much of its detail survives being blurred again;
+                      higher is blurrier. This line is here while the setting is being tuned and will
+                      come out afterwards.
+                    </p>
+                  )}
 
-              {faceSummary.withFaces + faceSummary.withoutFaces + faceSummary.unavailable > 0 && (
-                <p className="album-note focus-unchecked">
-                  <strong>People:</strong> found someone in {faceSummary.withFaces} of{' '}
-                  {faceSummary.total}
-                  {faceSummary.withoutFaces > 0 &&
-                    `, found nobody in ${faceSummary.withoutFaces}`}
-                  {faceSummary.unavailable > 0 &&
-                    `, and the detector could not run on ${faceSummary.unavailable}`}
-                  {faceSummary.detail && ` (${faceSummary.detail})`}
-                  {faceSummary.confidences.length > 0 &&
-                    `. How sure it was: ${faceSummary.confidences
-                      .map((one) => one.toFixed(2))
-                      .join(', ')}`}
-                  {faceSummary.smallestFace !== null &&
-                    `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
-                     the frame's width — this stops working below about 5%, and a face too
-                     blurred to recognise is not found at all`}
-                  . Nothing here is acted on yet — no photograph is offered or held back because
-                  of it. It is on screen to answer one question before anything is built on it:
-                  are the people in these photographs found at all? This line comes out either
-                  way.
-                </p>
+                  {faceSummary.withFaces + faceSummary.withoutFaces + faceSummary.unavailable > 0 && (
+                    <p className="album-note focus-unchecked">
+                      <strong>People:</strong> found someone in {faceSummary.withFaces} of{' '}
+                      {faceSummary.total}
+                      {faceSummary.withoutFaces > 0 &&
+                        `, found nobody in ${faceSummary.withoutFaces}`}
+                      {faceSummary.unavailable > 0 &&
+                        `, and the detector could not run on ${faceSummary.unavailable}`}
+                      {faceSummary.detail && ` (${faceSummary.detail})`}
+                      {faceSummary.confidences.length > 0 &&
+                        `. How sure it was: ${faceSummary.confidences
+                          .map((one) => one.toFixed(2))
+                          .join(', ')}`}
+                      {faceSummary.smallestFace !== null &&
+                        `. Smallest face found: ${(faceSummary.smallestFace * 100).toFixed(1)}% of
+                         the frame's width — this stops working below about 5%, and a face too
+                         blurred to recognise is not found at all`}
+                      . Nothing here is acted on yet — no photograph is offered or held back because
+                      of it. It is on screen to answer one question before anything is built on it:
+                      are the people in these photographs found at all? This line comes out either
+                      way.
+                    </p>
+                  )}
+                </details>
               )}
 
               <dialog
