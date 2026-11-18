@@ -69,3 +69,29 @@ confidence floor has to be measured on real frames, not taken from the library. 
 is one example**: daytime bursts must agree before this ranks anything, and it should be
 shown beside each frame before it is acted on. Cost: the float16 model is 7.3 MB (Apache 2.0),
 downloaded once and cached.
+
+## Built, in the same row as the eyes
+
+Asked for, and built the same day. `lib/imaging/bodies.ts` finds people (int8 build: same
+boxes and confidences as float16 on these frames, 4.6 MB rather than 7.3) and reads blur in
+each; `lib/bodies.ts` follows them and decides, pure and tested. Three things the first run
+on her photographs changed:
+
+- **A Halloween ghost by the tree read 0.61 as a person**, and the girl, having moved 0.15
+  of the frame, was matched to it by position. People are now followed by clothes colour as
+  well as place, frame to frame rather than against one anchor frame. A person seen in one
+  frame only is never shown.
+- **The box carries background.** Read whole, the girl blurred in front of the lit trunk read
+  barely softer than her best. Reading the middle half of each box caught her in two blurred
+  frames of three and changed nothing for the boys. The third is the known gap.
+- **A smeared boy arrives as two boxes**, one inside the other; the weaker is dropped.
+
+The confidence floor is 0.4: a dog read 0.30 and 0.39, the smeared boy 0.47 to 0.68.
+
+Final readings through the production code, middle half of each box (blurred marked *):
+
+| child | jumping | kicking | girl blurred | girl blurred 2 |
+| --- | --- | --- | --- | --- |
+| girl | 0.432 * | 0.343 | 0.392 (missed) | 0.451 * |
+| boy in white | 0.336 | 0.337 | 0.345 | 0.310 |
+| boy in black | 0.399 * | 0.333 | 0.312 | 0.324 |

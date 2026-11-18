@@ -430,12 +430,17 @@ side with useful signals:
   over the whole frame, on the premise that the subject is held still within a burst. Children
   are not: in the owner's night burst it counted the grass and paving, called a frame with a
   child smeared by movement the sharpest, and named a different frame on a phone than on a
-  laptop. **Next: person by person.** Find each person (EfficientDet-Lite0, 7.3 MB, Apache
-  2.0), measure blur inside each one, compare each person only with themselves in the other
-  frames, and rank a frame by its worst-off person. On her four frames this gave her own
-  order where every whole-frame measure failed. Shown beside each frame, not acted on, until
-  daytime bursts agree. See
-  [the session log](../sessions/2026-11-18-sharpest-read-the-lawn.md).
+  laptop.
+  - **Person by person, shown 2026-11-18, not yet acted on.** Each person is found whole
+    (EfficientDet-Lite0 int8, 4.6 MB), followed across the group by place and clothes
+    colour, and blur is read across the middle of each one and compared only with the same
+    person's sharpest frame (`BLUR_MARGIN`, 0.065). It sits in the same row as the eyes: one
+    row per person, their face where one was found and their whole body where not. On the
+    owner's night burst it marked the smeared boy and the girl in two of her three blurred
+    frames, and nobody who came out; it misses her in front of a lit tree, where only a mask
+    of her own pixels would see it. Next: daytime bursts in her albums; only then does a
+    blurred person mark a frame down. See
+    [the session log](../sessions/2026-11-18-sharpest-read-the-lawn.md).
 - Later: faces visible / eyes open. Decided 2026-11-14:
   - **Shown 2026-11-15, not yet acted on.** Each group with faces gets an "Eyes" row: every
     person's close-up frame by frame, the model's score beside it, and "Eyes closed?" where

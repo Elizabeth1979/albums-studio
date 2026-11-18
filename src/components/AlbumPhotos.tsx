@@ -33,6 +33,7 @@ import { mapWithConcurrency } from '../lib/concurrency'
 import type { FocusReading } from '../lib/imaging/measure'
 import { type FaceReading, findFacesIn, forgetDetector } from '../lib/imaging/faces'
 import { type EyeReading, forgetEyeReader, readEyes } from '../lib/imaging/eyes'
+import { type BodyReading, findPeopleIn, forgetBodyDetector } from '../lib/imaging/bodies'
 import { findSoftPhotos, summariseFaces, summariseFocus } from '../lib/focus'
 import { displayRendition } from '../lib/imaging/process'
 import { PhotoGallery } from './PhotoGallery'
@@ -62,6 +63,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // Eyes are read only in photographs that have a near-identical sibling, since
   // a blink means something only against another frame of the same moment.
   const [eyeReadings, setEyeReadings] = useState<Map<string, EyeReading>>(new Map())
+  // Whole people, found and measured for blur in the same photographs, because
+  // a child's face at night or across a garden is often too small or too
+  // smeared for the face detector to see at all.
+  const [bodyReadings, setBodyReadings] = useState<Map<string, BodyReading>>(new Map())
   // The close-ups are object URLs. They are kept for as long as the album is
   // open, because a later reading map still shows the same ones, and released
   // with the album.
@@ -93,6 +98,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
       processorRef.current = null
       forgetDetector()
       forgetEyeReader()
+      forgetBodyDetector()
       for (const url of closeUpsRef.current) URL.revokeObjectURL(url)
       closeUpsRef.current.clear()
     }
@@ -192,10 +198,11 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
           grouped.has(photo.id) && faces.kind === 'faces'
             ? await readEyes(bytes, faces.boxes)
             : null
+        const bodies = grouped.has(photo.id) ? await findPeopleIn(bytes) : null
 
         if (!photo.displayPath) await backfillDisplay(photo, bytes)
 
-        return { blur, faces, eyes }
+        return { blur, faces, eyes, bodies }
       })
 
       setFocusReadings((known) => {
@@ -233,6 +240,19 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
             for (const face of eyes.faces) if (face.closeUp) closeUpsRef.current.add(face.closeUp)
           }
           next.set(measurable[index].id, eyes)
+        })
+        return next
+      })
+
+      setBodyReadings((known) => {
+        const next = new Map(known)
+        results.forEach((result, index) => {
+          const bodies = result.status === 'fulfilled' ? result.value.bodies : null
+          if (!bodies) return
+          if (bodies.kind === 'read') {
+            for (const body of bodies.bodies) if (body.closeUp) closeUpsRef.current.add(body.closeUp)
+          }
+          next.set(measurable[index].id, bodies)
         })
         return next
       })
@@ -569,6 +589,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
                 groups={similarGroups}
                 thumbnails={thumbnails}
                 eyes={eyeReadings}
+                bodies={bodyReadings}
                 onRemove={handleRemoveChosen}
               />
               <SoftPhotos

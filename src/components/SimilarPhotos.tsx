@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { Photo } from '../lib/photos'
 import type { SimilarGroup } from '../lib/similarity'
-import { type FrameFaces, facesCamera, followPeople, framesWithBlinks, isSmiling } from '../lib/blinks'
+import { type Appearance, type FrameFaces, facesCamera, followPeople, framesWithBlinks, isSmiling } from '../lib/blinks'
+import { type BodyAppearance, type FrameBodies, contains, followBodies, framesWithBlur } from '../lib/bodies'
+import type { BodyReading } from '../lib/imaging/bodies'
 import type { EyeReading } from '../lib/imaging/eyes'
 import { PhotoLightbox } from './PhotoLightbox'
 import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
@@ -13,6 +15,8 @@ type SimilarPhotosProps = {
   thumbnails: Map<string, string>
   /** Eyes read in each photograph, by photo id. Shown, never acted on yet. */
   eyes?: Map<string, EyeReading>
+  /** People found whole in each photograph, with their blur. Shown, never acted on yet. */
+  bodies?: Map<string, BodyReading>
   onRemove: (photos: Photo[]) => Promise<void>
 }
 
@@ -34,83 +38,166 @@ function faceText(face: Parameters<typeof isSmiling>[0]): string[] {
   ]
 }
 
+/** One person in one frame: their face if one was found, their whole body if one was. */
+type Sighting = { photoId: string; face?: Appearance; body?: BodyAppearance }
+
+/** What a person's sharpness says, against the same person in the other frames. */
+function sharpnessText(blurred: boolean | null): string {
+  if (blurred === true) return 'Blurred'
+  if (blurred === false) return 'Sharp'
+  return 'Sharpness not compared'
+}
+
 /**
- * The faces of one group, person by person, frame against frame.
+ * Each person in one group, frame against frame, with whatever could be read.
  *
- * Shown so the owner can see a blink rather than trust a model with it, and so
- * the model's numbers can be checked against real photographs before anything
- * acts on them. The number beside each face is the model's eyes-closed score,
- * 0 open to 1 shut, and is temporary in the same way as the focus readings.
+ * People are followed whole first, because a body is found where a small or
+ * smeared face is not, and a face is joined to the body it sits inside. A face
+ * the body detector missed still gets its own row. Each person's frames are
+ * compared only with that person's other frames — a blink, or blur, means
+ * something only against the same child a second earlier.
+ *
+ * Shown so the owner can see a blink or a smear rather than trust a model with
+ * it, and so the numbers can be checked against real photographs before
+ * anything acts on them. The number beside each reading is the model's own:
+ * eyes-closed 0 open to 1 shut, blur 0 crisp to 1 smeared.
  */
-function GroupFaces({ group, eyes }: { group: SimilarGroup; eyes: Map<string, EyeReading> }) {
-  const frames: FrameFaces[] = group.photos.flatMap((photo) => {
+function GroupPeople({
+  group,
+  eyes,
+  bodies,
+}: {
+  group: SimilarGroup
+  eyes: Map<string, EyeReading>
+  bodies: Map<string, BodyReading>
+}) {
+  const sized = group.photos.filter((photo) => photo.width && photo.height)
+  const faceFrames: FrameFaces[] = sized.flatMap((photo) => {
     const reading = eyes.get(photo.id)
-    if (reading?.kind !== 'read' || !photo.width || !photo.height) return []
+    if (reading?.kind !== 'read') return []
 
-    return [{ photoId: photo.id, width: photo.width, height: photo.height, faces: reading.faces }]
+    return [{ photoId: photo.id, width: photo.width!, height: photo.height!, faces: reading.faces }]
   })
-  const failed = group.photos
-    .map((photo) => eyes.get(photo.id))
-    .find((reading) => reading?.kind === 'unavailable')
+  const bodyFrames: FrameBodies[] = sized.flatMap((photo) => {
+    const reading = bodies.get(photo.id)
+    if (reading?.kind !== 'read') return []
 
-  // Only people seen in more than one frame: a face with nothing to compare
-  // against has nothing to say here.
-  const people = followPeople(frames).filter((person) => person.appearances.length > 1)
-  const blinked = framesWithBlinks(people)
+    return [{ photoId: photo.id, width: photo.width!, height: photo.height!, bodies: reading.bodies }]
+  })
+  const failures = group.photos.flatMap((photo) => {
+    const eye = eyes.get(photo.id)
+    const body = bodies.get(photo.id)
+
+    return [
+      ...(eye?.kind === 'unavailable' ? [`The eyes could not be read: ${eye.detail}`] : []),
+      ...(body?.kind === 'unavailable' ? [`People could not be found: ${body.detail}`] : []),
+    ]
+  })
+
+  const facePeople = followPeople(faceFrames)
+  const tracks = followBodies(bodyFrames)
+  const joined = new Set<Appearance>()
+  const faces = facePeople.flatMap((person) => person.appearances)
+
+  const fromBodies: Sighting[][] = tracks.map((track) =>
+    track.appearances.map((body) => {
+      const face = faces.find(
+        (one) => one.photoId === body.photoId && !joined.has(one) && contains(body.body, one.face),
+      )
+      if (face) joined.add(face)
+
+      return { photoId: body.photoId, body, face }
+    }),
+  )
+  const fromFaces: Sighting[][] = facePeople.map((person) =>
+    person.appearances.filter((one) => !joined.has(one)).map((face) => ({ photoId: face.photoId, face })),
+  )
+
+  // Only people seen in more than one frame: with nothing to compare against,
+  // a person has nothing to say here.
+  const order = new Map(group.photos.map((photo, index) => [photo.id, index]))
+  const people = [...fromBodies, ...fromFaces]
+    .filter((sightings) => sightings.length > 1)
+    .map((sightings) => [...sightings].sort((one, two) => (order.get(one.photoId) ?? 0) - (order.get(two.photoId) ?? 0)))
+  const blinked = framesWithBlinks(facePeople)
+  const blurred = framesWithBlur(tracks)
   const number = new Map(group.photos.map((photo) => [photo.id, photo.sortOrder + 1]))
+  const photosIn = (ids: Set<string>) => [...ids].map((id) => number.get(id)).join(' and ')
+  const unique = [...new Set(failures)]
 
-  if (people.length === 0 && !failed) return null
+  if (people.length === 0 && unique.length === 0) return null
 
   return (
     <div className="similar-faces">
-      <h4>Faces</h4>
-      {failed?.kind === 'unavailable' && (
-        <p className="field-hint">The eyes could not be read: {failed.detail}</p>
-      )}
+      <h4>People</h4>
+      {unique.map((line) => (
+        <p className="field-hint" key={line}>
+          {line}
+        </p>
+      ))}
       {people.length > 0 && (
         <p className="field-hint">
-          {blinked.size === 0
-            ? 'Nobody looks to have blinked.'
-            : `Someone may have blinked in photo ${[...blinked].map((id) => number.get(id)).join(' and ')}.`}{' '}
-          Smiles and where each person faces are shown too. Blinks are judged against the same
-          person in the other photos. This is new and still being checked, so it does not change
-          anything yet.
+          {blinked.size > 0 && `Someone may have blinked in photo ${photosIn(blinked)}. `}
+          {blurred.size > 0 && `Someone looks blurred in photo ${photosIn(blurred)}. `}
+          {blinked.size === 0 && blurred.size === 0 && 'Nobody looks to have blinked or blurred. '}
+          Each person is judged against themselves in the other photos. This is new and still
+          being checked, so it does not change anything yet.
         </p>
       )}
-      {people.map((person, personIndex) => (
+      {people.map((sightings, personIndex) => (
         <ul className="face-row" aria-label={`Person ${personIndex + 1}`} key={personIndex}>
-          {person.appearances.map((one) => (
-            <li className={`face-item${one.closed ? ' closed' : ''}`} key={one.photoId}>
-              {one.face.closeUp ? (
-                <img className="face-close-up" src={one.face.closeUp} alt="" />
-              ) : (
-                <span className="face-close-up empty" aria-hidden="true" />
-              )}
-              <span className="face-label face-eyes">
-                Photo {number.get(one.photoId)}: {eyesText(one.closed)}
-                {one.face.blink !== null && (
-                  <span className="face-score"> {one.face.blink.toFixed(2)}</span>
+          {sightings.map(({ photoId, face, body }) => {
+            const faceCloseUp = face?.face.closeUp ?? null
+            const closeUp = faceCloseUp ?? body?.body.closeUp ?? null
+            const flagged = face?.closed === true || body?.blurred === true
+
+            return (
+              <li className={`face-item${flagged ? ' closed' : ''}`} key={photoId}>
+                {closeUp ? (
+                  <img className={`face-close-up${faceCloseUp ? '' : ' body'}`} src={closeUp} alt="" />
+                ) : (
+                  <span className="face-close-up empty" aria-hidden="true" />
                 )}
-              </span>
-              {faceText(one.face).map((line) => (
-                <span className="face-label" key={line}>
-                  {line}
+                <span className="face-label face-eyes">
+                  Photo {number.get(photoId)}
+                  {face && (
+                    <>
+                      : {eyesText(face.closed)}
+                      {face.face.blink !== null && (
+                        <span className="face-score"> {face.face.blink.toFixed(2)}</span>
+                      )}
+                    </>
+                  )}
                 </span>
-              ))}
-              {(one.face.smile !== null || one.face.turn !== null) && (
-                <span className="face-score face-numbers">
-                  {[
-                    one.face.smile === null ? null : `smile ${one.face.smile.toFixed(2)}`,
-                    one.face.turn === null
-                      ? null
-                      : `turned ${Math.round(Math.max(Math.abs(one.face.turn.sideways), Math.abs(one.face.turn.upDown)))}°`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              )}
-            </li>
-          ))}
+                {body && (
+                  <span className={`face-label${body.blurred ? ' face-eyes' : ''}`}>
+                    {sharpnessText(body.blurred)}
+                    {body.body.blur !== null && (
+                      <span className="face-score"> {body.body.blur.toFixed(2)}</span>
+                    )}
+                  </span>
+                )}
+                {face &&
+                  faceText(face.face).map((line) => (
+                    <span className="face-label" key={line}>
+                      {line}
+                    </span>
+                  ))}
+                {face && (face.face.smile !== null || face.face.turn !== null) && (
+                  <span className="face-score face-numbers">
+                    {[
+                      face.face.smile === null ? null : `smile ${face.face.smile.toFixed(2)}`,
+                      face.face.turn === null
+                        ? null
+                        : `turned ${Math.round(Math.max(Math.abs(face.face.turn.sideways), Math.abs(face.face.turn.upDown)))}°`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                )}
+              </li>
+            )
+          })}
         </ul>
       ))}
     </div>
@@ -137,6 +224,7 @@ export function SimilarPhotos({
   groups,
   thumbnails,
   eyes = new Map(),
+  bodies = new Map(),
   onRemove,
 }: SimilarPhotosProps) {
   const [marked, setMarked] = useState<Set<string>>(new Set())
@@ -227,7 +315,7 @@ export function SimilarPhotos({
             })}
           </ul>
 
-          <GroupFaces group={group} eyes={eyes} />
+          <GroupPeople group={group} eyes={eyes} bodies={bodies} />
         </div>
       ))}
 

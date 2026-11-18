@@ -20,9 +20,10 @@ the model out, not that it performed badly.
 | Model or library | Job | Where it runs | Licence | Status |
 | --- | --- | --- | --- | --- |
 | pHash (DCT), project code | Near-duplicate grouping | Browser | Project code | Shipped |
-| Laplacian sharpness, project code | Best-shot ranking | Browser | Project code | Shipped |
+| Laplacian sharpness, project code | Was best-shot ranking; still written at upload, read by nothing | Browser | Project code | Withdrawn 2026-11-18 |
 | EXIF timestamps, project code | Burst grouping | Browser | Project code | Shipped |
 | BlazeFace short-range (MediaPipe) | Finding faces | Browser, WASM, main thread | Apache-2.0 | Shipped, readings shown only |
+| EfficientDet-Lite0 int8 (MediaPipe object detector, person class), `efficientdet_lite0.tflite` 4.6 MB | Finding each person whole, so blur is read person by person in a near-duplicate group | Browser, WASM, main thread | Apache-2.0, as MediaPipe publishes its models; the model card itself not yet read (unreachable from the session that adopted it) | Shipped 2026-11-18, readings shown only |
 | Face Landmarker with blendshapes (MediaPipe), `face_landmarker.task` 3.6 MB | Eyes open or closed, smiling, head facing the camera, per face | Browser, WASM, main thread | Apache-2.0, as MediaPipe publishes its models; the model card itself not yet read | Shipped 2026-11-15, readings shown only |
 | CLIP or SigLIP | Semantic search embeddings | Browser, ONNX | MIT, Apache-2.0 | Candidate, Phase 10 |
 | Florence-2-base | Alt text drafts | Browser, WebGPU | MIT | Candidate, Phase 11 |
