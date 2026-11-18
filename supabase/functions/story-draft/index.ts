@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk@1.8.0'
+import { STORY_PHOTO_LIMIT, spreadAcross } from '../_shared/storyPhotos.ts'
 
 /**
  * Drafts an album's story from its photographs and its owner's words.
@@ -22,9 +23,6 @@ import Anthropic from 'npm:@anthropic-ai/sdk@1.8.0'
 
 /** Drafts each owner may ask for in a calendar month, on the platform's key. */
 const FREE_STORY_DRAFTS_PER_MONTH = 5
-
-/** The most photographs one draft looks at. About 1,000 tokens each at 1080px. */
-const MAX_PHOTOS = 20
 
 /** The longest note the owner can send with a request. */
 const MAX_NOTES = 2000
@@ -106,8 +104,12 @@ Deno.serve(async (request) => {
   if (!albumId) return json({ error: 'No album was named.' }, 400)
 
   const notes = typeof input.notes === 'string' ? input.notes.trim().slice(0, MAX_NOTES) : ''
+  // The photographs the owner chose, if she chose. Ids only narrow what RLS
+  // already lets her read, so one that is not hers simply matches nothing.
   const chosen = Array.isArray(input.photoIds)
-    ? input.photoIds.filter((id): id is string => typeof id === 'string' && UUID.test(id))
+    ? input.photoIds
+        .filter((id): id is string => typeof id === 'string' && UUID.test(id))
+        .slice(0, STORY_PHOTO_LIMIT)
     : []
 
   // As the owner: RLS answers "is this yours" for the album and its photographs.
@@ -161,7 +163,9 @@ Deno.serve(async (request) => {
 
   const photos = await photosQuery
   if (photos.error) return json({ error: photos.error.message }, 500)
-  const rows = ((photos.data ?? []) as PhotoRow[]).slice(0, MAX_PHOTOS)
+  // Her choice as she made it; otherwise spread across the whole album, the
+  // same default the album page offers her.
+  const rows = spreadAcross((photos.data ?? []) as PhotoRow[])
   if (rows.length === 0) return json({ error: 'Add some photographs to the album first.' }, 400)
 
   const stories = await asOwner

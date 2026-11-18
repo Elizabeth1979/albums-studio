@@ -85,7 +85,12 @@ subscription, Supabase, RLS, share links, Family Travels.
   `ai_usage` for every completed call. Measured on the owner's first real draft: 20 photographs, 23,106 tokens in and 464 out on
   Claude Sonnet 5.5, about 5 US cents, so five drafts cost a person at most about 25 cents
   a month and the allowance stands. Not in this slice: voice,
-  transcripts, proactive suggestions, choosing which photographs, captions and alt drafts.
+  transcripts, proactive suggestions, captions and alt drafts.
+- ✅ **Phase 5: the owner chooses which photographs a story reads (2026-11-18).** Up to 20,
+  ticked on thumbnails; twenty are chosen to start with, spread evenly from the album's first
+  photograph to its last (`supabase/functions/_shared/storyPhotos.ts`), and the server makes
+  the same spread when it is sent no choice. Before this a story read the first 20 only, so a
+  long album got a story about its first afternoon.
 
 **Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
 checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:
