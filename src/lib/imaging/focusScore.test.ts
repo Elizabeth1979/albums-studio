@@ -3,7 +3,6 @@ import { BLURRED_ENOUGH } from '../focus'
 import { ANALYSIS_CEILING } from './measure'
 import { FULL_SIZE, fitWithin } from './process'
 import { blurRatio } from './reblur'
-import { focusScore } from './sharpness'
 
 /**
  * Focus, judged the way a photograph actually reaches this code.
@@ -335,12 +334,6 @@ function read(stored: Float64Array): number | null {
   return blurRatio(frame.luma, frame.width, frame.height)
 }
 
-/** The reading used only for ranking inside one burst. */
-function readDetail(stored: Float64Array): number | null {
-  const frame = asAnalysed(stored)
-  return focusScore(frame.luma, frame.width, frame.height)
-}
-
 describe('the blur reading, through the reduction a photograph really goes through', () => {
   it('reads a photograph that came out as sharp, whatever it is a photograph of', () => {
     // Both content types, because the previous measure passed this for textured
@@ -508,28 +501,4 @@ describe('the blur reading, through the reduction a photograph really goes throu
   it('has nothing to say about a frame too small to compare with itself', () => {
     expect(blurRatio(new Float64Array(16), 4, 4)).toBeNull()
   })
-})
-
-describe('focusScore, kept for ranking the frames of one burst', () => {
-  it('separates blur when the subject is held still', () => {
-    // Its remaining job. Inside a near-duplicate group every frame is the same
-    // picture, so the detail it counts varies only with how well each came out
-    // — which is the one condition under which this measure is trustworthy.
-    for (const seed of SEEDS) {
-      const sharp = readDetail(scene(seed)) as number
-      const soft = readDetail(softened(seed, 4)) as number
-
-      expect(soft, `seed ${seed}`).toBeLessThan(sharp * 0.5)
-    }
-  })
-
-  // Not asserted here: that this measure swings more with subject matter than
-  // edge width does. It is true — a real album read a sharp portrait five times
-  // below sharp seascapes, which is what put the portrait on the list for
-  // deletion — but these synthetic scenes do not reproduce it. Fractal texture
-  // is not as dense as water and the smooth scene is not as smooth as skin, so
-  // the two measures swing about equally here. The evidence for that claim is
-  // the album in `docs/sessions/2026-08-30-texture-is-not-focus.md`, and a
-  // scene invented to demonstrate it would be a scene fitted to the conclusion.
-
 })
