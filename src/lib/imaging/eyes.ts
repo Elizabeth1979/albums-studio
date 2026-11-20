@@ -116,11 +116,13 @@ export function headTurn(
   }
 }
 
-async function closeUpOf(canvas: OffscreenCanvas): Promise<string | null> {
+/** A small picture of a cut-out, at most CLOSE_UP_SIZE on its longer side, as an object URL. */
+export async function closeUpOf(canvas: OffscreenCanvas): Promise<string | null> {
   try {
+    const shrink = Math.min(1, CLOSE_UP_SIZE / Math.max(canvas.width, canvas.height))
     const small = new OffscreenCanvas(
-      Math.min(CLOSE_UP_SIZE, canvas.width),
-      Math.min(CLOSE_UP_SIZE, canvas.height),
+      Math.max(1, Math.round(canvas.width * shrink)),
+      Math.max(1, Math.round(canvas.height * shrink)),
     )
     small.getContext('2d')?.drawImage(canvas, 0, 0, small.width, small.height)
 
