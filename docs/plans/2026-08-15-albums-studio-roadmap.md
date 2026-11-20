@@ -529,6 +529,11 @@ to be reliable across devices.
 **Checkpoint:** user chooses photos, previews a timed slideshow, optionally adds music, and
 can export or save the slideshow/movie once the rendering path is chosen.
 
+**Status (2026-11-18):** first slice built — a whole album plays as a timed slideshow for the
+owner and for a visitor with the link, story first, published captions only. Not yet: choosing
+which photographs, music, and export. The checkpoint is not met, and the slice has not been
+watched on the owner's phone.
+
 ### Phase 10 — AI-assisted search
 Start with ordinary text search over album titles, album descriptions, visible captions,
 story notes, and hidden captions/stories the owner has written. Then add AI-assisted search
