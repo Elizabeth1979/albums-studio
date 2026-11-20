@@ -134,6 +134,13 @@ AI cost.
   answered (typed or spoken) into a private note on the photograph, or set aside. Through the
   `album-questions` Edge Function, five requests a month; open questions live in
   `ai_suggestions`. Nothing is ever sent to another person.
+- The library has a search box (Phase 10, first slice). It finds photographs by what the
+  owner has written: album titles, descriptions and stories, captions and story notes,
+  hidden ones included, and alt text. Every word typed must appear in the same piece of text;
+  case is ignored and Hebrew works, because matching is plain text with no English stemming.
+  A result opens the photograph in its album (`/albums/:slug?photo=:id`). It runs as one
+  database function, `search_library`, under the owner's own permissions, and visitors cannot
+  call it. No AI and no cost. See the 2026-11-20 session.
 - Next: confirming Phase 5's checkpoint on the owner's own album and phone. Phases 1 to 4, 6
   and 7 are done and deployed.
 
@@ -249,5 +256,9 @@ AI cost.
   full-size images to studio tiles, collapsed the drop zone for albums that already hold
   photos, and withdrew the masonry/grid choice after finding the two indistinguishable and
   masonry's reading order wrong.
+- [Search her own words](sessions/2026-11-20-search-her-own-words.md) — Phase 10's first
+  slice: one search box over everything the owner has written, hidden text included, as an
+  owner-only database function; why plain matching over English text search, and why the
+  phone budget moved.
 
 When adding or materially changing a document under `docs/`, update its entry here.

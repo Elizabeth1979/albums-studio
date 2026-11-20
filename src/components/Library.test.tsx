@@ -40,6 +40,7 @@ function renderLibrary(props: Partial<ComponentProps<typeof Library>> = {}) {
       error={null}
       onCreateAlbum={vi.fn().mockResolvedValue(undefined)}
       onOpenAlbum={vi.fn()}
+      onOpenResult={vi.fn()}
       {...props}
     />,
   )

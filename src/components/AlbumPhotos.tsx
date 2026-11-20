@@ -40,6 +40,12 @@ import { PhotoUploader } from './PhotoUploader'
 
 type AlbumPhotosProps = {
   album: Album
+  /**
+   * A photo to open in the editor on arrival, from a search result. It opens
+   * once the album's photographs have loaded and it is among them; an id that
+   * names no photo here opens nothing.
+   */
+  openPhotoId?: string | null
   /** Called with the photo that should represent the album in the library. */
   onCoverChosen: (photoId: string) => Promise<void>
 }
@@ -48,7 +54,7 @@ function describe(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
-export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
+export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumPhotosProps) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map())
   // How well each photograph is focused, by photo id, filled in as the readings
@@ -71,7 +77,7 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   const [items, setItems] = useState<UploadItem[]>([])
   const [busy, setBusy] = useState(false)
   const [stories, setStories] = useState<Story[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(openPhotoId)
 
   // One worker for the life of the screen rather than one per batch: spinning a
   // worker up costs more than the first photo takes to process.
@@ -456,7 +462,10 @@ export function AlbumPhotos({ album, onCoverChosen }: AlbumPhotosProps) {
   // Over the album rather than below it. Inline, the editor landed under a grid
   // that can be several screens long, so choosing a photo on a phone looked
   // like nothing had happened.
-  const editorDialog = useModalDialog(Boolean(selected))
+  // Not before loading ends: the dialog is only in the page once it has, and a
+  // photo chosen by a search result is selected while it is still loading. Asked
+  // to open before it exists, the dialog never opened at all.
+  const editorDialog = useModalDialog(Boolean(selected) && !loading)
 
   // Recomputed from the photos themselves, so removing one re-groups the rest
   // without another round trip.

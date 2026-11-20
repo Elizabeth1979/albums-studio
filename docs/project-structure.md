@@ -56,7 +56,8 @@ flowchart LR
     subgraph Frontend["Frontend - browser"]
         App["React and TypeScript app"]:::current
         AuthUI["Email auth, reset, protected library"]:::current
-        Router["Client routing<br/>/, /albums/:slug, /shared/:token"]:::current
+        Router["Client routing<br/>/, /albums/:slug?photo=:id, /shared/:token"]:::current
+        SearchUI["Library search<br/>her own words, hidden ones too"]:::current
         AlbumUI["Album shells<br/>create, rename, describe, delete"]:::current
         PhotoUI["Photo gallery"]:::current
         TextUI["Captions, story notes, alt text<br/>each hidden or visible"]:::current
@@ -68,6 +69,7 @@ flowchart LR
         Upload["Upload queue<br/>4 concurrent, retry"]:::current
 
         App --> AuthUI
+        App --> SearchUI
         App --> Router --> AlbumUI
         AlbumUI --> PhotoUI --> TextUI
         AlbumUI --> ShareUI
@@ -82,6 +84,7 @@ flowchart LR
         Auth["Auth<br/>email and password"]:::current
         DataAPI["Data API<br/>RLS and column grants"]:::current
         RPC["get_shared_album<br/>security definer"]:::current
+        Search["search_library<br/>security invoker, owner only, no anon"]:::current
         Storage["Private photos bucket"]:::current
         Vault["Vault extension"]:::current
 
@@ -95,7 +98,7 @@ flowchart LR
             Questions[(ai_suggestions)]:::current
             Tokens[(private album_share_tokens)]:::current
             AISchema["Interactions"]:::planned
-            SearchSchema["Full-text and semantic search"]:::planned
+            SearchSchema["Semantic search"]:::planned
             OutputSchema["Collages, slideshows, exports"]:::planned
             FaceSchema["Consent and face embeddings"]:::planned
         end
@@ -108,6 +111,7 @@ flowchart LR
         DataAPI --> Albums & Photos & Stories & Profiles & Usage
         Albums --> Tokens
         RPC --> Albums & Photos & Tokens
+        Search --> Albums & Photos & Stories
         EdgeShare --> RPC
         EdgeShare --> Storage
         EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage

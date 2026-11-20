@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   type Album,
   type AlbumVisibility,
@@ -57,6 +57,7 @@ function AlbumRoute({
   onChangeVisibility,
 }: AlbumRouteProps) {
   const { slug } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const album = albums.find((candidate) => candidate.slug === slug)
 
@@ -66,6 +67,7 @@ function AlbumRoute({
         identity={identity}
         onSignOut={onSignOut}
         album={album}
+        openPhotoId={searchParams.get('photo')}
         onBack={() => navigate('/')}
         onRename={(title) => onRename(album, title)}
         onChangeDescription={(description) => onChangeDescription(album, description)}
@@ -185,6 +187,12 @@ export function Studio({ identity, onSignOut }: StudioProps) {
             error={error}
             onCreateAlbum={handleCreate}
             onOpenAlbum={(album) => navigate(`/albums/${encodeURIComponent(album.slug)}`)}
+            onOpenResult={(albumSlug, photoId) =>
+              navigate(
+                `/albums/${encodeURIComponent(albumSlug)}` +
+                  (photoId ? `?photo=${encodeURIComponent(photoId)}` : ''),
+              )
+            }
           />
         }
       />
