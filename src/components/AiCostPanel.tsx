@@ -10,10 +10,12 @@ import {
   costNumber,
   formatUsd,
   listAiCalls,
+  newCallsMessage,
   outcomeWord,
   summarize,
   toCsv,
 } from '../lib/aiCosts'
+import { LiveStatus } from './LiveStatus'
 
 /** Whether the panel was left open, so it stays open from one page to the next. */
 const OPEN_KEY = 'albums-studio:ai-costs-open'
@@ -65,13 +67,19 @@ type Load = { state: 'loading' } | { state: 'failed'; message: string } | { stat
 export function useAiCostPanel() {
   const [open, setOpen] = useState(() => AI_COST_PANEL_ENABLED && readOpen())
   const [load, setLoad] = useState<Load>({ state: 'loading' })
+  const [news, setNews] = useState('')
+  // The calls last shown, so a re-read can tell a screen reader what arrived since.
+  const shown = useRef<AiCallWithAlbum[] | null>(null)
   const toggle = useRef<HTMLButtonElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)
 
   const refresh = useCallback(async () => {
     setLoad((current) => (current.state === 'ready' ? current : { state: 'loading' }))
     try {
-      setLoad({ state: 'ready', calls: await listAiCalls() })
+      const calls = await listAiCalls()
+      setNews(newCallsMessage(shown.current, calls))
+      shown.current = calls
+      setLoad({ state: 'ready', calls })
     } catch (caught) {
       setLoad({ state: 'failed', message: caught instanceof Error ? caught.message : 'Could not read the log.' })
     }
@@ -95,6 +103,9 @@ export function useAiCostPanel() {
   function show(next: boolean) {
     setOpen(next)
     writeOpen(next)
+    // Reopening is not news: the first read after it announces nothing.
+    shown.current = null
+    setNews('')
     // Opened by hand: take focus there, so a screen reader lands on it. Closed: back to the button.
     requestAnimationFrame(() => (next ? heading.current : toggle.current)?.focus())
   }
@@ -141,6 +152,7 @@ export function useAiCostPanel() {
       <p className="ai-costs-note">
         Testing view. Your own use only, at Anthropic&rsquo;s list prices of 3&nbsp;November&nbsp;2026.
       </p>
+      <LiveStatus>{news}</LiveStatus>
 
       {load.state === 'loading' && <p className="ai-costs-status">Reading the log…</p>}
       {load.state === 'failed' && (
@@ -208,7 +220,9 @@ function PaidFeatureSection({ feature, calls }: { feature: PaidFeature; calls: A
   const unpaidOutcomes = summary.declined + summary.failed
 
   return (
-    <section className="ai-costs-feature" aria-labelledby={titleId}>
+    // Named apart from the feature's own section on the page, which can share its heading:
+    // two landmarks called "Questions about your photos" cannot be told apart by name.
+    <section className="ai-costs-feature" aria-label={`${feature.name}: costs`}>
       <h3 id={titleId}>{feature.name}</h3>
       <p className="ai-costs-what">
         {feature.what} Paid, on {feature.model}.

@@ -56,7 +56,7 @@ test.describe('the AI cost panel', () => {
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    const story = panel(page).getByRole('region', { name: 'Album story' })
+    const story = panel(page).getByRole('region', { name: 'Album story: costs' })
     // Two calls for ten cents: five a story, a quarter of a cent a photograph.
     await expect(story.getByRole('definition').nth(0)).toHaveText('2')
     await expect(story.getByRole('definition').nth(1)).toHaveText('$0.10')
@@ -71,7 +71,7 @@ test.describe('the AI cost panel', () => {
 
     // Each paid feature has its own section, used or not, so they can be priced apart.
     await expect(
-      panel(page).getByRole('region', { name: 'Questions about your photos' }).getByText('Not used yet.'),
+      panel(page).getByRole('region', { name: 'Questions about your photos: costs' }).getByText('Not used yet.'),
     ).toBeVisible()
 
     // Free features are named as free, so they can be weighed as well.
@@ -91,7 +91,7 @@ test.describe('the AI cost panel', () => {
     await signIn(page, { aiCallOnDraft: aiCall({ id: 'call-new' }) })
 
     await page.getByRole('button', { name: 'AI costs' }).click()
-    const story = panel(page).getByRole('region', { name: 'Album story' })
+    const story = panel(page).getByRole('region', { name: 'Album story: costs' })
     await expect(story.getByText('Not used yet.')).toBeVisible()
 
     await page.getByRole('button', { name: /Summer by the lake/ }).click()
@@ -101,6 +101,8 @@ test.describe('the AI cost panel', () => {
 
     await expect(story.getByRole('listitem')).toHaveCount(1)
     await expect(story.getByRole('listitem')).toContainText('$0.0509')
+    // Said as well as shown, so a screen reader hears the cost arrive.
+    await expect(panel(page).getByRole('status')).toHaveText('New AI cost logged: Album story, $0.0509.')
   })
 
   test('says when the log cannot be read, rather than showing an empty one', async ({ page }) => {
@@ -116,7 +118,7 @@ test.describe('the AI cost panel', () => {
     await signIn(page, { aiCalls: [aiCall(), aiCall({ id: 'call-2', cost_usd: null, served_model: 'claude-new-model' })] })
 
     await page.getByRole('button', { name: 'AI costs' }).click()
-    const story = panel(page).getByRole('region', { name: 'Album story' })
+    const story = panel(page).getByRole('region', { name: 'Album story: costs' })
 
     await expect(story.getByRole('definition').nth(1)).toHaveText('$0.0509')
     await expect(story.getByText(/1 call used a model with no price on file/)).toBeVisible()

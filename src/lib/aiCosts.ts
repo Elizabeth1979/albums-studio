@@ -181,6 +181,28 @@ export function summarize(calls: AiCall[], now = new Date()): FeatureSummary {
   }
 }
 
+/**
+ * What to announce when a re-read of the log finds calls that were not there
+ * before, so a screen reader hears a cost arrive as a sighted owner sees it.
+ * Nothing on the first read: that is the panel opening, not news.
+ */
+export function newCallsMessage(before: AiCall[] | null, after: AiCall[]): string {
+  if (!before) return ''
+  const seen = new Set(before.map((call) => call.id))
+  const fresh = after.filter((call) => !seen.has(call.id))
+  if (fresh.length === 0) return ''
+
+  const prices = fresh.map(costNumber)
+  const known = prices.every((price) => price !== null)
+  const total = prices.reduce<number>((sum, price) => sum + (price ?? 0), 0)
+
+  if (fresh.length === 1) {
+    const name = PAID_FEATURES.find((feature) => feature.key === fresh[0].feature)?.name ?? fresh[0].feature
+    return `New AI cost logged: ${name}, ${known ? formatUsd(total) : 'no price on file'}.`
+  }
+  return `${fresh.length} new AI costs logged${known ? `, ${formatUsd(total)} in all` : ''}.`
+}
+
 /** Dollars to four places: a story costs about $0.05, so cents alone would hide the differences. */
 export function formatUsd(value: number): string {
   return new Intl.NumberFormat('en-US', {

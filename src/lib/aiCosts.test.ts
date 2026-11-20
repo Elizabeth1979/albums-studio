@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type AiCall, type AiCallWithAlbum, formatUsd, summarize, toCsv } from './aiCosts'
+import { type AiCall, type AiCallWithAlbum, formatUsd, newCallsMessage, summarize, toCsv } from './aiCosts'
 
 function call(overrides: Partial<AiCall> = {}): AiCall {
   return {
@@ -70,6 +70,28 @@ describe('summarize', () => {
 
     expect(summary.perUseUsd).toBeNull()
     expect(summary.perItemUsd).toBeNull()
+  })
+})
+
+describe('newCallsMessage', () => {
+  it('says nothing when the panel first opens', () => {
+    expect(newCallsMessage(null, [call()])).toBe('')
+  })
+
+  it('names the feature and the price of a call that just arrived', () => {
+    expect(newCallsMessage([], [call()])).toBe('New AI cost logged: Album story, $0.0509.')
+  })
+
+  it('says nothing when a re-read finds only what was already there', () => {
+    expect(newCallsMessage([call()], [call()])).toBe('')
+  })
+
+  it('totals several new calls, and never prices an unknown one as free', () => {
+    const fresh = [call({ id: 'a' }), call({ id: 'b', feature: 'alt', cost_usd: '0.004' })]
+    expect(newCallsMessage([], fresh)).toBe('2 new AI costs logged, $0.0549 in all.')
+    expect(newCallsMessage([], [call({ id: 'c', cost_usd: null })])).toBe(
+      'New AI cost logged: Album story, no price on file.',
+    )
   })
 })
 
