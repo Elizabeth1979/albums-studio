@@ -6,11 +6,13 @@ review exist; AI generation and its trusted server functions remain planned.
 
 ## Models and libraries
 
-Nothing in the product runs a machine-learning model today. Every signal it shows — the
-near-duplicate groups, the sharpness reading, the best shot, the burst grouping — is
-arithmetic over measurements the browser takes at upload time. That is the baseline this
-table exists to protect: a model earns a row here only when a deterministic method cannot do
-the job.
+Most of what the product shows is arithmetic over measurements the browser takes at upload
+time: the near-duplicate groups, the sharpness reading, the best shot, the burst grouping.
+Three things are models, each because arithmetic could not do the job: finding faces and
+reading eyes, smiles and head angle (MediaPipe, in the browser), drafting an album's story
+(Claude, through an Edge Function), and turning speech into text (the browser's own
+recognition). That is the baseline this table exists to protect: a model earns a row here
+only when a deterministic method cannot do the job.
 
 Read `Status` before anything else. `Blocked` means a licence or a product invariant rules
 the model out, not that it performed badly.
@@ -18,14 +20,18 @@ the model out, not that it performed badly.
 | Model or library | Job | Where it runs | Licence | Status |
 | --- | --- | --- | --- | --- |
 | pHash (DCT), project code | Near-duplicate grouping | Browser | Project code | Shipped |
-| Laplacian sharpness, project code | Best-shot ranking | Browser | Project code | Shipped |
+| Laplacian sharpness, project code | Was best-shot ranking; still written at upload, read by nothing | Browser | Project code | Withdrawn 2026-11-18 |
 | EXIF timestamps, project code | Burst grouping | Browser | Project code | Shipped |
-| Face detector and landmarks | Faces visible, eyes open | Browser, WASM | Apache-2.0, bundle still to confirm | Candidate, Phase 7 |
+| BlazeFace short-range (MediaPipe) | Finding faces | Browser, WASM, main thread | Apache-2.0 | Shipped, readings shown only |
+| EfficientDet-Lite0 int8 (MediaPipe object detector, person class), `efficientdet_lite0.tflite` 4.6 MB | Finding each person whole, so blur is read person by person in a near-duplicate group | Browser, WASM, main thread | Apache-2.0, as MediaPipe publishes its models; the model card itself not yet read (unreachable from the session that adopted it) | Shipped 2026-11-18, readings shown only |
+| Face Landmarker with blendshapes (MediaPipe), `face_landmarker.task` 3.6 MB | Eyes open or closed, smiling, head facing the camera, per face | Browser, WASM, main thread | Apache-2.0, as MediaPipe publishes its models; the model card itself not yet read | Shipped 2026-11-15, readings shown only |
 | CLIP or SigLIP | Semantic search embeddings | Browser, ONNX | MIT, Apache-2.0 | Candidate, Phase 10 |
 | Florence-2-base | Alt text drafts | Browser, WebGPU | MIT | Candidate, Phase 11 |
 | SmolVLM 256M and 500M | Alt text drafts | Browser, WebGPU | Apache-2.0 | Candidate, Phase 11 |
-| Hosted vision model | Alt drafts, Story Studio | Edge Function to provider | Commercial terms | Planned, Phases 5 and 11 |
-| Whisper | Voice transcription | Browser or hosted | MIT | Unmeasured, Phase 5 |
+| Claude Sonnet 5.5 (`claude-sonnet-5-5`, Anthropic API) | Album story drafts | Edge Function `story-draft` to provider | Commercial API terms; inputs not used for training under them | Shipped 2026-11-18, draft-first, 5 free drafts a month |
+| Hosted vision model | Alt drafts | Edge Function to provider | Commercial terms | Planned, Phase 11 |
+| Browser speech recognition (Web Speech API) | Speaking a memory or a story's notes instead of typing | Browser; the browser sends the audio to its maker (Google in Chrome and Edge, Apple in Safari) to turn it into text | The browser maker's terms; nothing reaches this project but the text | Shipped 2026-11-18; not offered in Firefox, which has none |
+| Whisper | Voice transcription | Browser or hosted | MIT | Not needed while the browser's own recognition serves; measure before adopting |
 | InsightFace `buffalo_*`, ArcFace | Face grouping embeddings | Browser, ONNX | Code MIT, weights non-commercial research only | Blocked for a paid tier |
 
 Three rules decide the `Where it runs` column, and between them they are why no Python
@@ -36,8 +42,9 @@ library appears:
   not have, and photographs would have to leave the browser to reach it.
 - A model that runs in the browser never lets a photograph leave the device. A hosted model
   does, which is why one may only ever be reached through trusted server code.
-- Provider keys live in the Vault and are used from Edge Functions. They never reach the
-  browser, so no model call may be made from it.
+- Provider keys are used only from Edge Functions: the platform's own key as the function
+  secret `ANTHROPIC_API_KEY`, and owners' keys (BYOK, later) in the Vault. They never reach
+  the browser, so no model call may be made from it.
 
 ## Frontend and backend architecture
 
@@ -85,15 +92,18 @@ flowchart LR
             Photos[(photos)]:::current
             Stories[(photo_stories)]:::current
             Usage[(ai_usage)]:::current
+            Drafts[(ai_drafts)]:::current
+            Questions[(ai_suggestions)]:::current
             Tokens[(private album_share_tokens)]:::current
-            AISchema["Drafts, interactions, suggestions"]:::planned
+            AISchema["Interactions"]:::planned
             SearchSchema["Full-text and semantic search"]:::planned
             OutputSchema["Collages, slideshows, exports"]:::planned
             FaceSchema["Consent and face embeddings"]:::planned
         end
 
-        EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential"]:::current
-        EdgeAI["Edge Functions<br/>AI calls, quotas, BYOK keys"]:::planned
+        EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential<br/>originals served with location removed"]:::current
+        EdgeStory["Edge Functions story-draft, album-questions<br/>verify_jwt on, read as the owner<br/>count each use against the month"]:::current
+        EdgeAI["Edge Functions<br/>other AI calls, BYOK keys"]:::planned
 
         Auth --> Profiles
         DataAPI --> Albums & Photos & Stories & Profiles & Usage
@@ -101,6 +111,8 @@ flowchart LR
         RPC --> Albums & Photos & Tokens
         EdgeShare --> RPC
         EdgeShare --> Storage
+        EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage
+        EdgeStory --> Storage
         EdgeAI --> Database
         EdgeAI --> Vault
     end
@@ -111,6 +123,8 @@ flowchart LR
     ShareUI --> DataAPI
     Upload --> Storage
     PhotoUI -. "owner signs own thumbnails" .-> Storage
+    Studio --> EdgeStory
+    EdgeStory -. "up to 20 photographs leave the device here" .-> Provider
     Studio --> EdgeAI
     EdgeAI -. "photographs leave the device here" .-> Provider
     Viewer --> EdgeShare
@@ -133,6 +147,9 @@ erDiagram
     AUTH_USERS ||--o{ PHOTOS : owns
     AUTH_USERS ||--o{ PHOTO_STORIES : writes
     AUTH_USERS ||--o{ AI_USAGE : consumes
+    ALBUMS ||--o{ AI_DRAFTS : "is drafted for"
+    PHOTOS ||--o{ AI_SUGGESTIONS : "is asked about"
+    ALBUMS o|--o| AI_DRAFTS : "story came from"
     ALBUMS ||--o{ PHOTOS : contains
     ALBUMS ||--|| ALBUM_SHARE_TOKENS : has
     ALBUMS o|--o| PHOTOS : "uses as cover"
@@ -160,6 +177,8 @@ erDiagram
         float8 lng
         album_visibility visibility "NOT NULL; private, link, or public"
         uuid cover_photo_id FK
+        text story "accepted story, shown on the share link"
+        uuid story_draft_id FK "the draft it came from, if any"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"
     }
@@ -171,6 +190,7 @@ erDiagram
         text storage_path UK "NOT NULL"
         text thumbnail_path
         text display_path
+        text original_path
         text mime
         int4 width
         int4 height
@@ -205,6 +225,36 @@ erDiagram
         boolean byok PK
     }
 
+    AI_SUGGESTIONS {
+        uuid id PK
+        uuid owner_id FK "NOT NULL; with photo_id and album_id"
+        uuid album_id FK "NOT NULL"
+        uuid photo_id FK "NOT NULL; the photograph asked about"
+        text suggestion_type "NOT NULL; missing_context"
+        text body "NOT NULL; the question, never rewritten"
+        text reason "who might know, or why it matters"
+        text status "open, answered, dismissed"
+        text model "NOT NULL"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
+    AI_DRAFTS {
+        uuid id PK
+        uuid owner_id FK "NOT NULL"
+        uuid album_id FK "NOT NULL; with owner_id"
+        text draft_type "NOT NULL; album_story"
+        text prompt "what the owner asked for"
+        jsonb input_refs "photo ids it was shown"
+        text body "NOT NULL; never rewritten"
+        text status "draft, accepted, rejected, superseded"
+        text model "NOT NULL"
+        int4 input_tokens "measured cost"
+        int4 output_tokens "measured cost"
+        timestamptz created_at "NOT NULL"
+        timestamptz updated_at "NOT NULL"
+    }
+
     ALBUM_SHARE_TOKENS {
         uuid album_id PK, FK
         uuid token UK "NOT NULL"
@@ -222,6 +272,10 @@ The human-facing text fields have separate purposes:
   the rows. The column, its check constraint and its grants are retained untouched; the
   client neither writes nor reads it, and Phase 7.5 picks it back up.
 - `albums.description` describes the album as a whole.
+- `albums.story` is the opening story, published wherever the album is. It is only ever
+  text the owner put there: an AI draft lives in `ai_drafts` until the owner uses it, and
+  `story_draft_id` keeps the link back. The client may change a draft's `status` and
+  nothing else, and only the `story-draft` function, with the service role, writes one.
 - `photos.caption` provides context for one photo, and `photos.caption_visibility` decides
   whether a shared viewer ever reads it. Hidden is the default.
 - `photos.alt` is owner-approved accessibility text for screen readers. It is delivered to
@@ -288,7 +342,12 @@ albums-studio/
 |   |-- config.toml              current local Supabase configuration
 |   |-- migrations/              current schema history and source of truth
 |   |-- checks/                  current probes run against the real database
-|   `-- functions/shared-album/  current trusted Edge Function for share links
+|   `-- functions/
+|       |-- shared-album/        current trusted Edge Function for share links
+|       |-- _shared/             current code both sides share: the photo spread, questions,
+|       |                        location removal, and the AI functions' common plumbing
+|       |-- album-questions/     current AI questions about photographs with no words yet
+|       `-- story-draft/         current AI story drafts; these two alone use the AI key
 |-- docs/
 |   |-- project-structure.md     this visual architecture map
 |   |-- plans/                   phased roadmap

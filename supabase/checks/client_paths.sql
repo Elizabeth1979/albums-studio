@@ -33,6 +33,8 @@ declare
   album_b uuid;
   photo_a uuid;
   story_a uuid;
+  draft_a uuid;
+  question_a uuid;
   token uuid;
   old_token uuid;
   new_token uuid;
@@ -71,11 +73,12 @@ begin
 
   begin
     insert into public.photos (
-      album_id, owner_id, storage_path, thumbnail_path, display_path, mime,
+      album_id, owner_id, storage_path, thumbnail_path, display_path, original_path, mime,
       width, height, phash, sharpness, sort_order, taken_at
     ) values (
       album_a, alice, alice || '/a/one.jpg', alice || '/a/one-thumb.jpg',
-      alice || '/a/one-display.jpg', 'image/jpeg', 2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
+      alice || '/a/one-display.jpg', alice || '/a/one-original.heic', 'image/jpeg',
+      2000, 1500, repeat('1', 64)::bit(64), 143.5, 0, '2026-08-19 13:45:02'
     ) returning id into photo_a;
     log := log || E'\n  ok    insert photo with every column storePhoto sends';
   exception when others then
@@ -107,6 +110,22 @@ begin
     log := log || E'\n  ok    display copy cannot point outside her namespace';
   end;
 
+  -- An original cannot be made after the fact, so nothing may repoint one.
+  begin
+    update public.photos set original_path = alice || '/a/other.jpg' where id = photo_a;
+    log := log || E'\n  FAIL  an original could be repointed'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    an original cannot be repointed';
+  end;
+
+  begin
+    insert into public.photos (album_id, owner_id, storage_path, original_path, mime, sort_order)
+    values (album_a, alice, alice || '/a/two.jpg', bob || '/a/two-original.jpg', 'image/jpeg', 2);
+    log := log || E'\n  FAIL  an original could point outside her namespace'; fails := fails + 1;
+  exception when check_violation then
+    log := log || E'\n  ok    an original cannot point outside her namespace';
+  end;
+
   begin
     update public.albums
     set title = 'Renamed', layout = 'masonry', description = 'edited',
@@ -115,6 +134,76 @@ begin
     log := log || E'\n  ok    update album, including its cover';
   exception when others then
     log := log || E'\n  FAIL  update album -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  -- Phase 5: a draft is written by the Edge Function with the service role,
+  -- never by the client; the owner settles it and puts the story on the album.
+  begin
+    insert into public.ai_drafts (owner_id, album_id, draft_type, body, model)
+    values (alice, album_a, 'album_story', 'Not hers to invent.', 'probe');
+    log := log || E'\n  FAIL  the client could write a draft'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    the client cannot write a draft';
+  end;
+
+  reset role;
+  insert into public.ai_drafts (owner_id, album_id, draft_type, body, model, input_tokens, output_tokens)
+  values (alice, album_a, 'album_story', 'We arrived in the rain.', 'probe', 17000, 3500)
+  returning id into draft_a;
+  set local role authenticated;
+
+  begin
+    update public.ai_drafts set status = 'accepted' where id = draft_a;
+    update public.albums set story = 'We arrived in the rain, laughing.', story_draft_id = draft_a
+    where id = album_a;
+    log := log || E'\n  ok    accept a draft and put the story on the album';
+  exception when others then
+    log := log || E'\n  FAIL  accept a draft -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  begin
+    update public.ai_drafts set body = 'rewritten' where id = draft_a;
+    log := log || E'\n  FAIL  a draft could be rewritten after the fact'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a draft cannot be rewritten after the fact';
+  end;
+
+  -- The studio's questions: written by the Edge Function with the service role,
+  -- answered or set aside by the owner, and never rewritten.
+  begin
+    insert into public.ai_suggestions (owner_id, album_id, photo_id, suggestion_type, body, model)
+    values (alice, album_a, photo_a, 'missing_context', 'Not hers to invent.', 'probe');
+    log := log || E'\n  FAIL  the client could write a question'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    the client cannot write a question';
+  end;
+
+  reset role;
+  insert into public.ai_suggestions (owner_id, album_id, photo_id, suggestion_type, body, reason, model)
+  values (alice, album_a, photo_a, 'missing_context', 'Who was up to see the dawn?', 'Whoever took it.', 'probe')
+  returning id into question_a;
+
+  begin
+    insert into public.ai_suggestions (owner_id, album_id, photo_id, suggestion_type, body, model)
+    values (bob, album_a, photo_a, 'missing_context', 'Pointing at her photo.', 'probe');
+    log := log || E'\n  FAIL  a question could point at another owner''s photo'; fails := fails + 1;
+  exception when foreign_key_violation then
+    log := log || E'\n  ok    a question cannot point at another owner''s photo';
+  end;
+  set local role authenticated;
+
+  begin
+    update public.ai_suggestions set status = 'answered' where id = question_a;
+    log := log || E'\n  ok    answer a question';
+  exception when others then
+    log := log || E'\n  FAIL  answer a question -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  begin
+    update public.ai_suggestions set body = 'rewritten' where id = question_a;
+    log := log || E'\n  FAIL  a question could be rewritten after the fact'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a question cannot be rewritten after the fact';
   end;
 
   begin
@@ -162,6 +251,22 @@ begin
     log := log || E'\n  ok    cannot see her story note';
   else
     log := log || E'\n  FAIL  can see her story note'; fails := fails + 1;
+  end if;
+
+  seen_id := null;
+  select id into seen_id from public.ai_drafts where id = draft_a;
+  if seen_id is null then
+    log := log || E'\n  ok    cannot see her AI draft';
+  else
+    log := log || E'\n  FAIL  can see her AI draft'; fails := fails + 1;
+  end if;
+
+  seen_id := null;
+  select id into seen_id from public.ai_suggestions where id = question_a;
+  if seen_id is null then
+    log := log || E'\n  ok    cannot see the studio''s questions to her';
+  else
+    log := log || E'\n  FAIL  can see the studio''s questions to her'; fails := fails + 1;
   end if;
 
   begin
@@ -232,12 +337,34 @@ begin
   end;
 
   begin
+    select body into seen from public.ai_drafts where id = draft_a;
+    log := log || E'\n  FAIL  can read AI drafts through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    cannot read AI drafts through the Data API';
+  end;
+
+  begin
+    select body into seen from public.ai_suggestions where id = question_a;
+    log := log || E'\n  FAIL  can read the studio''s questions through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    cannot read the studio''s questions through the Data API';
+  end;
+
+  begin
     select taken_at::text into seen from public.photos where id = photo_a;
     log := log || E'\n  FAIL  can read capture times through the Data API'; fails := fails + 1;
   exception when insufficient_privilege then
     -- A share link shows someone photographs, not a record of where their owner
     -- was and when.
     log := log || E'\n  ok    cannot read capture times through the Data API';
+  end;
+
+  begin
+    select original_path into seen from public.photos where id = photo_a;
+    log := log || E'\n  FAIL  can find originals through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    -- Originals keep the camera's metadata, location included.
+    log := log || E'\n  ok    cannot find originals through the Data API';
   end;
 
   select caption into seen from public.get_shared_album(token) where photo_id = photo_a;
@@ -258,9 +385,6 @@ begin
     log := log || E'\n  FAIL  a published caption did not reach a share link'; fails := fails + 1;
   end if;
 
-  -- The album a visitor is shown should be arranged the way its owner arranged
-  -- it. This column was missing from the function's result for a while, and the
-  -- shared page silently fell back to one column.
   select display_path into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = alice || '/a/one-display.jpg' then
     log := log || E'\n  ok    the display copy reaches a share link';
@@ -268,6 +392,16 @@ begin
     log := log || format(E'\n  FAIL  display copy reached a share link as %L', seen); fails := fails + 1;
   end if;
 
+  select story into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = 'We arrived in the rain, laughing.' then
+    log := log || E'\n  ok    the accepted story reaches a share link';
+  else
+    log := log || format(E'\n  FAIL  story reached a share link as %L', seen); fails := fails + 1;
+  end if;
+
+  -- The album a visitor is shown should be arranged the way its owner arranged
+  -- it. This column was missing from the function's result for a while, and the
+  -- shared page silently fell back to one column.
   select layout into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = 'masonry' then
     log := log || E'\n  ok    the layout the owner chose reaches a share link';

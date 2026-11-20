@@ -9,6 +9,7 @@ function photo(id: string, sortOrder: number): Photo {
     storagePath: `owner/album-1/${id}.jpg`,
     thumbnailPath: `owner/album-1/${id}-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -26,7 +27,7 @@ function askToRemove() {
   const photos = [photo('photo-1', 0), photo('photo-2', 1)]
   render(
     <SimilarPhotos
-      groups={[{ photos, suggested: photos[0], spread: 2 }]}
+      groups={[{ photos, spread: 2 }]}
       thumbnails={new Map()}
       onRemove={vi.fn()}
     />,
@@ -37,33 +38,17 @@ function askToRemove() {
 }
 
 describe('SimilarPhotos', () => {
-  it('offers to tick all but the sharpest, and only once focus is measured', () => {
-    // Without a reading the "sharpest" is just the first frame, so the
-    // suggestion would be arbitrary and is not offered.
+  it('calls no frame the sharpest', () => {
+    // A whole-frame measure named the lawn rather than the children, and a
+    // different frame on a phone than on a laptop. Until something judges the
+    // people in a frame, nothing on this screen claims to know which came out.
     const photos = [
-      { ...photo('photo-1', 0), sharpness: 50 },
-      { ...photo('photo-2', 1), sharpness: 100 },
-      { ...photo('photo-3', 2), sharpness: 80 },
+      { ...photo('photo-1', 0), sharpness: 100 },
+      { ...photo('photo-2', 1), sharpness: 30 },
     ]
-    const unmeasured = [photo('photo-4', 3), photo('photo-5', 4)]
-    render(
-      <SimilarPhotos
-        groups={[
-          { photos, suggested: photos[1], spread: 2 },
-          { photos: unmeasured, suggested: unmeasured[0], spread: 2 },
-        ]}
-        thumbnails={new Map()}
-        onRemove={vi.fn()}
-      />,
-    )
+    render(<SimilarPhotos groups={[{ photos, spread: 2 }]} thumbnails={new Map()} onRemove={vi.fn()} />)
 
-    const offers = screen.getAllByRole('button', { name: 'Suggest which to tick' })
-    expect(offers).toHaveLength(1)
-    fireEvent.click(offers[0])
-
-    expect(screen.getByLabelText('Remove photo 1')).toBeChecked()
-    expect(screen.getByLabelText('Remove photo 2')).not.toBeChecked()
-    expect(screen.getByLabelText('Remove photo 3')).toBeChecked()
+    expect(screen.queryByText(/sharp|blurry|not measured/i)).toBeNull()
   })
 
   it('hands focus to the safe choice once removal is asked for', () => {
@@ -106,8 +91,8 @@ describe('SimilarPhotos', () => {
     render(
       <SimilarPhotos
         groups={[
-          { photos, suggested: photos[0], spread: 2 },
-          { photos: other, suggested: other[0], spread: 2 },
+          { photos, spread: 2 },
+          { photos: other, spread: 2 },
         ]}
         thumbnails={urls}
         onRemove={vi.fn()}
@@ -123,5 +108,146 @@ describe('SimilarPhotos', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Next →' }))
     expect(image()).toHaveAttribute('src', 'full:photo-1')
+  })
+})
+
+describe('eyes in a group', () => {
+  const face = (x: number, blink: number | null) => ({
+    x, y: 300, width: 100, height: 100, blink, closeUp: null, smile: null, turn: null,
+  })
+
+  function renderWithEyes(eyes: Map<string, import('../lib/imaging/eyes').EyeReading>) {
+    const photos = [photo('photo-1', 0), photo('photo-2', 1), photo('photo-3', 2)]
+    render(
+      <SimilarPhotos
+        groups={[{ photos, spread: 2 }]}
+        thumbnails={new Map()}
+        eyes={eyes}
+        onRemove={vi.fn()}
+      />,
+    )
+  }
+
+  it('says which photo someone blinked in, and shows each face with its reading', () => {
+    renderWithEyes(
+      new Map([
+        ['photo-1', { kind: 'read', faces: [face(400, 0.26)] }],
+        ['photo-2', { kind: 'read', faces: [face(410, 0.68)] }],
+        ['photo-3', { kind: 'read', faces: [face(405, 0.27)] }],
+      ]),
+    )
+
+    expect(screen.getByText(/Someone may have blinked in photo 2\./)).toBeInTheDocument()
+    const person = screen.getByRole('list', { name: 'Person 1' })
+    expect(within(person).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Photo 1: Eyes open 0.26',
+      'Photo 2: Eyes closed? 0.68',
+      'Photo 3: Eyes open 0.27',
+    ])
+  })
+
+  it('says whether each face smiles and faces the camera, with the numbers behind it', () => {
+    const smiling = { ...face(400, 0.26), smile: 0.95, turn: { sideways: 2, upDown: 4 } }
+    const away = { ...face(410, 0.28), smile: 0.1, turn: { sideways: 40, upDown: 3 } }
+    renderWithEyes(
+      new Map([
+        ['photo-1', { kind: 'read', faces: [smiling] }],
+        ['photo-2', { kind: 'read', faces: [away] }],
+      ]),
+    )
+
+    const [first, second] = within(screen.getByRole('list', { name: 'Person 1' })).getAllByRole(
+      'listitem',
+    )
+    expect(first).toHaveTextContent('Smiling')
+    expect(first).toHaveTextContent('Facing the camera')
+    expect(first).toHaveTextContent('smile 0.95 · turned 4°')
+    expect(second).toHaveTextContent('Not smiling')
+    expect(second).toHaveTextContent('Turned away')
+  })
+
+  it('says plainly when the eyes could not be read, rather than saying nothing', () => {
+    renderWithEyes(new Map([['photo-1', { kind: 'unavailable', detail: 'model failed to load' }]]))
+
+    expect(screen.getByText(/The eyes could not be read: model failed to load/)).toBeInTheDocument()
+  })
+
+  it('shows nothing about eyes when there are no faces to compare', () => {
+    renderWithEyes(new Map())
+
+    expect(screen.queryByRole('heading', { name: 'People' })).not.toBeInTheDocument()
+  })
+})
+
+describe('people in a group', () => {
+  const black: [number, number, number] = [74, 65, 58]
+  const person = (x: number, blur: number) => ({
+    x, y: 200, width: 300, height: 900, confidence: 0.85, blur, colour: black, closeUp: null,
+  })
+  const face = (x: number, blink: number) => ({
+    x, y: 300, width: 100, height: 100, blink, closeUp: null, smile: null, turn: null,
+  })
+
+  function renderWith(
+    bodies: Map<string, import('../lib/imaging/bodies').BodyReading>,
+    eyes = new Map<string, import('../lib/imaging/eyes').EyeReading>(),
+  ) {
+    const photos = [photo('photo-1', 0), photo('photo-2', 1), photo('photo-3', 2)]
+    render(
+      <SimilarPhotos
+        groups={[{ photos, spread: 2 }]}
+        thumbnails={new Map()}
+        eyes={eyes}
+        bodies={bodies}
+        onRemove={vi.fn()}
+      />,
+    )
+  }
+
+  it('says who came out blurred, even where no face could be found', () => {
+    // At night a child's face is often too small or smeared for the face
+    // detector, but the child is still found whole.
+    renderWith(
+      new Map([
+        ['photo-1', { kind: 'read', bodies: [person(1000, 0.4)] }],
+        ['photo-2', { kind: 'read', bodies: [person(1010, 0.33)] }],
+        ['photo-3', { kind: 'read', bodies: [person(1005, 0.31)] }],
+      ]),
+    )
+
+    expect(screen.getByText(/Someone looks blurred in photo 1\./)).toBeInTheDocument()
+    const row = screen.getByRole('list', { name: 'Person 1' })
+    expect(within(row).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Photo 1Blurred 0.40',
+      'Photo 2Sharp 0.33',
+      'Photo 3Sharp 0.31',
+    ])
+  })
+
+  it('puts a face and the body it belongs to in one row', () => {
+    renderWith(
+      new Map([
+        ['photo-1', { kind: 'read', bodies: [person(1000, 0.31)] }],
+        ['photo-2', { kind: 'read', bodies: [person(1010, 0.32)] }],
+      ]),
+      new Map([
+        ['photo-1', { kind: 'read', faces: [face(1100, 0.05)] }],
+        ['photo-2', { kind: 'read', faces: [face(1110, 0.7)] }],
+      ]),
+    )
+
+    expect(screen.getAllByRole('list', { name: /Person/ })).toHaveLength(1)
+    const [first, second] = within(screen.getByRole('list', { name: 'Person 1' })).getAllByRole(
+      'listitem',
+    )
+    expect(first).toHaveTextContent('Photo 1: Eyes open 0.05')
+    expect(first).toHaveTextContent('Sharp 0.31')
+    expect(second).toHaveTextContent('Photo 2: Eyes closed? 0.70')
+  })
+
+  it('says plainly when people could not be looked for', () => {
+    renderWith(new Map([['photo-1', { kind: 'unavailable', detail: 'model failed to load' }]]))
+
+    expect(screen.getByText(/People could not be found: model failed to load/)).toBeInTheDocument()
   })
 })

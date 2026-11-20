@@ -1,5 +1,5 @@
 import { type ComponentProps } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PhotoEditor } from './PhotoEditor'
 import type { Photo } from '../lib/photos'
@@ -11,6 +11,7 @@ function photo(overrides: Partial<Photo> = {}): Photo {
     storagePath: 'owner/album-1/photo-1.jpg',
     thumbnailPath: 'owner/album-1/photo-1-thumb.jpg',
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -42,7 +43,7 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
     <PhotoEditor
       photo={photo()}
       position={1}
-      thumbnail="https://signed/1"
+      urls={new Map([[photo().thumbnailPath as string, 'https://signed/1']])}
       stories={[]}
       onSave={onSave}
       onAddStory={vi.fn().mockResolvedValue(undefined)}
@@ -53,6 +54,7 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
       onMoveEarlier={vi.fn().mockResolvedValue(undefined)}
       onMoveLater={vi.fn().mockResolvedValue(undefined)}
       onDelete={vi.fn().mockResolvedValue(undefined)}
+      onDownloadOriginal={null}
       onClose={vi.fn()}
       {...props}
     />,
@@ -430,5 +432,76 @@ describe('when a photograph was taken', () => {
     renderEditor({ photo: photo({ takenAt: 'not a date' }) })
 
     expect(screen.getByText('Taken not a date')).toBeInTheDocument()
+  })
+})
+
+describe('full quality', () => {
+  it('offers the original when there is one', async () => {
+    const onDownloadOriginal = vi.fn().mockResolvedValue(undefined)
+    renderEditor({ onDownloadOriginal })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download full quality' }))
+
+    await waitFor(() => expect(onDownloadOriginal).toHaveBeenCalledOnce())
+  })
+
+  it('says so when a photograph has no original, rather than hiding the question', () => {
+    renderEditor({ onDownloadOriginal: null })
+
+    expect(screen.queryByRole('button', { name: 'Download full quality' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Full quality is not available for this photo/)).toBeInTheDocument()
+  })
+
+  it('says why a download could not start', async () => {
+    renderEditor({ onDownloadOriginal: vi.fn().mockRejectedValue(new Error('Object not found')) })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download full quality' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Object not found')
+  })
+})
+
+describe('the photo, larger', () => {
+  it('opens the full-size photo, and closing it leaves the editor open', () => {
+    // The editor is itself a dialog, and React passes a dialog's close event up
+    // its own tree: closing the photo must not close the editor under it.
+    const closeEditor = vi.fn()
+    const urls = new Map([
+      [photo().thumbnailPath as string, 'https://signed/thumb'],
+      [photo().storagePath, 'https://signed/full'],
+    ])
+    render(
+      <dialog open onClose={closeEditor}>
+        <PhotoEditor
+          photo={photo()}
+          position={1}
+          urls={urls}
+          stories={[]}
+          onSave={vi.fn()}
+          onAddStory={vi.fn()}
+          onEditStory={vi.fn()}
+          onDeleteStory={vi.fn()}
+          isCover={false}
+          onUseAsCover={vi.fn()}
+          onMoveEarlier={null}
+          onMoveLater={null}
+          onDelete={vi.fn()}
+          onDownloadOriginal={null}
+          onClose={closeEditor}
+        />
+      </dialog>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'View photo 1 larger' }))
+    const lightbox = document.querySelector('dialog.lightbox') as HTMLDialogElement
+    expect(lightbox).toHaveAttribute('open')
+    expect(lightbox.querySelector('img.lightbox-image')).toHaveAttribute(
+      'src',
+      'https://signed/full',
+    )
+
+    fireEvent.click(within(lightbox).getByRole('button', { name: 'Close' }))
+    expect(lightbox).not.toHaveAttribute('open')
+    expect(closeEditor).not.toHaveBeenCalled()
   })
 })

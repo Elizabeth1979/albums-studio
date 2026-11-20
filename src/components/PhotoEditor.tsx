@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from 'react'
 import { type Photo, type TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
+import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
 import { LiveStatus } from './LiveStatus'
+import { PhotoLightbox } from './PhotoLightbox'
 import { StoryNotes } from './StoryNotes'
 import { useConfirmation } from './useConfirmation'
 import { useReturnFocus } from './useReturnFocus'
@@ -9,7 +11,8 @@ import { useReturnFocus } from './useReturnFocus'
 type PhotoEditorProps = {
   photo: Photo
   position: number
-  thumbnail: string | undefined
+  /** Signed URLs, by storage path. */
+  urls: Map<string, string>
   stories: Story[]
   onSave: (patch: {
     caption?: string
@@ -29,6 +32,11 @@ type PhotoEditorProps = {
   onMoveEarlier: (() => Promise<void>) | null
   onMoveLater: (() => Promise<void>) | null
   onDelete: () => Promise<void>
+  /**
+   * Starts the download of the file exactly as it was chosen. Null when there is
+   * no original to download, which the editor says rather than hiding.
+   */
+  onDownloadOriginal: (() => Promise<void>) | null
   onClose: () => void
 }
 
@@ -55,7 +63,7 @@ function formatTakenAt(takenAt: string): string {
 export function PhotoEditor({
   photo,
   position,
-  thumbnail,
+  urls,
   stories,
   onSave,
   onAddStory,
@@ -66,6 +74,7 @@ export function PhotoEditor({
   onMoveEarlier,
   onMoveLater,
   onDelete,
+  onDownloadOriginal,
   onClose,
 }: PhotoEditorProps) {
   const [caption, setCaption] = useState(photo.caption ?? '')
@@ -81,6 +90,24 @@ export function PhotoEditor({
   const confirmation = useConfirmation()
   const removeOpener = useReturnFocus(confirmingDelete)
   const [placeError, setPlaceError] = useState<string | null>(null)
+  const [viewing, setViewing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+
+  async function handleDownload(download: () => Promise<void>) {
+    setDownloading(true)
+    setDownloadError(null)
+
+    try {
+      await download()
+    } catch (caughtError) {
+      setDownloadError(
+        caughtError instanceof Error ? caughtError.message : 'Could not start the download.',
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   async function move(action: () => Promise<void>) {
     setMoving(true)
@@ -150,18 +177,40 @@ export function PhotoEditor({
 
       <div className="photo-editor-body">
         <div className="photo-editor-aside">
-          {thumbnail && (
-            <img
-              className="photo-editor-preview"
-              src={thumbnail}
-              // Whatever the owner has written is already on screen beside this,
-              // and until they write something there is nothing truthful to say.
-              alt=""
-            />
-          )}
+          {/* The image inside has no alt: whatever the owner has written is
+              already on screen beside it, and until they write something there
+              is nothing truthful to say. */}
+          <ExpandableThumb
+            photo={photo}
+            urls={urls}
+            onOpen={() => setViewing(true)}
+            imageClassName="photo-editor-preview"
+          />
 
           {photo.takenAt && (
             <p className="photo-taken">Taken {formatTakenAt(photo.takenAt)}</p>
+          )}
+
+          {onDownloadOriginal ? (
+            <button
+              className="text-button download-original"
+              type="button"
+              onClick={() => handleDownload(onDownloadOriginal)}
+              disabled={downloading}
+            >
+              {downloading ? 'Preparing download…' : 'Download full quality'}
+            </button>
+          ) : (
+            // Said rather than hidden: an absent button reads as "not offered
+            // here", when the truth is that this photograph has no original.
+            <p className="field-hint">
+              Full quality is not available for this photo. Only a 2000-pixel copy was kept.
+            </p>
+          )}
+          {downloadError && (
+            <p className="form-message error" role="alert">
+              {downloadError}
+            </p>
           )}
 
           {isCover ? (
@@ -341,6 +390,12 @@ export function PhotoEditor({
           </button>
         )}
       </section>
+      <PhotoLightbox
+        photos={[toLightboxPhoto(photo, urls, null)]}
+        index={viewing ? 0 : null}
+        onClose={() => setViewing(false)}
+        onGoTo={() => {}}
+      />
     </section>
   )
 }

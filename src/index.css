@@ -1628,6 +1628,13 @@ textarea:focus-visible {
   font-size: 0.82rem;
 }
 
+/* Beside the photograph it belongs to, as a quiet action rather than a third big button. */
+.download-original {
+  display: block;
+  margin-top: 0.6rem;
+  text-align: left;
+}
+
 .similar {
   margin-top: 2.4rem;
   padding-top: 1.8rem;
@@ -1645,14 +1652,7 @@ textarea:focus-visible {
   margin-top: 1.6rem;
 }
 
-.similar-group-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.similar-group-heading h3 {
+.similar-group h3 {
   margin: 0;
   font-size: 0.82rem;
   font-weight: 800;
@@ -1663,22 +1663,6 @@ textarea:focus-visible {
 
 /* Scrolls sideways rather than shrinking: comparing two photographs is the
    whole point, and past about four they stop being comparable at tile size. */
-/*
- * Looks like something to press. As bare bold text it read as a caption telling
- * the owner to do the ticking herself, which is the opposite of a shortcut.
- */
-.similar-shortcut {
-  min-height: 2.4rem;
-  text-decoration: none;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid #ccc0ac;
-  border-radius: 0.4rem;
-  background: #fffdf9;
-  color: #6d3f18;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
 .similar-row {
   display: flex;
   gap: 0.8rem;
@@ -1700,8 +1684,8 @@ textarea:focus-visible {
   margin-top: auto;
 }
 
-/* Same reset as the shared album's tiles: the whole tile opens it larger. */
-.similar-open {
+/* Same reset as the shared album's tiles: the whole picture opens it larger. */
+.thumb-open {
   display: block;
   width: 100%;
   padding: 0;
@@ -1711,7 +1695,11 @@ textarea:focus-visible {
   cursor: zoom-in;
 }
 
-.similar-open:focus-visible {
+.photo-editor-aside .thumb-open {
+  width: max-content;
+}
+
+.thumb-open:focus-visible {
   outline: 3px solid #8d5526;
   outline-offset: 3px;
 }
@@ -1776,40 +1764,84 @@ textarea:focus-visible {
   color: #6f675c;
 }
 
-.similar-badge {
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.3rem;
-  background: #e8e0d2;
-  color: #4a4036;
-  font-weight: 700;
-}
-
 .similar-sharpness {
   color: #6f675c;
-}
-
-/* On the picture's top corner, solid so it reads against any photograph. */
-.similar-tag {
-  position: absolute;
-  top: 0.4rem;
-  left: 0.4rem;
-  font-size: 0.78rem;
-  background: #fffdf9;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
-  pointer-events: none;
 }
 
 @media (max-width: 720px) {
   .similar-item {
     flex-basis: 8.5rem;
   }
+}
 
-  /* Side by side, the shortcut ran off the edge of the screen. */
-  .similar-group-heading {
-    display: grid;
-    justify-items: start;
-    gap: 0.3rem;
-  }
+/* Each person's face, frame against frame, under the group it belongs to. */
+.similar-faces {
+  margin-top: 0.9rem;
+}
+
+.similar-faces h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+.face-row {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.face-item {
+  flex: none;
+  width: 6.5rem;
+}
+
+.face-close-up {
+  display: block;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 0.4rem;
+  object-fit: cover;
+  background: #ece5da;
+}
+
+/* A whole person in a square: from the head down, so the face is in it. */
+.face-close-up.body {
+  object-position: top;
+}
+
+/* A possible blink or blur is outlined, not hidden: the owner decides. */
+.face-item.closed .face-close-up {
+  outline: 2px solid #8d5526;
+  outline-offset: 2px;
+}
+
+.face-label {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: #4a4036;
+}
+
+.similar-faces .field-hint {
+  max-width: 40rem;
+}
+
+.face-item.closed .face-eyes {
+  font-weight: 700;
+  color: #6d3f18;
+}
+
+.face-score {
+  color: #6f675c;
+  font-variant-numeric: tabular-nums;
+}
+
+.face-numbers {
+  display: block;
+  font-size: 0.72rem;
 }
 
 /* The photo editor, over the album. Same mechanics as the lightbox; lighter
@@ -2150,4 +2182,359 @@ textarea:focus-visible {
   border-top: 1px solid #e6ded2;
   color: #6f675c;
   font-size: 0.85rem;
+}
+
+/*
+ * The tuning readouts, folded away. They are for whoever is tuning the focus
+ * check, so they start closed and sit at the weight of a footnote; the summary
+ * still says when something could not be checked.
+ */
+.tuning-readings {
+  margin-top: 1.2rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #e6ded2;
+  color: #6f675c;
+  font-size: 0.85rem;
+}
+
+.tuning-readings > summary {
+  padding: 0.6rem 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tuning-readings > summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.tuning-readings .focus-unchecked {
+  margin-top: 0.4rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Under a shared photograph, quiet, like the editor's own download. */
+.shared-download {
+  display: block;
+  margin-top: 0.4rem;
+  text-align: left;
+}
+
+/* The album's story, between its description and its photographs. */
+.album-story {
+  margin: 1.5rem 0 2rem;
+  max-width: 42rem;
+}
+
+.album-story h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+}
+
+/* A confirmation set apart from the story it confirms, so it does not read as its first line. */
+.album-story .live-status:not(:empty) {
+  margin: 0 0 1rem;
+  color: #6f675c;
+  font-size: 0.9rem;
+}
+
+.album-story-text p {
+  margin: 0 0 0.9rem;
+  line-height: 1.6;
+}
+
+.album-story-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+.album-story .rename-form textarea {
+  min-height: 6rem;
+}
+
+/* The studio's questions about photographs with no words yet. */
+.album-questions {
+  margin: 1.5rem 0 2rem;
+  max-width: 42rem;
+}
+
+.album-questions h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+}
+
+.question-list {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.question {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.question img,
+.question-photo-missing {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.question-photo-missing {
+  display: grid;
+  place-items: center;
+  background: #e9e3da;
+  color: #6f675c;
+  font-size: 0.75rem;
+}
+
+.question-body {
+  min-width: 0;
+}
+
+.question-text {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.question-body .field-hint {
+  margin: 0 0 0.5rem;
+}
+
+.question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+/* Speaking into a box: the button, the words still being heard, and where they go. */
+.dictate {
+  margin: 0.4rem 0 0.9rem;
+}
+
+.dictate-button[aria-pressed='true'] {
+  border-color: #8d5526;
+  background: #f6ece1;
+  color: #6d3f18;
+}
+
+.dictate-guess {
+  margin: 0.4rem 0 0;
+  color: #6f675c;
+  font-style: italic;
+}
+
+.dictate-note {
+  margin: 0.35rem 0 0;
+}
+
+/* Choosing the photos a story reads: small enough that a long album still fits. */
+.story-photos {
+  margin: 0 0 0.9rem;
+  padding: 0;
+  border: 0;
+}
+
+.story-photos legend {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.story-photos .field-hint {
+  margin: 0 0 0.4rem;
+}
+
+.story-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.story-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.4rem;
+  max-height: 22rem;
+  margin: 0;
+  padding: 0.2rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.story-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  background: #e9e3da;
+  cursor: pointer;
+}
+
+.story-photo img,
+.story-photo-missing {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-photo-missing {
+  padding: 0.3rem;
+  overflow: hidden;
+  color: #6f675c;
+  font-size: 0.7rem;
+}
+
+/* Left out is dimmed, so what the story will read stands out at a glance. */
+.story-photo:not(:has(input:checked)) img {
+  opacity: 0.45;
+}
+
+.story-photo:has(input:checked) {
+  border-color: #8d5526;
+}
+
+.story-photo:has(input:focus-visible) {
+  outline: 3px solid #d89045;
+  outline-offset: 2px;
+}
+
+.story-photo input {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: #8d5526;
+}
+
+.story-photo:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.shared-story-text {
+  max-width: 42rem;
+  margin-top: 1.2rem;
+}
+
+.shared-story-text p {
+  margin: 0 0 0.9rem;
+  line-height: 1.6;
+}
+
+/* Slideshow ---------------------------------------------------------------- */
+
+/* The owner's hint and the Play button share a line, so the button costs the
+   album's first screen nothing on a wide one and one short row on a phone. */
+.album-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 0.9rem;
+}
+
+/* Never wrapped below the hint: on a phone that row cost 86px of the first
+   screen, past the budget the phone layout test holds. The hint takes two short
+   lines beside the button instead. */
+.album-hint-row .album-hint {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.album-hint-row .slideshow-start {
+  flex: none;
+}
+
+.slideshow-start {
+  /* The secondary button, a size smaller: it shares a line with a hint. */
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.shared-heading .slideshow-start {
+  margin-top: 1.2rem;
+}
+
+.lightbox.slideshow {
+  /* Sideways drags are the swipe; vertical ones still scroll a long caption. */
+  touch-action: pan-y;
+}
+
+.lightbox.slideshow .lightbox-image {
+  /* A slideshow is for looking at: give the photograph more of the screen. */
+  max-height: 76dvh;
+}
+
+.lightbox-slide {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Fills the space between the bar and the steps, so the story sits in the
+   middle of the screen rather than under the bar. */
+.lightbox.slideshow .lightbox-slide {
+  flex: 1 1 auto;
+  /* Held together in the middle: stretched rows left the caption floating
+     halfway between the photograph and the steps. */
+  align-content: center;
+}
+
+.lightbox.slideshow .lightbox-words {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.lightbox-intro {
+  display: grid;
+  gap: 1rem;
+  max-width: 40rem;
+  margin: auto;
+  padding: 2rem 0;
+  font-size: 1.15rem;
+  line-height: 1.75;
+}
+
+.lightbox-intro p {
+  margin: 0;
+}
+
+.lightbox-intro .lightbox-intro-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  line-height: 1.1;
+}
+
+/* Only for people who have not asked for less motion; for everyone else the
+   photograph simply replaces the last one. */
+@media (prefers-reduced-motion: no-preference) {
+  .lightbox.slideshow .lightbox-image,
+  .lightbox.slideshow .lightbox-intro {
+    animation: slideshow-fade 0.6s ease-out;
+  }
+}
+
+@keyframes slideshow-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

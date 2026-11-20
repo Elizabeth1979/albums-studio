@@ -29,6 +29,7 @@ export type UploadDeps = {
   store: (input: {
     albumId: string
     image: ProcessedImage
+    original: File
     sortOrder: number
   }) => Promise<Photo>
   onItemChange: (item: UploadItem) => void
@@ -102,6 +103,7 @@ export async function runUploads(
           return store({
             albumId,
             image,
+            original: request.file,
             sortOrder: firstSortOrder + index,
           })
         },

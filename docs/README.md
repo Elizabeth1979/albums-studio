@@ -11,12 +11,11 @@ AI cost.
 - The React and TypeScript application has email/password authentication, an album library
   (create, open, rename, describe, delete), and photo upload.
 - Photos are resized to 2000px with a 400px thumbnail, hashed (pHash) and scored for
-  sharpness in a Web Worker, then uploaded four at a time with retry. Those measurements
-  are what Phase 7 duplicate grouping and best-shot ranking run on, so neither needs a
-  model call. Focus is read twice over: against the other frames of a near-duplicate group
-  at upload time, and — for every photograph, including ones uploaded years earlier — from
-  the thumbnail when an album opens, which is what catches a blurred photograph taken only
-  once.
+  sharpness in a Web Worker, then uploaded four at a time with retry. The hash is what
+  Phase 7 duplicate grouping runs on. Near-duplicate groups name no sharpest frame: the
+  whole-frame ranking read the background, not the people (see the 2026-11-18 session). Focus
+  is read for every photograph, including ones uploaded years earlier, when an album opens,
+  which is what catches a blurred photograph taken only once.
 - Owners sign their own image URLs from the browser; Storage checks its policy against
   the caller's token first. Shared viewers have no token, so Phase 6 signs on their behalf
   from an Edge Function.
@@ -30,6 +29,11 @@ AI cost.
   copy needs `get_shared_album` and the `shared-album` Edge Function to return the path.
   The focus check downloads two photographs at a time rather than four, so it no longer
   takes the bandwidth the tiles on screen need.
+- Since 2026-11-14 an upload also keeps the file exactly as it was chosen, so the owner can
+  download a photograph at full quality from the photo editor. Photographs uploaded earlier
+  have no original and the editor says so. Visitors with the share link can download the
+  original too, with where it was taken removed by the Edge Function before it leaves the
+  server; the owner's own download keeps the location.
 - Addresses are real routes: `/` for the library, `/albums/:slug` for one album. History-API
   routing, because Supabase delivers auth tokens in the URL hash.
 - Accessibility is checked by axe-core in CI across ten screens, at WCAG 2.0/2.1 A and AA.
@@ -121,13 +125,36 @@ AI cost.
   counterweight — it runs the client's real writes against the real schema as `authenticated`
   and `anon`, then rolls back. Run it after any migration. It reproduces all four faults that
   reached the deployed app past a green suite.
-- Next: Phase 5 AI Story Studio. Phases 1 to 4 are done and deployed.
+- An album can carry a story, drafted by AI from its photographs and the owner's words, edited
+  by the owner, and shown at the top of the shared album only once used. Drafts go through
+  the `story-draft` Edge Function, which alone holds the AI key; five free drafts per person
+  per month, each recorded in `ai_drafts` with its token count. The owner chooses which
+  photographs it reads, and can speak instead of type wherever she writes a memory.
+- The studio asks about photographs with nothing written about them: up to five questions,
+  answered (typed or spoken) into a private note on the photograph, or set aside. Through the
+  `album-questions` Edge Function, five requests a month; open questions live in
+  `ai_suggestions`. Nothing is ever sent to another person.
+- An album plays as a slideshow, for the owner from her album page and for a visitor from
+  the share link: the story first, then each photograph in album order, five seconds each,
+  in the photo viewer rather than a second one. Play/pause, Previous/Next, swipe, arrow keys,
+  Space and Escape. Starts paused when the device asks for reduced motion. Only published
+  captions appear, the owner's included, because a slideshow is shown to other people; story
+  notes under a photograph are left out. Draws the stored image and fetches one photograph
+  ahead, never the album. No music or export yet (Phase 9's later slices).
+- Next: confirming Phase 5's checkpoint on the owner's own album and phone. Phases 1 to 4, 6
+  and 7 are done and deployed.
 
 ## Plans
 
 - [Albums Studio roadmap](plans/2026-08-15-albums-studio-roadmap.md) — active phased build
   plan and open product decisions, including the recorded evaluation of free and local
   models for alt text, semantic search, and faces.
+
+## Research
+
+- [Best-photo picking and competing products](research/2026-11-14-best-photo-and-competitors.md)
+  — what culling tools and photo apps do, what their users complain about, why closed eyes
+  are compared only within a moment, and the storage cost of keeping originals.
 
 ## Architecture
 
@@ -185,6 +212,22 @@ AI cost.
 - [The number that ended four rounds of guessing](sessions/2026-08-30-focus-judged-against-its-album.md) —
   a real album read 2 to 15 where synthetic scenes read about 1, so every absolute threshold
   was five times too low; photographs are now judged against their own album's median.
+- ["Sharpest" read the lawn](sessions/2026-11-18-sharpest-read-the-lawn.md) — in a night
+  burst of children the burst ranking counted the grass and paving, called a frame with a
+  child smeared by movement the sharpest, and named a different frame on a phone than on a
+  laptop. The verdicts are off the screen; measuring blur inside each person's box, child
+  against the same child, ranked the burst correctly and is the next step.
+- [The first slideshow](sessions/2026-11-18-the-first-slideshow.md) — Phase 9's first
+  slice: a timed slideshow in the existing photo viewer, published captions only even for the
+  owner, one photograph fetched ahead to stay within a phone's memory.
+- [The first AI draft](sessions/2026-11-18-the-first-ai-draft.md) — album stories drafted
+  by Claude from photographs and the owner's words, kept as drafts until used, five free a
+  month on the platform's key, with the real cost per draft still to be measured.
+- [Eyes read against themselves](sessions/2026-11-15-eyes-read-against-themselves.md) — the
+  eye model finds no face on its own in a frame where a person is small, so it reads cut-outs
+  of faces the tiled detector found; a laughing face with open eyes already scores 0.26, so a
+  blink is judged against the same person in other frames, never against a fixed line. Shown,
+  not acted on, until a real blink has been seen.
 - [Find the people first](sessions/2026-09-02-find-the-people-first.md) — the first round of
   judging the subject rather than the frame: BlazeFace, self-hosted, reporting on screen and
   acting on nothing, plus five things the plan got wrong that only running it revealed (the

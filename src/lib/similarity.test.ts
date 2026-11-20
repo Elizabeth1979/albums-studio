@@ -4,10 +4,8 @@ import {
   BURST_DISTANCE,
   BURST_SECONDS,
   NEAR_DUPLICATE_DISTANCE,
-  compareSharpness,
   groupSimilar,
   hammingDistance,
-  sharpest,
 } from './similarity'
 
 /** A 64-bit hash with `differing` bits flipped from all zeroes. */
@@ -20,6 +18,7 @@ function photo(overrides: Partial<Photo> & { id: string }): Photo {
     storagePath: `owner/a/${overrides.id}.jpg`,
     thumbnailPath: `owner/a/${overrides.id}-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,
@@ -153,16 +152,6 @@ describe('groupSimilar', () => {
     expect(groupSimilar(photos, 16)).toHaveLength(1)
   })
 
-  it('suggests the sharpest of the group', () => {
-    const photos = [
-      photo({ id: 'soft', phash: hash(0), sharpness: 900, sortOrder: 0 }),
-      photo({ id: 'crisp', phash: hash(2), sharpness: 4200, sortOrder: 1 }),
-      photo({ id: 'softer', phash: hash(4), sharpness: 300, sortOrder: 2 }),
-    ]
-
-    expect(groupSimilar(photos)[0].suggested.id).toBe('crisp')
-  })
-
   it('uses a threshold of 10 by default', () => {
     expect(NEAR_DUPLICATE_DISTANCE).toBe(10)
   })
@@ -248,67 +237,5 @@ describe('photographs taken moments apart', () => {
     ]
 
     expect(groupSimilar(photos)).toEqual([])
-  })
-})
-
-describe('sharpest', () => {
-  it('keeps album order when nothing is sharper', () => {
-    const first = photo({ id: 'first', sharpness: 100, sortOrder: 0 })
-    const second = photo({ id: 'second', sharpness: 100, sortOrder: 1 })
-
-    expect(sharpest([first, second]).id).toBe('first')
-  })
-
-  it('prefers a measured photograph over one with no reading', () => {
-    const unmeasured = photo({ id: 'unmeasured', sharpness: null, sortOrder: 0 })
-    const measured = photo({ id: 'measured', sharpness: 5, sortOrder: 1 })
-
-    expect(sharpest([unmeasured, measured]).id).toBe('measured')
-  })
-})
-
-describe('compareSharpness', () => {
-  /** A group of the given photographs, as groupSimilar would build it. */
-  function group(photos: Photo[]) {
-    return groupSimilar(photos)[0]
-  }
-
-  it('names the sharpest of the group', () => {
-    const soft = photo({ id: 'soft', sharpness: 1000, sortOrder: 0 })
-    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 1 })
-    const alike = group([soft, crisp])
-
-    expect(compareSharpness(crisp, alike)).toBe('sharpest')
-  })
-
-  it('calls a photograph within a tenth of the best nearly as sharp', () => {
-    const nearly = photo({ id: 'nearly', sharpness: 3700, sortOrder: 0 })
-    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 1 })
-
-    expect(compareSharpness(nearly, group([nearly, crisp]))).toBe('close')
-  })
-
-  it('separates a little softer from noticeably softer', () => {
-    const some = photo({ id: 'some', sharpness: 3000, sortOrder: 0 })
-    const much = photo({ id: 'much', sharpness: 800, sortOrder: 1 })
-    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 2 })
-    const alike = group([some, much, crisp])
-
-    expect(compareSharpness(some, alike)).toBe('softer')
-    expect(compareSharpness(much, alike)).toBe('blurrier')
-  })
-
-  it('says nothing about focus it has no reading for', () => {
-    // Both ways round: an unmeasured photograph, and a measured one in a group
-    // whose best has no reading to compare it against.
-    const unmeasured = photo({ id: 'unmeasured', sharpness: null, sortOrder: 0 })
-    const crisp = photo({ id: 'crisp', sharpness: 4000, sortOrder: 1 })
-
-    expect(compareSharpness(unmeasured, group([unmeasured, crisp]))).toBe('unmeasured')
-
-    const alsoUnmeasured = photo({ id: 'also', sharpness: null, sortOrder: 1 })
-    const none = group([unmeasured, alsoUnmeasured])
-
-    expect(compareSharpness(unmeasured, none)).toBe('unmeasured')
   })
 })

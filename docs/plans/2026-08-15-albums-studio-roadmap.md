@@ -63,9 +63,9 @@ subscription, Supabase, RLS, share links, Family Travels.
   Phase 5 deliberately, so that the hidden/published distinction Phase 4 introduced had
   somewhere real to prove itself before AI began generating text.
 - ✅ **Phase 7 implemented against its checkpoint.** Photographs are grouped by pHash
-  Hamming distance and by burst-like timing read from EXIF, compared side by side with a
-  sharpness reading and a sharpest-of-the-group badge, and nothing is removed until the
-  owner confirms. A second review offers photographs that are blurred on their own, which
+  Hamming distance and by burst-like timing read from EXIF, compared side by side, and
+  nothing is removed until the owner confirms. The sharpest-of-the-group badge was withdrawn
+  on 2026-11-18: in a real night burst it read the lawn rather than the children. A second review offers photographs that are blurred on their own, which
   is what a group-relative reading structurally cannot see: a soft frame taken only once has
   no sibling to be compared against. It judges the sharpest part of a frame against that
   part's own contrast, so a blurred background or a misty lake is not mistaken for a
@@ -76,12 +76,47 @@ subscription, Supabase, RLS, share links, Family Travels.
   signal. This document does not record the checkpoint having been confirmed on a real
   album.
 
+- ✅ **Phase 5, first slice built, deployed and used on a real album 2026-11-18.** The owner asks for a story, optionally saying what it should mention; the
+  `story-draft` Edge Function shows Claude Sonnet 5.5 up to 20 of the album's photographs with
+  every caption and note, private ones included but never to be quoted, and returns a draft.
+  The owner edits it and uses it or discards it. Only "Use this story" puts text on the album
+  and the share link; every draft is kept in `ai_drafts` with its status and its measured
+  token count. The platform pays, five drafts per person per calendar month, counted in
+  `ai_usage` for every completed call. Measured on the owner's first real draft: 20 photographs, 23,106 tokens in and 464 out on
+  Claude Sonnet 5.5, about 5 US cents, so five drafts cost a person at most about 25 cents
+  a month and the allowance stands. Not in this slice: voice,
+  transcripts, proactive suggestions, captions and alt drafts.
+- ✅ **Phase 5: the owner chooses which photographs a story reads (2026-11-18).** Up to 20,
+  ticked on thumbnails; twenty are chosen to start with, spread evenly from the album's first
+  photograph to its last (`supabase/functions/_shared/storyPhotos.ts`), and the server makes
+  the same spread when it is sent no choice. Before this a story read the first 20 only, so a
+  long album got a story about its first afternoon.
+- ✅ **Phase 5: speaking instead of typing (2026-11-18).** A "Speak" button beside the
+  story's notes and beside every photo's story note; what is said lands in the box as text,
+  to correct like anything typed. It uses the browser's own speech recognition: free, no
+  key, no recording kept, and the screen says the browser's maker turns the audio into text.
+  Not offered in Firefox, which has none. Not yet: keeping the audio itself, and confirmed
+  on the owner's own phone.
+- ✅ **Phase 5: the studio asks (2026-11-18).** Below the photographs, a count of how many have
+  no caption and no note, free and always shown. "Suggest questions with AI" shows the model up
+  to 12 of them, spread across the album, with what the owner wrote elsewhere, and saves up to
+  five questions in `ai_suggestions`, each with who might know when her own words say so.
+  Answered, typed or spoken, the question and answer become a private note on the photograph;
+  or the question is set aside. Nothing is sent to anyone. Five requests a month, about 3 US
+  cents each by estimate. `ai_suggestions` holds only `missing_context` for now; the other
+  suggestion types wait for a use.
+
 **Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
 checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:
 captions, story notes, and alt text, each already marked with who it is for. Drafted alt
 text must respect `alt_source`; a human's wording is never overwritten by a suggestion. If
 a smaller step is wanted first, Phase 7's remaining faces-visible/eyes-open signal is the
 cheapest thing on the board, and open question 9 now costs it out.
+
+**Decided 2026-11-14** (evidence in
+[the competitor research](../research/2026-11-14-best-photo-and-competitors.md)): Phase 3.5,
+full-quality originals, goes first. Every upload until it ships loses its original for good,
+and no later phase can bring one back. Phase 7's eyes-open signal and face close-ups follow.
 
 **Known schema gaps:** add forward-only migrations when their phases begin for `ai_drafts`,
 `studio_interactions`, `ai_suggestions`, and any face/embedding structures. Story notes have
@@ -242,6 +277,50 @@ implementation falls over.
 **Checkpoint:** user can upload a small batch, refresh, and still see photos, thumbnails,
 sort order, pHash, and sharpness metadata.
 
+### Phase 3.5 — Full-quality originals (added 2026-11-14)
+Keep the file exactly as the camera wrote it, beside the 2000px copy and the thumbnail. The
+app keeps showing the 2000px copy; the original is what "Download" and printing use, for the
+owner and for anyone with the share link.
+
+Why: a 2000px copy is fine on any screen and prints to about 17 cm, but not to a full A4 page
+or a photo-book spread, and shrunken shared photos are the longest-running complaint against
+iCloud. An original not kept at upload can never be recovered, so this comes before anything
+that would want one. Photographs uploaded before it ships exist only at 2000px; getting their
+full quality back means uploading them again.
+
+Cost: about $1 a year per 1,000 photographs on Supabase Pro storage pricing. Originals count
+against the owner's storage quota (open question 12), which is how price is set; there is no
+separate "high quality" add-on, because an owner who had not bought one would lose originals
+that buying it later could not restore.
+
+Split in two, because originals carry what the redrawn copies do not: the camera's metadata,
+including **where the photograph was taken**. A share link that handed out originals would hand
+out the location of the owner's home.
+
+- **Step 1 — keep them, and let the owner download them.** ✅ Implemented 2026-11-14, migration
+  `20261114142706_keep_full_quality_originals` applied to the hosted project. Each upload stores
+  `<id>-original.<ext>` under the file's own type, recorded in `photos.original_path`. The
+  bucket takes 50 MB and HEIC/HEIF. A type or size the bucket would refuse still uploads,
+  without an original, and the photo editor says plainly when a photograph has none. Deleting a
+  photograph or album removes it; the orphan check and removal script know about it.
+  `original_path` is `select`/`insert` for `authenticated` only: never updatable, since an
+  original cannot be made after the fact, and not readable by `anon`.
+- **Step 2 — visitors download them, with location removed.** ✅ Implemented 2026-11-15,
+  `shared-album` version 5 deployed. A visitor sees "Download full quality" under each
+  photograph that has an original. The function checks the photo belongs to the token's
+  album, reads the original with the service role, blanks the EXIF GPS block and any XMP
+  coordinates in place (`supabase/functions/_shared/location.ts`, no re-encoding, same length,
+  pixels identical), and returns it as an attachment. Checked against a real JPEG written and
+  read back by Pillow: latitude, longitude and altitude gone, camera make and model kept.
+  Not yet seen end to end on a real original, because none existed when it shipped.
+
+iPhones mostly hand a browser a full-resolution JPEG, converting from HEIC as the file is
+chosen (see `PhotoUploader.tsx`), so HEIC originals arrive mainly from a Mac or desktop Safari.
+
+**Checkpoint:** a photograph uploaded from a phone downloads, for the owner, byte-for-byte
+identical to the file that was chosen (step 1); and through the share link, identical except
+that its location is gone (step 2).
+
 ### Phase 4 — Text foundation: captions, story notes + manual alt text
 Add photo editing UI for:
 
@@ -319,6 +398,18 @@ someone.
 transcript, receives proactive suggestions, generates a story/blog draft, edits it, accepts
 it, and sees the accepted story in an album layout while the raw draft remains traceable.
 
+**Decided 2026-11-18, first slice.** Story drafts before voice and suggestions: it is the
+smallest piece that runs the whole loop — photographs and owner words in, AI draft, owner
+edit, published result — so cost, quality and the review flow are measured on something
+real before the rest is built on them. Claude Sonnet 5.5 at medium effort, at half Opus
+5.5's price: the owner chose it over Opus on cost, the difference being about 7 US cents a
+story, and Opus is one line away if real drafts read flat. With server-side fallback, so an ordinary family album is not lost to an over-cautious
+refusal. The platform's key with a monthly allowance rather than BYOK first: owners should
+not need an AI account to try the studio. The client can read its drafts and set their
+status, nothing more; a draft's text is never rewritten after the fact. On the album page
+the story sits below the photographs, as sharing does, because above them it pushed the
+first photograph past the middle of a phone screen; visitors still read it first.
+
 ### Phase 6 — Sharing
 Visibility switch (`private` / `link` / `public`), share-link generation, token rotation as
 a visible "revoke links" action. Tokens remain in `private.album_share_tokens`, never on
@@ -334,12 +425,45 @@ Group photos by pHash Hamming distance and burst-like timing/order. Show cluster
 side with useful signals:
 
 - Near-duplicate score.
-- Sharpness / blur score. Two measures, doing two different jobs: edge width for "is this
-  photograph out of focus", because blur widens edges whatever the subject is; local detail
-  relative to contrast for "which frame of this burst came out best", because counting detail
-  only tracks focus while the subject is held still. Using the second for the first put a
-  sharp portrait on the list for deletion.
-- Later: faces visible / eyes open.
+- Sharpness / blur score, for "is this photograph out of focus" on its own.
+- Which frame of a burst came out best. **Withdrawn 2026-11-18.** It counted local detail
+  over the whole frame, on the premise that the subject is held still within a burst. Children
+  are not: in the owner's night burst it counted the grass and paving, called a frame with a
+  child smeared by movement the sharpest, and named a different frame on a phone than on a
+  laptop.
+  - **Person by person, shown 2026-11-18, not yet acted on.** Each person is found whole
+    (EfficientDet-Lite0 int8, 4.6 MB), followed across the group by place and clothes
+    colour, and blur is read across the middle of each one and compared only with the same
+    person's sharpest frame (`BLUR_MARGIN`, 0.065). It sits in the same row as the eyes: one
+    row per person, their face where one was found and their whole body where not. On the
+    owner's night burst it marked the smeared boy and the girl in two of her three blurred
+    frames, and nobody who came out; it misses her in front of a lit tree, where only a mask
+    of her own pixels would see it. Next: daytime bursts in her albums; only then does a
+    blurred person mark a frame down. See
+    [the session log](../sessions/2026-11-18-sharpest-read-the-lawn.md).
+- Later: faces visible / eyes open. Decided 2026-11-14:
+  - **Shown 2026-11-15, not yet acted on.** Each group with faces gets an "Eyes" row: every
+    person's close-up frame by frame, the model's score beside it, and "Eyes closed?" where
+    that person reads open in another frame. It changes no suggestion. Next: the owner checks
+    it on a real burst with a blink; the margin (`BLINK_MARGIN`, 0.25) is set from that, and
+    only then does a blink mark a frame down. See
+    [the session log](../sessions/2026-11-15-eyes-read-against-themselves.md).
+  - **Smiling and facing the camera, shown 2026-11-15, not yet acted on.** Same model, same
+    row. "Smiling" from the smile score (`SMILE_LINE`, 0.5); "Facing the camera" from the
+    head's turn (`TURN_LIMIT`, 25 degrees). Not from eye direction: the model read shut eyes
+    as looking down (0.18 to 0.67), so using it would count every blink twice. Both lines are
+    provisional until real photographs set them.
+  - **Eyes are compared only across frames of the same moment.** A frame is marked down when
+    the same person has their eyes open in another frame of its group — a blink. A kiss or a
+    laugh photographed five times has closed eyes in all five and none is marked down. A
+    photograph with no sibling is never judged on eyes. A marked-down frame is ranked lower
+    and labelled with the reason; it is never removed or hidden.
+  - **Face close-ups.** Each group shows every face it found, cropped and side by side frame
+    against frame, so a blink is seen by the owner rather than trusted to a detector. This
+    also covers the detector's known gaps, since a face it misses is still in the photograph.
+  - **Plain labels.** Done 2026-11-15, withdrawn with the ranking 2026-11-18. When the
+    person-by-person reading returns, it says which person is soft in which frame rather than
+    grading the frame.
 - App suggestion for best one or two photos.
 
 Implementation should start with Python/browser-friendly free options before any paid model:
@@ -405,6 +529,11 @@ to be reliable across devices.
 **Checkpoint:** user chooses photos, previews a timed slideshow, optionally adds music, and
 can export or save the slideshow/movie once the rendering path is chosen.
 
+**Status (2026-11-18):** first slice built — a whole album plays as a timed slideshow for the
+owner and for a visitor with the link, story first, published captions only. Not yet: choosing
+which photographs, music, and export. The checkpoint is not met, and the slice has not been
+watched on the owner's phone.
+
 ### Phase 10 — AI-assisted search
 Start with ordinary text search over album titles, album descriptions, visible captions,
 story notes, and hidden captions/stories the owner has written. Then add AI-assisted search
@@ -435,6 +564,33 @@ Increment `ai_usage` on every call, BYOK included, so users can see their own co
 
 **Checkpoint:** owner can generate an AI alt draft, edit it, approve it, and the approved
 text appears in shared views.
+
+### Phase 11.5 — Trip companions add their photos (added 2026-11-14)
+A trip taken with other people should end up as one album with everyone's photographs. The
+owner invites the others; they add photographs to that album; the owner still decides what is
+published. Shape still open: whether contributors need an account (viewers never do, and the
+research says relatives will not make one), whose storage quota their photographs use, and
+whether their uploads wait for the owner's approval. This is contribution, not collaborative
+editing, which stays a non-goal.
+
+**Checkpoint:** a second person adds photographs to an owner's album through an invitation,
+and the owner sees, keeps or declines each one.
+
+### Phase 11.6 — Printed photo books (added 2026-11-14)
+The largest paying category next to albums (Mixbook, Shutterfly, Chatbooks). An album, its
+order and its captions become a book ordered from a print partner. Needs Phase 3.5's originals:
+2000px does not fill a printed page. The research's lessons apply directly: never auto-crop,
+never send a book the owner has not seen page by page, and price shipping in plain sight —
+"the prints were free but the shipping was the whole price" is the top complaint in the
+category. Mixbook's "describe your book and it is built for you" is close to what Phase 5's
+Story Studio already plans, which is evidence the direction is right.
+
+**Checkpoint:** owner previews every page of a book made from an album and can order it.
+
+### Later — Memories and suggested albums (noted 2026-11-14)
+Albums or stories the app proposes on its own, from dates, places or people. Not scheduled. If
+it is built, "never show me this person" ships with it, not after: resurfacing an ex or someone
+who has died is the recurring complaint against Google Photos Memories.
 
 ### Phase 12 — Faces
 Add the biometric schema only when this phase begins. Local face detection produces
@@ -531,7 +687,9 @@ in the same release as the feature — not later.
    usage-credit based, or both. The free tier should demonstrate AI alt/search/story value
    without creating open-ended platform AI cost.
 12. **Free tier limits.** Storage is the constraint, not compute. A per-user byte quota is
-   needed before signup opens to anyone.
+   needed before signup opens to anyone. Since 2026-11-14 the quota is also the price of full
+   quality: originals are kept for everyone and count against it (Phase 3.5), so a larger
+   plan buys more room, not better photographs.
 12b. **Transactional email.** The project sends auth mail from
    `noreply@mail.app.supabase.io`, Supabase's built-in sender, which the documentation
    describes as "for demonstration purposes only" and "not meant for production use".
@@ -559,7 +717,8 @@ in the same release as the feature — not later.
 
 ## Non-goals for now
 
-Mobile apps, collaborative editing, public discovery/search, and anything requiring a
+Mobile apps, collaborative editing (trip companions adding photographs is Phase 11.5 and is
+not this), public discovery/search, and anything requiring a
 background worker fleet. Raw video upload support is optional and should be decided before
 upload work: Family Travels supports video, but Albums Studio can prove the product on
 photos first. Slideshow/movie export is a separate creative-output feature and can ship

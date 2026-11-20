@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { TILE_SIZES, tileSrcSet } from '../lib/tiles'
-import { type SharedAlbum as Shared, loadSharedAlbum } from '../lib/sharing'
+import { type SharedAlbum as Shared, loadSharedAlbum, sharedOriginal } from '../lib/sharing'
 import { PhotoLightbox } from './PhotoLightbox'
+import { Slideshow } from './Slideshow'
 
 type SharedAlbumProps = { token: string }
 
@@ -13,6 +14,56 @@ type SharedAlbumProps = { token: string }
  * hidden captions and unpublished stories are not withheld here, they were
  * never sent. This component could not reveal them if it tried.
  */
+/** Hands the visitor a file to keep, under the name the server gave it. */
+function save(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  // After the browser has taken it; revoking at once can cancel the save.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+/**
+ * Downloads one photograph at full quality.
+ *
+ * Only offered where an original exists. The file arrives with the location
+ * the camera recorded already removed, which the label says, because a visitor
+ * passing a photograph on should know what it carries.
+ */
+function DownloadOriginal({ token, photoId, position }: { token: string; photoId: string; position: number }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleClick() {
+    setBusy(true)
+    setError(null)
+    try {
+      const { blob, name } = await sharedOriginal(token, photoId)
+      save(blob, name)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The download could not start.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button className="text-button shared-download" type="button" onClick={handleClick} disabled={busy}>
+        {busy ? 'Preparing download…' : 'Download full quality'}
+        <span className="visually-hidden"> of photograph {position}</span>
+      </button>
+      {error && (
+        <p className="form-message error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  )
+}
+
 export function SharedAlbum({ token }: SharedAlbumProps) {
   const [album, setAlbum] = useState<Shared | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +116,18 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
         <p className="eyebrow">A shared album</p>
         <h1>{album.album.title}</h1>
         {album.album.description && <p className="shared-description">{album.album.description}</p>}
+        {album.album.story && (
+          <div className="shared-story-text">
+            {album.album.story
+              .split(/\n\s*\n/)
+              .map((paragraph) => paragraph.trim())
+              .filter(Boolean)
+              .map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+          </div>
+        )}
+        <Slideshow photos={album.photos} title={album.album.title} story={album.album.story} />
       </header>
 
       {album.photos.length === 0 ? (
@@ -110,6 +173,9 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
                   </button>
                 )}
                 {photo.caption && <p className="shared-caption">{photo.caption}</p>}
+                {photo.hasOriginal && (
+                  <DownloadOriginal token={token} photoId={photo.id} position={index + 1} />
+                )}
                 {photo.stories.map((story, index) => (
                   <p className="shared-story" key={index}>
                     {story}

@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { removeLocation } from '../_shared/location.ts'
 
 /**
  * Serves one shared album to someone who has no account.
@@ -10,12 +11,21 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
  * all, so the signing has to happen somewhere trusted, which means somewhere
  * with the service role key, which means never in a browser.
  *
- * The whole surface is one share token. No album id, no photo id, no owner id
- * is accepted from the caller: everything is reached through the token, and
- * what the token opens is decided by `get_shared_album`, not here. That keeps
- * one rule in one place — a visitor sees an album only while its owner has it
- * shared, sees a caption only if it was published, and sees a story note only
- * if that note was published.
+ * The whole surface is one share token. No album id and no owner id is accepted
+ * from the caller: everything is reached through the token, and what the token
+ * opens is decided by `get_shared_album`, not here. That keeps one rule in one
+ * place — a visitor sees an album only while its owner has it shared, sees a
+ * caption only if it was published, and sees a story note only if that note
+ * was published.
+ *
+ * The one id it takes is a photo's, to download that photo's original, and
+ * only after checking that the photo is one the token's own album holds. An id
+ * from anywhere else is answered exactly as a wrong token is.
+ *
+ * Originals reach a visitor with their location removed. The camera records
+ * where every photograph was taken, the redrawn copies the album shows carry
+ * none of it, and a share link must not become a way to find someone's home.
+ * The owner's own download keeps it: it is their file.
  *
  * Runs without JWT verification, deliberately and uniquely: requiring a JWT
  * would defeat the point of a link that needs no account. The token is the
@@ -31,6 +41,17 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Expose-Headers': 'content-disposition',
+}
+
+/** The type an original is served as, from the extension it was stored under. */
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  heic: 'image/heic',
+  heif: 'image/heif',
 }
 
 type SharedRow = {
@@ -38,6 +59,7 @@ type SharedRow = {
   title: string
   description: string | null
   layout: string
+  story: string | null
   photo_id: string | null
   storage_path: string | null
   thumbnail_path: string | null
@@ -88,6 +110,46 @@ Deno.serve(async (request) => {
   const rows = (album.data ?? []) as SharedRow[]
   if (rows.length === 0) return json({ error: 'not found' }, 404)
 
+  const originals = await supabase
+    .from('photos')
+    .select('id, original_path')
+    .eq('album_id', rows[0].album_id)
+    .not('original_path', 'is', null)
+
+  if (originals.error) return json({ error: originals.error.message }, 500)
+
+  const originalOf = new Map(
+    (originals.data ?? []).map((row) => [row.id as string, row.original_path as string]),
+  )
+
+  // One photograph's original, with its location removed. Asked for by id, and
+  // served only if the token's album holds that photograph.
+  const wanted = new URL(request.url).searchParams.get('photo')
+  if (wanted !== null) {
+    const path =
+      UUID.test(wanted) && rows.some((row) => row.photo_id === wanted)
+        ? originalOf.get(wanted)
+        : undefined
+    if (!path) return json({ error: 'not found' }, 404)
+
+    const stored = await supabase.storage.from('photos').download(path)
+    if (stored.error || !stored.data) {
+      return json({ error: stored.error?.message ?? 'could not read the original' }, 500)
+    }
+
+    const { bytes } = removeLocation(new Uint8Array(await stored.data.arrayBuffer()))
+    const extension = path.split('.').pop()?.toLowerCase() ?? 'jpg'
+
+    return new Response(bytes, {
+      headers: {
+        ...CORS,
+        'Content-Type': MIME_BY_EXTENSION[extension] ?? 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="photo-${wanted}.${extension}"`,
+        'Cache-Control': 'private, no-store',
+      },
+    })
+  }
+
   const photos = rows.filter((row) => row.photo_id && row.thumbnail_path)
 
   // Every size, not just the thumbnail. A square tile crops the 400px
@@ -123,6 +185,8 @@ Deno.serve(async (request) => {
       // Anything unrecognised reads as masonry, which keeps each photograph's
       // own proportions and so cannot crop one on the visitor's behalf.
       layout: rows[0].layout === 'grid' ? 'grid' : 'masonry',
+      // Only ever the story its owner chose to use; drafts never leave the studio.
+      story: rows[0].story ?? null,
     },
     photos: photos.map((row) => ({
       id: row.photo_id,
@@ -132,6 +196,8 @@ Deno.serve(async (request) => {
       thumbnailUrl: urls.get(row.thumbnail_path as string) ?? null,
       displayUrl: row.display_path ? (urls.get(row.display_path) ?? null) : null,
       fullUrl: urls.get(row.storage_path as string) ?? null,
+      // Whether there is a full-quality original to download. Never its path.
+      hasOriginal: originalOf.has(row.photo_id as string),
       stories: told.get(row.photo_id as string) ?? [],
     })),
   })

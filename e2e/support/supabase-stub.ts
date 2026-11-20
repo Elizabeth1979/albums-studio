@@ -60,6 +60,8 @@ export type AlbumRecord = {
   cover_photo_id: string | null
   visibility: string
   created_at: string
+  story?: string | null
+  story_draft_id?: string | null
 }
 
 export function albumRecord(overrides: Partial<AlbumRecord> = {}): AlbumRecord {
@@ -83,6 +85,7 @@ export type PhotoRecord = {
   storage_path: string
   thumbnail_path: string | null
   display_path?: string | null
+  original_path?: string | null
   width: number | null
   height: number | null
   caption: string | null
@@ -105,7 +108,7 @@ export type StoryRecord = {
 
 /** What the Edge Function would return for a share link. */
 export type SharedResponse = {
-  album: { title: string; description: string | null; layout: 'masonry' | 'grid' }
+  album: { title: string; description: string | null; layout: 'masonry' | 'grid'; story?: string | null }
   photos: {
     id: string
     caption: string | null
@@ -165,6 +168,12 @@ export type StubOptions = {
    * that has to happen first.
    */
   photoUpdate?: { status: number; body: object }
+  /** What the `story-draft` Edge Function answers, as status and body. */
+  storyDraft?: { status: number; body: object }
+  /** Questions already waiting in the fake `ai_suggestions` table, as rows. */
+  questions?: { id: string; photo_id: string; body: string; reason: string | null }[]
+  /** What the `album-questions` Edge Function answers, as status and body. */
+  albumQuestions?: { status: number; body: object }
   /** Status and body returned by writes to `photo_stories`, for failure cases. */
   storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
@@ -260,8 +269,48 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     if (path === '/functions/v1/shared-album') {
       const wanted = url.searchParams.get('token') ?? ''
       const answer = options.shared?.[wanted]
+      const photo = url.searchParams.get('photo')
+
+      // A visitor's download of one original: only for a photograph the token's
+      // album holds and that has one, as the real function decides.
+      if (photo !== null) {
+        const held = (answer as { photos?: { id: string; hasOriginal?: boolean }[] } | undefined)
+          ?.photos?.find((one) => one.id === photo && one.hasOriginal)
+        if (!held) return json({ error: 'not found' }, 404)
+
+        return route.fulfill({
+          status: 200,
+          contentType: 'image/jpeg',
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Expose-Headers': 'content-disposition',
+            'Content-Disposition': `attachment; filename="photo-${photo}.jpg"`,
+          },
+          body: Buffer.from('location-free original'),
+        })
+      }
 
       return answer ? json(answer) : json({ error: 'not found' }, 404)
+    }
+
+    // The Edge Function that drafts an album's story. It holds the AI key, so
+    // the browser's only way to a draft is through it.
+    if (path === '/functions/v1/story-draft') {
+      const answer = options.storyDraft ?? {
+        status: 200,
+        body: { draft: { id: 'draft-1', body: 'We arrived in the rain.' }, used: 1, limit: 5 },
+      }
+      return json(answer.body, answer.status)
+    }
+
+    // The Edge Function that asks about photographs with no words yet.
+    if (path === '/functions/v1/album-questions') {
+      const answer = options.albumQuestions ?? { status: 200, body: { questions: [], used: 1, limit: 5 } }
+      return json(answer.body, answer.status)
+    }
+
+    if (path.endsWith('/rest/v1/ai_suggestions')) {
+      return method === 'GET' ? json(options.questions ?? []) : json([])
     }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL
@@ -269,6 +318,14 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     // <img> resolves rather than dangling.
     if (path.startsWith('/storage/v1/object/sign/')) {
       const body = parseBody(request) as { paths?: string[]; expiresIn?: number }
+
+      // One object at a time is a download link; the key is in the path itself.
+      if (!body.paths) {
+        const signedPath = decodeURIComponent(path.slice('/storage/v1/object/sign/photos/'.length))
+        // Shaped like the real one: the client appends `&download=` to it.
+        return json({ signedURL: `/object/signed/${signedPath}?token=stub` })
+      }
+
       // The client prefixes its storage base onto whatever `signedURL` holds,
       // so this has to be relative to /storage/v1 rather than absolute.
       return json(
@@ -282,6 +339,18 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
     if (path.startsWith('/storage/v1/object/signed/')) {
       const wanted = decodeURIComponent(path.slice('/storage/v1/object/signed/'.length))
       const bytes = options.objectBytes?.[wanted]
+
+      // `download` makes Storage answer as an attachment, so the browser saves the
+      // file and stays on the page rather than navigating to a bare image.
+      const downloadAs = url.searchParams.get('download')
+      if (downloadAs) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/octet-stream',
+          headers: { 'Content-Disposition': `attachment; filename="${downloadAs}"` },
+          body: bytes ?? Buffer.from('original bytes'),
+        })
+      }
 
       if (bytes) {
         return route.fulfill({ status: 200, contentType: 'image/png', body: bytes })
@@ -414,6 +483,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           storage_path: String(body.storage_path ?? ''),
           thumbnail_path: (body.thumbnail_path as string | null) ?? null,
           display_path: (body.display_path as string | null) ?? null,
+          original_path: (body.original_path as string | null) ?? null,
           width: (body.width as number | null) ?? null,
           height: (body.height as number | null) ?? null,
           caption: null,

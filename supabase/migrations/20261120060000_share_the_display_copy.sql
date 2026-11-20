@@ -5,7 +5,8 @@
 -- the `shared-album` Edge Function had nothing to sign and a visitor on a phone
 -- downloaded about 340 KB a tile instead of roughly a quarter of that.
 --
--- Same body, same grants; one column added at the end. The path is no more
+-- Rebuilt from album_story_drafts, the latest definition: same body, same
+-- grants, one column added at the end. The path is no more
 -- sensitive than `storage_path` beside it: the bucket is private and a path
 -- alone signs nothing.
 --
@@ -20,6 +21,7 @@ returns table (
   title text,
   description text,
   layout text,
+  story text,
   photo_id uuid,
   storage_path text,
   thumbnail_path text,
@@ -33,7 +35,7 @@ stable
 security definer
 set search_path to ''
 as $function$
-  select a.id, a.title, a.description, a.layout,
+  select a.id, a.title, a.description, a.layout, a.story,
          p.id, p.storage_path, p.thumbnail_path,
          case when p.caption_visibility = 'visible' then p.caption end,
          p.alt, p.sort_order, p.display_path

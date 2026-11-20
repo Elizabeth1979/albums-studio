@@ -54,6 +54,8 @@ const album: Album = {
   coverPhotoId: null,
   visibility: 'private',
   createdAt: '2026-08-16T20:27:38Z',
+  story: null,
+  storyDraftId: null,
 }
 
 const onCoverChosen = vi.fn()
@@ -70,6 +72,7 @@ function photo(index: number): Photo {
     storagePath: `owner/album-1/photo-${index}.jpg`,
     thumbnailPath: `owner/album-1/photo-${index}-thumb.jpg`,
     displayPath: null,
+    originalPath: null,
     width: 2000,
     height: 1500,
     caption: null,

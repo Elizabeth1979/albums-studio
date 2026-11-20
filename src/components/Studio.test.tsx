@@ -57,6 +57,8 @@ function album(overrides: Partial<Album> = {}): Album {
     coverPhotoId: null,
     visibility: 'private',
     createdAt: '2026-08-16T10:00:00Z',
+    story: null,
+    storyDraftId: null,
     ...overrides,
   }
 }
@@ -273,6 +275,7 @@ describe('Studio', () => {
       storagePath: 'owner/album-1/photo-0.jpg',
       thumbnailPath: 'owner/album-1/photo-0-thumb.jpg',
       displayPath: null,
+      originalPath: null,
       width: 2000,
       height: 1500,
       caption: null,

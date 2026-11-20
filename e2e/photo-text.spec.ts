@@ -33,6 +33,22 @@ async function openPhoto(page: Page, options: StubOptions = {}) {
   return calls
 }
 
+test.describe('full quality', () => {
+  test('downloads the original as it was chosen, not the copy the album draws', async ({ page }) => {
+    await openPhoto(page)
+
+    // A download, not a navigation: leaving the album for a bare image would be
+    // the wrong behaviour even with the right file.
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Download full quality' }).click()
+
+    const saved = await download
+    expect(decodeURIComponent(new URL(saved.url()).pathname)).toMatch(/-original\.png$/)
+    expect(saved.suggestedFilename()).toMatch(/^photo-.+\.png$/)
+    await expect(page.getByRole('button', { name: 'Download full quality' })).toBeVisible()
+  })
+})
+
 test.describe('writing about a photo', () => {
   test('saves a caption, its visibility, and alt text', async ({ page }) => {
     const calls = await openPhoto(page)
@@ -52,6 +68,25 @@ test.describe('writing about a photo', () => {
     // Phase 5 will draft alt text. A human's wording has to stay recognisable
     // so a suggestion never quietly replaces it.
     expect(photo.alt_source).toBe('human')
+  })
+
+  test('opens the photo larger, and closing it keeps the editor open', async ({ page }) => {
+    await openPhoto(page)
+    const heading = page.getByRole('heading', { name: 'What do you want to remember?' })
+
+    // Once with the Close button and once with Escape: both end on the top
+    // dialog only, never on the editor under it.
+    for (const close of ['button', 'Escape'] as const) {
+      await page.getByRole('button', { name: 'View photo 1 larger' }).click()
+      const lightbox = page.locator('dialog.lightbox')
+      await expect(lightbox.locator('img.lightbox-image')).toBeVisible()
+
+      if (close === 'button') await lightbox.getByRole('button', { name: 'Close' }).click()
+      else await page.keyboard.press('Escape')
+
+      await expect(lightbox).toBeHidden()
+      await expect(heading).toBeVisible()
+    }
   })
 
   test('keeps a caption to the owner unless they say otherwise', async ({ page }) => {
@@ -266,7 +301,7 @@ test.describe('writing about a photo', () => {
     await expect(savedStories(page)).toHaveText(['A long day.'])
     // The seeded photograph predates display copies, so opening the album
     // writes one. Waiting for it makes the removal below prove it goes too.
-    await expect.poll(() => calls.objects()).toHaveLength(3)
+    await expect.poll(() => calls.objects()).toHaveLength(4)
 
     await page.getByRole('button', { name: 'Remove photo' }).click()
     await page.getByRole('button', { name: 'Yes, remove it' }).click()
