@@ -185,6 +185,8 @@ export type StubOptions = {
    * is not listed gets the same 404 a rotated or withdrawn one would.
    */
   shared?: Record<string, SharedResponse>
+  /** What `search_library` answers, as status and body. Default: nothing found. */
+  search?: { status: number; body: unknown }
 }
 
 export type AuthCalls = {
@@ -418,6 +420,10 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
       const body = parseBody(request) as { prefixes?: string[] }
       objects = objects.filter((existing) => !(body.prefixes ?? []).includes(existing))
       return json({})
+    }
+
+    if (path === '/rest/v1/rpc/search_library') {
+      return json(options.search?.body ?? [], options.search?.status ?? 200)
     }
 
     if (path === '/rest/v1/rpc/album_share_token') {

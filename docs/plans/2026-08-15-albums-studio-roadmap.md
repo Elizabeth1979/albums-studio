@@ -548,6 +548,14 @@ caption/story context text.
 **Checkpoint:** owner can search their library by caption/story context and find matching
 photos; shared viewers only search text that is meant to be visible.
 
+**Status (2026-11-20):** first slice built, not yet confirmed by the owner. Plain text search
+with no AI and no cost: one box on the library, matching album titles, descriptions and
+stories, captions and story notes (hidden ones included) and alt text, every word typed in
+the same piece of text, any case, English or Hebrew. A result opens the photograph in its
+album. Shared viewers get no search at all rather than a visible-only one: nothing reachable
+without an account was built, so the second half of the checkpoint is withdrawn from this
+slice, not met. AI-assisted search is still to come.
+
 ### Phase 11 — AI alt drafts
 
 > **Slice 1 built 2026-11-18, not yet tried on a real photograph.** "Suggest a description"

@@ -582,6 +582,93 @@ begin
   end if;
 
   ---------------------------------------------------------------------------
+  -- Phase 10: the owner searches her own words, hidden ones included.
+  ---------------------------------------------------------------------------
+  log := log || E'\n\nsearch';
+
+  reset role;
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', alice, 'role', 'authenticated')::text, true);
+
+  update public.photos
+  set caption = 'Grandma Ruth at the יום הולדת cake', caption_visibility = 'hidden'
+  where id = photo_a;
+  insert into public.photo_stories (photo_id, owner_id, body, visibility)
+  values (photo_a, alice, E'Who lit the candles?\nUncle Avi, 100% of them', 'hidden');
+
+  select count(*) into seen_count from public.search_library('ruth CAKE')
+  where photo_id = photo_a and field = 'caption';
+  if seen_count = 1 then
+    log := log || E'\n  ok    finds her hidden caption, every word, any case';
+  else
+    log := log || E'\n  FAIL  hidden caption not found (' || seen_count || ')'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('הולדת');
+  if seen_count = 1 then
+    log := log || E'\n  ok    finds a Hebrew word';
+  else
+    log := log || E'\n  FAIL  Hebrew word found ' || seen_count || ' times'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('avi candles')
+  where field = 'story_note';
+  if seen_count = 1 then
+    log := log || E'\n  ok    finds an answered question in a hidden story note';
+  else
+    log := log || E'\n  FAIL  story note not found (' || seen_count || ')'; fails := fails + 1;
+  end if;
+
+  -- A filter that is not filtering only shows when the answer should be empty.
+  select count(*) into seen_count from public.search_library('zebra-nowhere');
+  if seen_count = 0 then
+    log := log || E'\n  ok    a word she never wrote finds nothing';
+  else
+    log := log || E'\n  FAIL  a word she never wrote found ' || seen_count; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('ruth zebra-nowhere');
+  if seen_count = 0 then
+    log := log || E'\n  ok    every word must match, not any';
+  else
+    log := log || E'\n  FAIL  one matching word was enough'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('%%');
+  if seen_count = 0 then
+    log := log || E'\n  ok    a typed %% is two characters, not a wildcard';
+  else
+    log := log || E'\n  FAIL  %% matched as a wildcard'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('100%');
+  if seen_count = 1 then
+    log := log || E'\n  ok    and 100% still finds the note that says it';
+  else
+    log := log || E'\n  FAIL  100% found ' || seen_count; fails := fails + 1;
+  end if;
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', bob, 'role', 'authenticated')::text, true);
+  select count(*) into seen_count from public.search_library('ruth');
+  if seen_count = 0 then
+    log := log || E'\n  ok    another signed-in person finds none of it';
+  else
+    log := log || E'\n  FAIL  another person found her words'; fails := fails + 1;
+  end if;
+
+  reset role;
+  set local role anon;
+  perform set_config('request.jwt.claims', null, true);
+  begin
+    perform public.search_library('ruth');
+    log := log || E'\n  FAIL  a visitor could call search'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a visitor cannot search at all';
+  end;
+
+  ---------------------------------------------------------------------------
   -- Deletes, which are the owner's alone.
   ---------------------------------------------------------------------------
   log := log || E'\n\nowner removing her own things';

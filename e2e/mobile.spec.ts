@@ -119,8 +119,12 @@ test.describe('phone layout', () => {
     // Same budget as the album page, for the same reason: the heading was
     // spaced as a magazine cover — 7rem of padding above a 5.8rem title — so
     // the albums this page exists to list began 429px down a 915px screen.
-    // They now begin at 376px; 400 sits between.
-    const CHROME_BUDGET = 400
+    // They then began at 376px, against a budget of 400. Since 2026-11-20 the
+    // library's search sits above them, one row with a visible label, and they
+    // begin at 481px. Searching is how a photograph is found once there are
+    // more albums than a screen holds, so it earns that row; 490 sits just
+    // above it, so anything else added here still has to argue for its space.
+    const CHROME_BUDGET = 490
 
     await stubSupabase(page, { albums: [albumRecord()] })
     await page.goto('/')

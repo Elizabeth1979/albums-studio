@@ -12,6 +12,8 @@ type AlbumPageProps = {
   identity: Identity
   onSignOut: () => Promise<void>
   album: Album
+  /** A photo to open on arrival, from a search result. */
+  openPhotoId?: string | null
   onBack: () => void
   onRename: (title: string) => Promise<void>
   onChangeDescription: (description: string) => Promise<void>
@@ -25,6 +27,7 @@ export function AlbumPage({
   identity,
   onSignOut,
   album,
+  openPhotoId = null,
   onBack,
   onRename,
   onChangeDescription,
@@ -201,7 +204,7 @@ export function AlbumPage({
 
         {error && <p className="form-message error" role="alert">{error}</p>}
 
-        <AlbumPhotos album={album} onCoverChosen={onCoverChosen} />
+        <AlbumPhotos album={album} openPhotoId={openPhotoId} onCoverChosen={onCoverChosen} />
 
         {/* After the photographs, for the same reason as sharing: a story is
             written once they are in, and above them it pushed the first one

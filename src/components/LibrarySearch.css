@@ -1,0 +1,131 @@
+/* Kept beside the component rather than in index.css, which other work edits at
+   the same time. Colours and field metrics match .new-album-form. */
+.library-search {
+  margin: 1.25rem 0 0.25rem;
+}
+
+.search-count {
+  margin: 0.75rem 0 0;
+  color: #5f574d;
+}
+
+.library-search-form {
+  display: flex;
+  align-items: end;
+  gap: 0.6rem;
+  max-width: 40rem;
+}
+
+.library-search-form > label {
+  display: grid;
+  flex: 1;
+  gap: 0.45rem;
+  color: #4d4740;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.library-search-form input[type="search"] {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cfc7bb;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+  font: inherit;
+  font-weight: 400;
+}
+
+.library-search-form input[type="search"]:focus {
+  border-color: #996130;
+  box-shadow: 0 0 0 3px rgb(153 97 48 / 12%);
+}
+
+.library-search-form .primary-button {
+  min-height: 3.25rem;
+}
+
+@media (max-width: 560px) {
+  .library-search-help {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.library-search > .album-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+}
+
+.search-results {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 40rem;
+  margin: 0.9rem 0 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.search-result {
+  display: flex;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2dbd0;
+  border-radius: 0.55rem;
+  color: #25231f;
+  background: #fffdf9;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.search-result:hover {
+  border-color: #996130;
+}
+
+.search-result:focus-visible {
+  outline: 3px solid #996130;
+  outline-offset: 2px;
+}
+
+.search-thumb {
+  flex: none;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.4rem;
+  object-fit: cover;
+  background: #ece5da;
+}
+
+.search-text {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.search-album {
+  font-weight: 700;
+}
+
+.search-match {
+  font-size: 0.9rem;
+}
+
+.search-field {
+  color: #5f574d;
+  font-weight: 700;
+}
+
+.search-match mark {
+  padding: 0 0.1em;
+  border-radius: 0.2em;
+  color: inherit;
+  background: #f5dfb8;
+}
