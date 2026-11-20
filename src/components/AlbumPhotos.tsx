@@ -404,7 +404,7 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
 
   async function handleSaveText(
     photoId: string,
-    patch: { caption?: string; captionVisibility?: TextVisibility; alt?: string },
+    patch: Parameters<typeof updatePhotoText>[1],
   ) {
     replacePhoto(await updatePhotoText(photoId, patch))
   }

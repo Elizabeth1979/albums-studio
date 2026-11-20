@@ -174,6 +174,8 @@ export type StubOptions = {
   questions?: { id: string; photo_id: string; body: string; reason: string | null }[]
   /** What the `album-questions` Edge Function answers, as status and body. */
   albumQuestions?: { status: number; body: object }
+  /** What the `alt-draft` Edge Function answers, as status and body. */
+  altDraft?: { status: number; body: object }
   /** Status and body returned by writes to `photo_stories`, for failure cases. */
   storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
@@ -313,6 +315,19 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
 
     if (path.endsWith('/rest/v1/ai_suggestions')) {
       return method === 'GET' ? json(options.questions ?? []) : json([])
+    }
+
+    // The Edge Function that suggests alt text for one photograph.
+    if (path === '/functions/v1/alt-draft') {
+      const answer = options.altDraft ?? {
+        status: 200,
+        body: {
+          draft: { id: 'alt-draft-1', body: 'A long table set for twelve, lit by candles.' },
+          used: 1,
+          limit: 50,
+        },
+      }
+      return json(answer.body, answer.status)
     }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL

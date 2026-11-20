@@ -1,3 +1,4 @@
+import { altSourceFor } from './altDraft'
 import { currentOwnerId } from './session'
 import { originalDownloadName, originalFormat } from './originals'
 import type { ProcessedImage } from './imaging/process'
@@ -164,13 +165,19 @@ function trimmedOrNull(value: string): string | null {
  * Saves the owner's own words about one photograph.
  *
  * Only the fields passed are written, so a screen that edits alt text alone
- * cannot blank a caption it never showed. Writing alt text records that a person
- * wrote it: Phase 5 will draft alt text with AI, and the two must stay
- * distinguishable so a human's wording is never quietly overwritten.
+ * cannot blank a caption it never showed. Writing alt text records who wrote it:
+ * `'ai'` when it is a suggestion saved word for word (`altDraft` is the
+ * suggestion the owner chose to use), `'human'` otherwise, so a human's wording
+ * stays distinguishable and is never quietly overwritten.
  */
 export async function updatePhotoText(
   id: string,
-  patch: { caption?: string; captionVisibility?: TextVisibility; alt?: string },
+  patch: {
+    caption?: string
+    captionVisibility?: TextVisibility
+    alt?: string
+    altDraft?: string
+  },
 ): Promise<Photo> {
   const columns: Record<string, unknown> = {}
 
@@ -185,7 +192,7 @@ export async function updatePhotoText(
   if (patch.alt !== undefined) {
     const alt = trimmedOrNull(patch.alt)
     columns.alt = alt
-    columns.alt_source = alt ? 'human' : null
+    columns.alt_source = altSourceFor(alt, patch.altDraft)
   }
 
   const { data, error } = await supabase

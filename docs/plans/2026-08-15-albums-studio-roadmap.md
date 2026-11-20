@@ -106,12 +106,12 @@ subscription, Supabase, RLS, share links, Family Travels.
   cents each by estimate. `ai_suggestions` holds only `missing_context` for now; the other
   suggestion types wait for a use.
 
-**Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
-checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:
-captions, story notes, and alt text, each already marked with who it is for. Drafted alt
-text must respect `alt_source`; a human's wording is never overwritten by a suggestion. If
-a smaller step is wanted first, Phase 7's remaining faces-visible/eyes-open signal is the
-cheapest thing on the board, and open question 9 now costs it out.
+**Next action (2026-11-18):** Phase 11, AI alt drafts, taken ahead of the rest of Phase 5
+because the story studio already built what it needs. Planned in
+[the alt drafts plan](2026-11-18-ai-alt-drafts.md): slice 1 is one photo in the photo
+editor, slice 2 a whole album. Drafted alt text must respect `alt_source`; a human's wording
+is never overwritten by a suggestion, and only text that is already public is sent to the
+alt writer. Still open in Phase 5: proactive suggestions and kept audio.
 
 **Decided 2026-11-14** (evidence in
 [the competitor research](../research/2026-11-14-best-photo-and-competitors.md)): Phase 3.5,
@@ -557,6 +557,12 @@ without an account was built, so the second half of the checkpoint is withdrawn 
 slice, not met. AI-assisted search is still to come.
 
 ### Phase 11 — AI alt drafts
+
+> **Slice 1 built 2026-11-18, not yet tried on a real photograph.** "Suggest a description"
+> in the photo editor, reviewed before it is saved, written from the photo and only text
+> visitors can already read. Planned in [the alt drafts plan](2026-11-18-ai-alt-drafts.md), which
+> supersedes the key handling below for the first version: the platform's key with a
+> monthly allowance, as the story studio does, and BYOK later.
 An Edge Function takes a photo id, resolves the caller's key (Vault secret for BYOK, or the
 platform key for subscribers), calls the vision model, and writes an AI draft.
 

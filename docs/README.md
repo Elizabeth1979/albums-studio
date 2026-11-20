@@ -148,14 +148,22 @@ AI cost.
   A result opens the photograph in its album (`/albums/:slug?photo=:id`). It runs as one
   database function, `search_library`, under the owner's own permissions, and visitors cannot
   call it. No AI and no cost. See the 2026-11-20 session.
-- Next: confirming Phase 5's checkpoint on the owner's own album and phone. Phases 1 to 4, 6
-  and 7 are done and deployed.
+- A photograph's alt text can be suggested by AI from the photo and the text visitors can
+  already read, through the `alt-draft` Edge Function. The suggestion is a draft until the
+  owner saves it; 50 a month free. Built 2026-11-18, not yet tried on a real photograph.
+- Next: confirming Phase 5's checkpoint on the owner's own album and phone, and trying alt
+  suggestions on real photographs before whole-album alt text (slice 2 of
+  [the alt drafts plan](plans/2026-11-18-ai-alt-drafts.md)). Phases 1 to 4, 6 and 7 are done
+  and deployed.
 
 ## Plans
 
 - [Albums Studio roadmap](plans/2026-08-15-albums-studio-roadmap.md) — active phased build
   plan and open product decisions, including the recorded evaluation of free and local
   models for alt text, semantic search, and faces.
+- [AI alt text drafts](plans/2026-11-18-ai-alt-drafts.md) — Phase 11 built on the story
+  studio: suggested descriptions the owner reviews before saving, made only from text that
+  is already public, in two slices (one photo, then a whole album).
 
 ## Research
 

@@ -20,7 +20,8 @@
 -- that summary is the result to act on; the "ERROR" line above it is expected.
 --
 -- Keep it matched to the client. Every column listed below is one that
--- src/lib/albums.ts, src/lib/photos.ts or src/lib/stories.ts sends, and a
+-- src/lib/albums.ts, src/lib/photos.ts, src/lib/stories.ts, src/lib/albumStory.ts
+-- or src/lib/altDraft.ts sends, and a
 -- column added there needs adding here in the same change.
 
 do $$
@@ -35,6 +36,7 @@ declare
   story_a uuid;
   draft_a uuid;
   question_a uuid;
+  draft_alt uuid;
   token uuid;
   old_token uuid;
   new_token uuid;
@@ -206,6 +208,44 @@ begin
     log := log || E'\n  ok    a question cannot be rewritten after the fact';
   end;
 
+  -- Phase 11: alt text suggested for one photograph, written by the `alt-draft`
+  -- function with the service role. Only the owner's Save puts it in photos.alt.
+  reset role;
+  begin
+    insert into public.ai_drafts (owner_id, album_id, draft_type, body, model)
+    values (alice, album_a, 'alt', 'A photograph of nothing in particular.', 'probe');
+    log := log || E'\n  FAIL  an alt draft was kept without its photograph'; fails := fails + 1;
+  exception when check_violation then
+    log := log || E'\n  ok    an alt draft needs its photograph';
+  end;
+
+  begin
+    insert into public.ai_drafts (owner_id, album_id, photo_id, draft_type, body, model)
+    values (alice, album_a, gen_random_uuid(), 'alt', 'Someone else''s photograph.', 'probe');
+    log := log || E'\n  FAIL  an alt draft pointed at a photograph that is not hers'; fails := fails + 1;
+  exception when foreign_key_violation then
+    log := log || E'\n  ok    an alt draft can only describe her own photograph';
+  end;
+
+  insert into public.ai_drafts (owner_id, album_id, photo_id, draft_type, input_refs, body, model, input_tokens, output_tokens)
+  values (alice, album_a, photo_a, 'alt', jsonb_build_array(photo_a), 'Two children on a jetty at sunset.', 'probe', 1200, 30)
+  returning id into draft_alt;
+  set local role authenticated;
+
+  begin
+    update public.ai_drafts set status = 'accepted' where id = draft_alt;
+    update public.photos set alt = 'Two children on a jetty at sunset.', alt_source = 'ai'
+    where id = photo_a;
+    select alt_source into seen from public.photos where id = photo_a;
+    if seen = 'ai' then
+      log := log || E'\n  ok    accept an alt draft and save it as the AI''s words';
+    else
+      log := log || E'\n  FAIL  saved alt text lost its authorship: ' || coalesce(seen, 'null'); fails := fails + 1;
+    end if;
+  exception when others then
+    log := log || E'\n  FAIL  accept an alt draft -> ' || sqlerrm; fails := fails + 1;
+  end;
+
   begin
     insert into public.photo_stories (photo_id, owner_id, body, visibility)
     values (photo_a, alice, 'The long version.', 'hidden')
@@ -267,6 +307,14 @@ begin
     log := log || E'\n  ok    cannot see the studio''s questions to her';
   else
     log := log || E'\n  FAIL  can see the studio''s questions to her'; fails := fails + 1;
+  end if;
+
+  seen_id := null;
+  select id into seen_id from public.ai_drafts where id = draft_alt;
+  if seen_id is null then
+    log := log || E'\n  ok    cannot see her alt draft';
+  else
+    log := log || E'\n  FAIL  can see her alt draft'; fails := fails + 1;
   end if;
 
   begin
@@ -372,6 +420,14 @@ begin
     log := log || E'\n  ok    a hidden caption is withheld from a share link';
   else
     log := log || E'\n  FAIL  a hidden caption reached a share link'; fails := fails + 1;
+  end if;
+
+  -- Alt text is always delivered, whoever wrote it, because it exists to be read out.
+  select alt into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = 'Two children on a jetty at sunset.' then
+    log := log || E'\n  ok    saved AI alt text reaches a share link';
+  else
+    log := log || format(E'\n  FAIL  alt text reached a share link as %L', seen); fails := fails + 1;
   end if;
 
   reset role;
