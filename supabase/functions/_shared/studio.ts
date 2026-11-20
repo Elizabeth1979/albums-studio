@@ -1,5 +1,6 @@
 import { type SupabaseClient, createClient } from 'jsr:@supabase/supabase-js@2'
 import type Anthropic from 'npm:@anthropic-ai/sdk@1.8.0'
+import { PRICE_LIST, attemptsFrom, costOf, totalTokens } from './aiPricing.ts'
 
 /**
  * What every AI Edge Function here does the same way: who is asking, how much
@@ -67,6 +68,54 @@ export async function usedThisMonth(who: Caller, operation: string): Promise<num
 /** Counts one completed call, whatever came back: each one was paid for. */
 export async function recordUse(who: Caller, operation: string): Promise<void> {
   await who.service.rpc('record_ai_use', { p_owner: who.ownerId, p_operation: operation })
+}
+
+export type CallOutcome = 'ok' | 'declined' | 'failed'
+
+/**
+ * Starts the cost log for one call to the model, and returns what writes it.
+ *
+ * Call it once the request is ready, so the time it records is the model's;
+ * then call the result once, with how the call ended. Every call that reached
+ * the model is logged, whatever came back, because each was paid for; one that
+ * never reached it (an allowance already used) costs nothing and is not. With
+ * no reply, nothing was billed. A failure to log goes to the function's logs
+ * and never costs the owner what she asked for.
+ */
+export function costLog(
+  who: Caller,
+  call: { feature: string; model: string; albumId: string | null; items: number },
+) {
+  const started = Date.now()
+
+  return async (outcome: CallOutcome, reply: Anthropic.Beta.BetaMessage | null, draftId: string | null = null) => {
+    const attempts = reply ? attemptsFrom(reply.usage, reply.model) : []
+    const tokens = totalTokens(attempts)
+    const logged = await who.service.from('ai_calls').insert({
+      owner_id: who.ownerId,
+      feature: call.feature,
+      album_id: call.albumId,
+      draft_id: draftId,
+      outcome,
+      model: call.model,
+      served_model: reply?.model ?? null,
+      items: call.items,
+      input_tokens: tokens.inputTokens,
+      cache_write_tokens: tokens.cacheWriteTokens,
+      cache_read_tokens: tokens.cacheReadTokens,
+      output_tokens: tokens.outputTokens,
+      // An unknown model's price stays unknown rather than becoming free.
+      cost_usd: reply ? costOf(attempts) : 0,
+      price_list: PRICE_LIST,
+      duration_ms: Date.now() - started,
+    })
+    if (logged.error) console.error(`ai_calls: ${call.feature} not logged:`, logged.error.message)
+  }
+}
+
+/** How many photographs a request actually shows the model: one that could not be read is left out. */
+export function imagesIn(content: Anthropic.Beta.BetaContentBlockParam[]): number {
+  return content.filter((block) => block.type === 'image').length
 }
 
 /** Input tokens as billed, cached or not: the measured price of a call. */

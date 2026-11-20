@@ -105,6 +105,12 @@ subscription, Supabase, RLS, share links, Family Travels.
   or the question is set aside. Nothing is sent to anyone. Five requests a month, about 3 US
   cents each by estimate. `ai_suggestions` holds only `missing_context` for now; the other
   suggestion types wait for a use.
+- ✅ **What each AI feature costs, while testing (2026-11-18).** Every paid AI call is logged in
+  `ai_calls` with its feature, tokens and cost at that day's prices, declined and failed calls
+  included, and an "AI costs" panel in the header shows each feature's total, cost per use and
+  per photograph, and its log, downloadable as a spreadsheet. It is there to set prices and
+  choose what to sell; turn `AI_COST_PANEL_ENABLED` off before launch. See
+  [the session note](../sessions/2026-11-18-what-each-ai-feature-costs.md).
 
 **Next action (2026-11-18):** Phase 11, AI alt drafts, taken ahead of the rest of Phase 5
 because the story studio already built what it needs. Planned in

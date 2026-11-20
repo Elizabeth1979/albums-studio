@@ -246,6 +246,44 @@ begin
     log := log || E'\n  FAIL  accept an alt draft -> ' || sqlerrm; fails := fails + 1;
   end;
 
+  -- The cost log: written by the Edge Function, read by the owner's AI costs panel.
+  begin
+    insert into public.ai_calls (owner_id, feature, outcome, model, price_list)
+    values (alice, 'album_story', 'ok', 'probe', 'probe');
+    log := log || E'\n  FAIL  the client could write to the cost log'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    the client cannot write to the cost log';
+  end;
+
+  reset role;
+  insert into public.ai_calls (
+    owner_id, feature, album_id, draft_id, outcome, model, served_model, items,
+    input_tokens, cache_write_tokens, cache_read_tokens, output_tokens, cost_usd, price_list, duration_ms
+  ) values (
+    alice, 'album_story', album_a, draft_a, 'ok', 'claude-sonnet-5-5', 'claude-sonnet-5-5', 20,
+    23106, 0, 0, 464, 0.050852, 'anthropic-2026-11-03', 18000
+  );
+  set local role authenticated;
+
+  -- Exactly the columns src/lib/aiCosts.ts asks for.
+  seen := null;
+  begin
+    select cost_usd::text into seen
+    from (
+      select id, feature, album_id, outcome, model, served_model, items, input_tokens,
+             cache_write_tokens, cache_read_tokens, output_tokens, cost_usd, price_list,
+             duration_ms, created_at
+      from public.ai_calls where draft_id = draft_a
+    ) as panel_row;
+    if seen = '0.050852' then
+      log := log || E'\n  ok    read her own cost log, every column the panel shows';
+    else
+      log := log || E'\n  FAIL  her cost log read back as ' || coalesce(seen, 'nothing'); fails := fails + 1;
+    end if;
+  exception when others then
+    log := log || E'\n  FAIL  read her cost log -> ' || sqlerrm; fails := fails + 1;
+  end;
+
   begin
     insert into public.photo_stories (photo_id, owner_id, body, visibility)
     values (photo_a, alice, 'The long version.', 'hidden')
@@ -315,6 +353,13 @@ begin
     log := log || E'\n  ok    cannot see her alt draft';
   else
     log := log || E'\n  FAIL  can see her alt draft'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.ai_calls where owner_id = alice;
+  if seen_count = 0 then
+    log := log || E'\n  ok    cannot see her AI costs';
+  else
+    log := log || E'\n  FAIL  can see her AI costs'; fails := fails + 1;
   end if;
 
   begin
@@ -396,6 +441,13 @@ begin
     log := log || E'\n  FAIL  can read the studio''s questions through the Data API'; fails := fails + 1;
   exception when insufficient_privilege then
     log := log || E'\n  ok    cannot read the studio''s questions through the Data API';
+  end;
+
+  begin
+    select count(*) into seen_count from public.ai_calls;
+    log := log || E'\n  FAIL  can read the cost log through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    cannot read the cost log through the Data API';
   end;
 
   begin

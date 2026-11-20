@@ -15,6 +15,8 @@ import {
   type PhotoRow,
   UUID,
   caller,
+  costLog,
+  imagesIn,
   json,
   notesFor,
   photoBlocks,
@@ -132,6 +134,7 @@ Deno.serve(async (request) => {
   ]
 
   const claude = new Anthropic({ apiKey })
+  const logCall = costLog(who, { feature: OPERATION, model: MODEL, albumId, items: imagesIn(content) })
 
   // The schema makes the shape certain; the instruction above makes it likely
   // without one. If this request's combination of settings is ever refused,
@@ -159,6 +162,7 @@ Deno.serve(async (request) => {
       response = await ask(false)
     }
   } catch (error) {
+    await logCall('failed', null)
     if (error instanceof Anthropic.RateLimitError) {
       return json({ error: 'The studio is busy. Try again in a minute.' }, 503)
     }
@@ -171,12 +175,16 @@ Deno.serve(async (request) => {
   await recordUse(who, OPERATION)
 
   if (response.stop_reason === 'refusal') {
+    await logCall('declined', response)
     return json({ error: 'The studio declined to ask about these photos.' }, 422)
   }
 
   const text = response.content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('')
   const questions = readQuestions(text, candidates.length)
-  if (questions.length === 0) return json({ error: 'No questions came back. Try again.' }, 502)
+  if (questions.length === 0) {
+    await logCall('failed', response)
+    return json({ error: 'No questions came back. Try again.' }, 502)
+  }
 
   const saved = await who.service
     .from('ai_suggestions')
@@ -192,7 +200,11 @@ Deno.serve(async (request) => {
       })),
     )
     .select('id, photo_id, body, reason')
-  if (saved.error) return json({ error: saved.error.message }, 500)
+  if (saved.error) {
+    await logCall('failed', response)
+    return json({ error: saved.error.message }, 500)
+  }
+  await logCall('ok', response)
 
   return json({ questions: saved.data, used: used + 1, limit: FREE_QUESTION_REQUESTS_PER_MONTH })
 })

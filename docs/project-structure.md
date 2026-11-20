@@ -97,6 +97,7 @@ flowchart LR
             Usage[(ai_usage)]:::current
             Drafts[(ai_drafts)]:::current
             Questions[(ai_suggestions)]:::current
+            Calls[(ai_calls cost log)]:::current
             Tokens[(private album_share_tokens)]:::current
             AISchema["Interactions"]:::planned
             SearchSchema["Semantic search"]:::planned
@@ -116,10 +117,11 @@ flowchart LR
         Search --> Albums & Photos & Stories
         EdgeShare --> RPC
         EdgeShare --> Storage
-        EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage
+        EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage & Calls
         EdgeStory --> Storage
         EdgeAlt --> Albums & Photos & Stories & Drafts & Usage
         EdgeAlt --> Storage
+        DataAPI --> Calls
         EdgeAI --> Database
         EdgeAI --> Vault
     end
@@ -290,6 +292,12 @@ The human-facing text fields have separate purposes:
   owner_id)`, and goes when the photograph does. Only the `alt-draft` function writes one,
   and it never writes `photos.alt`: the owner's Save does. `photos.alt_source` is `'ai'`
   when she saved a suggestion word for word and `'human'` when she wrote or changed it.
+- `ai_calls` is the cost log: one row per paid AI call, declined and failed ones included,
+  with the product feature it served, the tokens split by kind, and the cost in US dollars
+  at the price list named in `price_list`, fixed when the call ran. Only Edge Functions
+  write it; the owner reads her own rows, in the header's "AI costs" panel while
+  `AI_COST_PANEL_ENABLED` is on. Prices live in `supabase/functions/_shared/aiPricing.ts`;
+  a model missing there is logged with no cost, never as free.
 - `photos.caption` provides context for one photo, and `photos.caption_visibility` decides
   whether a shared viewer ever reads it. Hidden is the default.
 - `photos.alt` is owner-approved accessibility text for screen readers. It is delivered to
@@ -359,7 +367,8 @@ albums-studio/
 |   `-- functions/
 |       |-- shared-album/        current trusted Edge Function for share links
 |       |-- _shared/             current code both sides share: the photo spread, questions,
-|       |                        location removal, and the AI functions' common plumbing
+|       |                        location removal, the AI functions' common plumbing, and
+|       |                        model prices with what each call cost (aiPricing.ts)
 |       |-- album-questions/     current AI questions about photographs with no words yet
 |       |-- story-draft/         current AI story drafts
 |       `-- alt-draft/           current AI alt text drafts; these three alone use the AI key

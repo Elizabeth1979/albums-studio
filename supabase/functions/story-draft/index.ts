@@ -8,6 +8,8 @@ import {
   type PhotoRow,
   UUID,
   caller,
+  costLog,
+  imagesIn,
   json,
   notesFor,
   photoBlocks,
@@ -125,6 +127,7 @@ Deno.serve(async (request) => {
   ]
 
   const claude = new Anthropic({ apiKey })
+  const logCall = costLog(who, { feature: OPERATION, model: MODEL, albumId, items: imagesIn(content) })
 
   let response: Anthropic.Beta.BetaMessage
   try {
@@ -141,6 +144,7 @@ Deno.serve(async (request) => {
       messages: [{ role: 'user', content }],
     } as Anthropic.Beta.MessageCreateParamsNonStreaming)
   } catch (error) {
+    await logCall('failed', null)
     if (error instanceof Anthropic.RateLimitError) {
       return json({ error: 'The story writer is busy. Try again in a minute.' }, 503)
     }
@@ -153,6 +157,7 @@ Deno.serve(async (request) => {
   await recordUse(who, OPERATION)
 
   if (response.stop_reason === 'refusal') {
+    await logCall('declined', response)
     return json({ error: 'The story writer declined to draft this album.' }, 422)
   }
 
@@ -160,7 +165,10 @@ Deno.serve(async (request) => {
     .flatMap((block) => (block.type === 'text' ? [block.text] : []))
     .join('\n\n')
     .trim()
-  if (!body) return json({ error: 'The story writer returned nothing. Try again.' }, 502)
+  if (!body) {
+    await logCall('failed', response)
+    return json({ error: 'The story writer returned nothing. Try again.' }, 502)
+  }
 
   const saved = await who.service
     .from('ai_drafts')
@@ -177,7 +185,11 @@ Deno.serve(async (request) => {
     })
     .select('id, body')
     .single()
-  if (saved.error) return json({ error: saved.error.message }, 500)
+  if (saved.error) {
+    await logCall('failed', response)
+    return json({ error: saved.error.message }, 500)
+  }
+  await logCall('ok', response, saved.data.id)
 
   return json({ draft: saved.data, used: used + 1, limit: FREE_STORY_DRAFTS_PER_MONTH })
 })
