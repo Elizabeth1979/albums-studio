@@ -134,6 +134,13 @@ AI cost.
   answered (typed or spoken) into a private note on the photograph, or set aside. Through the
   `album-questions` Edge Function, five requests a month; open questions live in
   `ai_suggestions`. Nothing is ever sent to another person.
+- An album plays as a slideshow, for the owner from her album page and for a visitor from
+  the share link: the story first, then each photograph in album order, five seconds each,
+  in the photo viewer rather than a second one. Play/pause, Previous/Next, swipe, arrow keys,
+  Space and Escape. Starts paused when the device asks for reduced motion. Only published
+  captions appear, the owner's included, because a slideshow is shown to other people; story
+  notes under a photograph are left out. Draws the stored image and fetches one photograph
+  ahead, never the album. No music or export yet (Phase 9's later slices).
 - A photograph's alt text can be suggested by AI from the photo and the text visitors can
   already read, through the `alt-draft` Edge Function. The suggestion is a draft until the
   owner saves it; 50 a month free. Built 2026-11-18, not yet tried on a real photograph.
@@ -218,6 +225,9 @@ AI cost.
   child smeared by movement the sharpest, and named a different frame on a phone than on a
   laptop. The verdicts are off the screen; measuring blur inside each person's box, child
   against the same child, ranked the burst correctly and is the next step.
+- [The first slideshow](sessions/2026-11-18-the-first-slideshow.md) — Phase 9's first
+  slice: a timed slideshow in the existing photo viewer, published captions only even for the
+  owner, one photograph fetched ahead to stay within a phone's memory.
 - [The first AI draft](sessions/2026-11-18-the-first-ai-draft.md) — album stories drafted
   by Claude from photographs and the owner's words, kept as drafts until used, five free a
   month on the platform's key, with the real cost per draft still to be measured.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 import { type SharedAlbum as Shared, loadSharedAlbum, sharedOriginal } from '../lib/sharing'
 import { PhotoLightbox } from './PhotoLightbox'
+import { Slideshow } from './Slideshow'
 
 type SharedAlbumProps = { token: string }
 
@@ -130,6 +131,7 @@ export function SharedAlbum({ token }: SharedAlbumProps) {
               ))}
           </div>
         )}
+        <Slideshow photos={album.photos} title={album.album.title} story={album.album.story} />
       </header>
 
       {album.photos.length === 0 ? (
