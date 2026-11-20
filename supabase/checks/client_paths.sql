@@ -738,6 +738,14 @@ begin
     log := log || E'\n  FAIL  delete -> ' || sqlerrm; fails := fails + 1;
   end;
 
+  -- The album's AI calls were paid for whether or not it still exists.
+  select count(*) into seen_count from public.ai_calls where owner_id = alice and album_id is null;
+  if seen_count = 1 then
+    log := log || E'\n  ok    the cost of an AI call outlives the album it was for';
+  else
+    log := log || E'\n  FAIL  deleting the album took its AI costs with it (' || seen_count || ')'; fails := fails + 1;
+  end if;
+
   reset role;
 
   raise exception E'client paths: % failed\n%\n\n(the transaction is rolled back on purpose; nothing above was kept)',

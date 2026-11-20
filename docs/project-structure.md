@@ -119,7 +119,7 @@ flowchart LR
         EdgeShare --> Storage
         EdgeStory --> Albums & Photos & Stories & Drafts & Questions & Usage & Calls
         EdgeStory --> Storage
-        EdgeAlt --> Albums & Photos & Stories & Drafts & Usage
+        EdgeAlt --> Albums & Photos & Stories & Drafts & Usage & Calls
         EdgeAlt --> Storage
         DataAPI --> Calls
         EdgeAI --> Database

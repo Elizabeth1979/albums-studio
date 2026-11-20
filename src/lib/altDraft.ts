@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import { announceAiCall } from './aiCosts'
 import { supabase } from './supabase'
 
 export { ALT_DRAFTS_PER_MONTH } from '../../supabase/functions/_shared/altContext'
@@ -23,6 +24,8 @@ export type AltDraft = {
  */
 export async function draftAlt(photoId: string): Promise<AltDraft> {
   const { data, error } = await supabase.functions.invoke('alt-draft', { body: { photoId } })
+  // Refused or not, the call may have been paid for and logged: an open cost panel re-reads.
+  announceAiCall()
 
   if (error) {
     if (error instanceof FunctionsHttpError) {

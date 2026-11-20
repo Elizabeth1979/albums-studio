@@ -12,8 +12,7 @@ create table public.ai_calls (
   id                 uuid primary key default gen_random_uuid(),
   owner_id           uuid not null references auth.users (id) on delete cascade,
   -- The product feature, as it would be sold: one value per thing a person asks for,
-  -- named as the function's `ai_usage` operation is. 'alt' is here ahead of its
-  -- function reaching main, so alt text drafts can log their cost from their first call.
+  -- named as the function's `ai_usage` operation is.
   feature            text not null check (feature in ('album_story', 'album_questions', 'alt')),
   -- Kept when the album goes: the call was paid for either way.
   album_id           uuid,

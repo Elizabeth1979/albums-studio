@@ -12,8 +12,8 @@ twenty times apart. Neither can price a feature.
 
 ## What was built
 
-- `ai_calls`, one row per paid AI call: the product feature (`album_story` and
-  `album_questions` today; `alt` is already accepted for the alt text drafts in review), the
+- `ai_calls`, one row per paid AI call: the product feature (`album_story`,
+  `album_questions` and `alt`), the
   album, how many photographs it was shown, the model asked for and the one that answered,
   input, cache-write, cache-read and output tokens, the cost in US dollars, the price list
   that priced it, and how long it took. Declined and failed calls are logged too, because a

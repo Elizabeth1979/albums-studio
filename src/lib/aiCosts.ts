@@ -46,6 +46,14 @@ export const PAID_FEATURES: PaidFeature[] = [
     use: 'request',
     unit: ['photo', 'photos'],
   },
+  {
+    key: 'alt',
+    name: 'Suggested descriptions (alt text)',
+    what: 'Describes one photograph for people who use a screen reader.',
+    model: 'Claude Sonnet 5.5',
+    use: 'description',
+    unit: ['photo', 'photos'],
+  },
 ]
 
 /** Features that feel like AI and cost nothing per use. */
@@ -54,14 +62,15 @@ export const FREE_FEATURES = [
   { name: 'Similar photos', how: 'Compared on this device.' },
   { name: 'Eyes open and smiles', how: 'Detected on this device.' },
   { name: 'Speak instead of typing', how: "The browser's own speech service, at no charge to us." },
+  { name: 'Search by what you wrote', how: 'Run by the database, with no AI.' },
 ]
 
 /**
- * AI features not on the site yet, so with no cost to show. Alt text drafts are
- * in review; the database already accepts their calls, so adding them to
- * `PAID_FEATURES` is all they need once they ship.
+ * AI features not on the site yet, so with no cost to show. A new one needs its
+ * name in the `ai_calls.feature` check, `costLog` in its Edge Function, and an
+ * entry in `PAID_FEATURES`.
  */
-export const PLANNED_FEATURES = ['Alt text drafts (in review)', 'Caption drafts', 'Search by what is in a photo']
+export const PLANNED_FEATURES = ['Caption drafts', 'Search by what is in a photo']
 
 export type AiCall = {
   id: string
