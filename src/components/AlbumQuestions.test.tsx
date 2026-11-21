@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Photo } from '../lib/photos'
 import type { Story } from '../lib/stories'
-import { AlbumQuestions } from './AlbumQuestions'
+import { AlbumQuestions, silenceSummary } from './AlbumQuestions'
 
 const { listOpenQuestions, askForQuestions, settleQuestion } = vi.hoisted(() => ({
   listOpenQuestions: vi.fn(),
@@ -58,6 +58,17 @@ function renderQuestions(stories: Story[] = [story('p3')], onAnswer = vi.fn().mo
   )
   return onAnswer
 }
+
+describe('silenceSummary', () => {
+  it('reads naturally for every count, including an album of one', () => {
+    expect(silenceSummary(0, 1)).toBe('This photo has something written about it.')
+    expect(silenceSummary(0, 4)).toBe('Every photo has something written about it.')
+    expect(silenceSummary(1, 1)).toBe('This photo has nothing written about it yet.')
+    expect(silenceSummary(3, 3)).toBe('None of the 3 photos has anything written about it yet.')
+    expect(silenceSummary(1, 4)).toBe('1 of 4 photos has nothing written about it yet.')
+    expect(silenceSummary(2, 4)).toBe('2 of 4 photos have nothing written about them yet.')
+  })
+})
 
 describe('AlbumQuestions', () => {
   it('says how many photos have no words at all, for free, before anything is asked', () => {
