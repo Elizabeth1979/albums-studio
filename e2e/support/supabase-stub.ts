@@ -176,6 +176,12 @@ export type StubOptions = {
   albumQuestions?: { status: number; body: object }
   /** What the `alt-draft` Edge Function answers, as status and body. */
   altDraft?: { status: number; body: object }
+  /** Rows the fake `ai_calls` cost log starts with, newest first. */
+  aiCalls?: object[]
+  /** A row the fake `story-draft` function adds to the cost log when it is called. */
+  aiCallOnDraft?: object
+  /** Status and body returned when the cost log is read, for failure cases. */
+  aiCallsRead?: { status: number; body: object }
   /** Status and body returned by writes to `photo_stories`, for failure cases. */
   storyWrite?: { status: number; body: object }
   /** Status and body returned by Storage uploads, for failure cases. */
@@ -245,6 +251,7 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
   let albums: AlbumRecord[] = [...(options.albums ?? [])]
   let photos: PhotoRecord[] = [...(options.photos ?? [])]
   let stories: StoryRecord[] = []
+  let aiCalls: object[] = [...(options.aiCalls ?? [])]
   let objects: string[] = []
   let created = 0
   let photosCreated = 0
@@ -304,6 +311,8 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
         status: 200,
         body: { draft: { id: 'draft-1', body: 'We arrived in the rain.' }, used: 1, limit: 5 },
       }
+      // The real function logs its call before answering; newest first, as the log is read.
+      if (options.aiCallOnDraft) aiCalls = [options.aiCallOnDraft, ...aiCalls]
       return json(answer.body, answer.status)
     }
 
@@ -328,6 +337,12 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
         },
       }
       return json(answer.body, answer.status)
+    }
+
+    // The cost log is written by Edge Functions only; the browser just reads it.
+    if (path.endsWith('/rest/v1/ai_calls')) {
+      if (options.aiCallsRead) return json(options.aiCallsRead.body, options.aiCallsRead.status)
+      return method === 'GET' ? json(aiCalls) : json({ message: 'permission denied for table ai_calls' }, 403)
     }
 
     // Storage: uploads write an object, and the sign endpoint hands back a URL

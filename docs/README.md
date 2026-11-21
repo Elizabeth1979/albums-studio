@@ -235,6 +235,9 @@ AI cost.
 - [The first slideshow](sessions/2026-11-18-the-first-slideshow.md) — Phase 9's first
   slice: a timed slideshow in the existing photo viewer, published captions only even for the
   owner, one photograph fetched ahead to stay within a phone's memory.
+- [What each AI feature costs](sessions/2026-11-18-what-each-ai-feature-costs.md) — every
+  paid AI call is logged with its feature, tokens and cost at that day's prices, declined
+  ones included, and a testing-mode panel shows the totals and averages feature by feature.
 - [The first AI draft](sessions/2026-11-18-the-first-ai-draft.md) — album stories drafted
   by Claude from photographs and the owner's words, kept as drafts until used, five free a
   month on the platform's key, with the real cost per draft still to be measured.

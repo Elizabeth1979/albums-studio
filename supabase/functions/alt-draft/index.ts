@@ -1,7 +1,18 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@1.8.0'
 import { ALT_DRAFTS_PER_MONTH, ALT_MAX_LENGTH, altContext } from '../_shared/altContext.ts'
-import { CORS, NO_KEY, UUID, base64, caller, json, recordUse, tokensIn, usedThisMonth } from '../_shared/studio.ts'
+import {
+  CORS,
+  NO_KEY,
+  UUID,
+  base64,
+  caller,
+  costLog,
+  json,
+  recordUse,
+  tokensIn,
+  usedThisMonth,
+} from '../_shared/studio.ts'
 
 /**
  * Drafts alt text for one photograph.
@@ -107,6 +118,8 @@ Deno.serve(async (request) => {
   })
 
   const claude = new Anthropic({ apiKey })
+  // One photograph per request, by design.
+  const logCall = costLog(who, { feature: OPERATION, model: MODEL, albumId: photo.data.album_id, items: 1 })
 
   let response: Anthropic.Beta.BetaMessage
   try {
@@ -137,6 +150,7 @@ Deno.serve(async (request) => {
       ],
     } as Anthropic.Beta.MessageCreateParamsNonStreaming)
   } catch (error) {
+    await logCall('failed', null)
     if (error instanceof Anthropic.RateLimitError) {
       return json({ error: 'The describer is busy. Try again in a minute.' }, 503)
     }
@@ -150,6 +164,7 @@ Deno.serve(async (request) => {
   await recordUse(who, OPERATION)
 
   if (response.stop_reason === 'refusal') {
+    await logCall('declined', response)
     return json({ error: 'The describer declined to describe this photograph.' }, 422)
   }
 
@@ -158,7 +173,10 @@ Deno.serve(async (request) => {
     .join(' ')
     .trim()
     .slice(0, ALT_MAX_LENGTH)
-  if (!body) return json({ error: 'The describer returned nothing. Try again.' }, 502)
+  if (!body) {
+    await logCall('failed', response)
+    return json({ error: 'The describer returned nothing. Try again.' }, 502)
+  }
 
   const saved = await who.service
     .from('ai_drafts')
@@ -175,7 +193,11 @@ Deno.serve(async (request) => {
     })
     .select('id, body')
     .single()
-  if (saved.error) return json({ error: saved.error.message }, 500)
+  if (saved.error) {
+    await logCall('failed', response)
+    return json({ error: saved.error.message }, 500)
+  }
+  await logCall('ok', response, saved.data.id)
 
   return json({ draft: saved.data, used: used + 1, limit: ALT_DRAFTS_PER_MONTH })
 })
