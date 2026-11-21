@@ -17,11 +17,19 @@ type AuthErrorShape = {
  * supabase-js reports a request that never got an answer as
  * `AuthRetryableFetchError` with status 0, carrying the browser's own words —
  * "Failed to fetch" in Chrome, "Load failed" in Safari — which say nothing to a
- * person. It happens offline and when the backend is down (a paused project),
- * and the page cannot tell which, so the message names both.
+ * person. It happens offline and when the backend is down (a paused project).
+ * The browser's offline flag is trusted only when it says offline: "online"
+ * means a network is attached, not that it reaches anything. So offline gets
+ * its own message, and everything else names both causes.
  */
 export const UNREACHABLE_MESSAGE =
   "Can't reach Albums Studio. If your internet is working, the problem is on our side. Try again in a few minutes."
+
+export const OFFLINE_MESSAGE = "You're offline. Reconnect to the internet, then try again."
+
+function browserIsOnline(): boolean {
+  return typeof navigator === 'undefined' || navigator.onLine !== false
+}
 
 function isUnreachable(error: AuthErrorShape): boolean {
   return error.name === 'AuthRetryableFetchError' && (error.status ?? 0) === 0
@@ -50,12 +58,16 @@ function secondsToWait(message: string): string | null {
  * Turns a Supabase auth failure into something worth showing a person, without
  * hiding failures nobody anticipated: anything unrecognised keeps its own text.
  */
-export function describeAuthError(error: unknown, fallback: string): string {
+export function describeAuthError(
+  error: unknown,
+  fallback: string,
+  online: boolean = browserIsOnline(),
+): string {
   const authError = asAuthError(error)
 
   if (!authError) return fallback
 
-  if (isUnreachable(authError)) return UNREACHABLE_MESSAGE
+  if (isUnreachable(authError)) return online ? UNREACHABLE_MESSAGE : OFFLINE_MESSAGE
 
   const rateLimited =
     RATE_LIMIT_CODES.has(authError.code ?? '') || authError.status === 429
