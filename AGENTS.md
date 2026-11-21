@@ -34,6 +34,12 @@ bringing judgement rather than waiting to be told what to think.
   the answer at runtime, or state the limitation in the interface.
 - Distinguish what is genuinely blocked from what is merely unverified, and never let the
   second be reported as the first.
+- Never answer vaguely. Words like "nearly done", "mostly", "almost" and "a few things
+  left" are banned from status reports. The owner asked for this in plain terms: she needs
+  accurate answers to everything. Say what is done, what is built but unconfirmed, and what
+  is not built, item by item, from the roadmap and the code rather than from memory. If
+  something is not known, say it is not known and how to find out; if an answer needs a
+  check, run the check before answering.
 
 ### As engineering architect
 
