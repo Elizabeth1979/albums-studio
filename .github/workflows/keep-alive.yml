@@ -1,0 +1,35 @@
+name: Keep database awake
+
+# Supabase pauses a free project after a week without "a few user requests to
+# the database each day", and a paused project makes every sign-in fail. This
+# asks the database one harmless question a day: a signed-out read of albums,
+# which row security answers with nothing.
+#
+# A failed run means the database did not answer, which usually means it has
+# been paused. GitHub emails a failed scheduled run, so this doubles as the alarm.
+#
+# GitHub disables schedules in a public repository after 60 days without a
+# commit, and emails before it does. Re-enable it from the Actions tab.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      # Both are public: the same values ship in the site's JavaScript.
+      SUPABASE_URL: https://vsxbedlsnfmsbnlfayae.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_G8aIBjhnmrVHVzIeYkIynQ_MbrIw7hn
+    steps:
+      - name: Ask the database one question
+        run: |
+          curl --fail --silent --show-error --max-time 30 --retry 3 --retry-all-errors \
+            --output /dev/null --write-out 'HTTP %{http_code}\n' \
+            --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            "$SUPABASE_URL/rest/v1/albums?select=id&limit=1"

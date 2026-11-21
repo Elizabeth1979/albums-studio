@@ -360,6 +360,7 @@ albums-studio/
 |   `-- *.test.tsx               current component and state-machine tests
 |-- e2e/                         current Playwright suites, including axe checks
 |-- .github/workflows/ci.yml     current typecheck, tests, build, end-to-end
+|-- .github/workflows/keep-alive.yml  current daily request so the free database is not paused
 |-- supabase/
 |   |-- config.toml              current local Supabase configuration
 |   |-- migrations/              current schema history and source of truth
