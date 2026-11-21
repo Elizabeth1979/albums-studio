@@ -82,6 +82,7 @@ function photo(index: number): Photo {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   }
 }
 

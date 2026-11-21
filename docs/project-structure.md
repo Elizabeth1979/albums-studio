@@ -213,6 +213,7 @@ erDiagram
         float4 sharpness
         float4 quality_score "zero to one"
         timestamp taken_at "from EXIF, for burst grouping"
+        boolean in_slideshow "on unless the owner leaves it out"
         int4 sort_order "NOT NULL"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL"

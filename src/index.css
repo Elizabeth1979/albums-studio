@@ -2769,3 +2769,30 @@ textarea:focus-visible {
 .ai-costs-plain strong {
   color: #25231f;
 }
+
+/* Choosing what the slideshow plays: the album's own grid, smaller, wrapping
+   rather than scrolling sideways, since every photograph is in it. */
+.slideshow-choice summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.slideshow-choice-actions {
+  display: flex;
+  gap: 1.2rem;
+  margin: 0.4rem 0 0;
+}
+
+.slideshow-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.8rem;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A photo left out steps back, so what plays is visible at a glance. */
+.similar-item.left-out .similar-thumb {
+  opacity: 0.4;
+}

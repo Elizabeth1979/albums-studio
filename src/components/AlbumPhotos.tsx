@@ -9,6 +9,7 @@ import {
   listPhotos,
   originalDownloadUrl,
   pathsOf,
+  setInSlideshow,
   photoBytes,
   signedUrls,
   storePhoto,
@@ -27,6 +28,7 @@ import { AlbumQuestions } from './AlbumQuestions'
 import { PhotoEditor } from './PhotoEditor'
 import { SimilarPhotos } from './SimilarPhotos'
 import { Slideshow, ownerSlideshowPhotos } from './Slideshow'
+import { SlideshowChoice } from './SlideshowChoice'
 import { SoftPhotos } from './SoftPhotos'
 import { useModalDialog } from './useModalDialog'
 import { groupSimilar } from '../lib/similarity'
@@ -402,6 +404,30 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
     )
   }
 
+  /**
+   * Shown at once and written after; put back as it was if the write fails, so
+   * the boxes never claim a choice the database refused.
+   */
+  async function handleSlideshowChoice(ids: string[], inSlideshow: boolean) {
+    const before = new Map(photos.map((photo) => [photo.id, photo.inSlideshow]))
+    const chosen = new Set(ids)
+    setPhotos((current) =>
+      current.map((photo) => (chosen.has(photo.id) ? { ...photo, inSlideshow } : photo)),
+    )
+    try {
+      await setInSlideshow(ids, inSlideshow)
+    } catch (caught) {
+      setPhotos((current) =>
+        current.map((photo) =>
+          chosen.has(photo.id)
+            ? { ...photo, inSlideshow: before.get(photo.id) ?? photo.inSlideshow }
+            : photo,
+        ),
+      )
+      throw caught
+    }
+  }
+
   async function handleSaveText(
     photoId: string,
     patch: Parameters<typeof updatePhotoText>[1],
@@ -610,6 +636,11 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
                   setSelectedId((current) => (current === photoId ? null : photoId))
                 }
                 focusNotes={showReadings ? focusNotes : undefined}
+              />
+              <SlideshowChoice
+                photos={photos}
+                thumbnails={thumbnails}
+                onChange={handleSlideshowChoice}
               />
               <SimilarPhotos
                 groups={similarGroups}

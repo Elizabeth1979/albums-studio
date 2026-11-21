@@ -28,6 +28,7 @@ function photo(overrides: Partial<Photo> & { id: string }): Photo {
     phash: hash(0),
     sharpness: 100,
     takenAt: null,
+    inSlideshow: true,
     ...overrides,
   }
 }

@@ -4,9 +4,12 @@ import { advance, hasStory, resumeFrom, slideCount, slideDuration } from '../lib
 import { toLightboxPhoto } from './ExpandableThumb'
 import { type LightboxPhoto, PhotoLightbox } from './PhotoLightbox'
 
+/** A photograph as the slideshow takes it: false for one the owner left out. */
+export type SlideshowPhoto = LightboxPhoto & { inSlideshow?: boolean }
+
 type SlideshowProps = {
   /** In album order, with only the text this viewer may see. */
-  photos: LightboxPhoto[]
+  photos: SlideshowPhoto[]
   title: string
   story: string | null | undefined
 }
@@ -24,10 +27,11 @@ function prefersReducedMotion(): boolean {
  * she chose to keep private should not appear on the television because she
  * pressed Play.
  */
-export function ownerSlideshowPhotos(photos: Photo[], urls: Map<string, string>): LightboxPhoto[] {
-  return photos.map((photo) =>
-    toLightboxPhoto(photo, urls, photo.captionVisibility === 'visible' ? photo.caption : null),
-  )
+export function ownerSlideshowPhotos(photos: Photo[], urls: Map<string, string>): SlideshowPhoto[] {
+  return photos.map((photo) => ({
+    ...toLightboxPhoto(photo, urls, photo.captionVisibility === 'visible' ? photo.caption : null),
+    inSlideshow: photo.inSlideshow,
+  }))
 }
 
 /**
@@ -44,7 +48,9 @@ export function Slideshow({ photos, title, story }: SlideshowProps) {
   const shown = useMemo(
     () =>
       photos
-        .filter((photo) => photo.fullUrl ?? photo.thumbnailUrl)
+        // Only what the owner chose (absent means chosen), and only what can
+        // be drawn.
+        .filter((photo) => photo.inSlideshow !== false && (photo.fullUrl ?? photo.thumbnailUrl))
         .map((photo) => ({ ...photo, stories: [] })),
     [photos],
   )

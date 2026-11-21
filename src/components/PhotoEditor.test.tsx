@@ -29,6 +29,7 @@ function photo(overrides: Partial<Photo> = {}): Photo {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
     ...overrides,
   }
 }

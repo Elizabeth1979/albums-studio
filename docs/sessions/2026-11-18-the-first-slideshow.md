@@ -48,3 +48,16 @@ music, no export, no database change.
   came. It is a unit test now, watching what the viewer itself fetches.
 - The Play button first wrapped under the owner's hint and pushed her first photographs 34px
   past the phone first-screen budget (554 of 520). It now shares the hint's line.
+
+## Choosing the photographs (2026-11-21)
+
+- `photos.in_slideshow`, on by default, so every album that existed plays as before. A flag on
+  the photograph rather than a list on the album: it goes with the row, and reordering needs
+  nothing kept in step. Recorded as `20261121052540`; `client_paths.sql` 0 of 73 failed with
+  three new checks; advisors showed nothing new.
+- `get_shared_album` returns it, and `display_path` beside it: a parallel change adds that
+  column to the same function, and whichever lands second must carry both.
+- The chooser sits under "Slideshow" below the photographs, folded away, so the phone's first
+  screen still starts with the pictures. Music will join it there.
+- A photo left out stays in the album for visitors; it only stops playing. The `shared-album`
+  Edge Function passes the flag on and must be redeployed for visitors to see the choice.

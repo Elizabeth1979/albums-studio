@@ -144,3 +144,98 @@ test.describe('the owner plays her album as a slideshow', () => {
     await expect(opener).toBeFocused()
   })
 })
+
+test.describe('choosing which photographs play', () => {
+  const PHOTOS = [
+    photoRecord({ id: 'photo-1', alt: 'The jetty' }),
+    photoRecord({
+      id: 'photo-2',
+      storage_path: 'owner/album-1/photo-2.jpg',
+      thumbnail_path: 'owner/album-1/photo-2-thumb.jpg',
+      alt: 'The boat',
+      sort_order: 1,
+    }),
+    photoRecord({
+      id: 'photo-3',
+      storage_path: 'owner/album-1/photo-3.jpg',
+      thumbnail_path: 'owner/album-1/photo-3-thumb.jpg',
+      alt: 'The pier',
+      sort_order: 2,
+    }),
+  ]
+
+  async function openOwnerAlbum(page: Page, options = {}) {
+    const calls = await stubSupabase(page, { albums: [albumRecord()], photos: PHOTOS, ...options })
+    await page.goto('/')
+    await page.getByLabel('Email', { exact: true }).fill('person@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('the-right-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: /Summer by the lake/ }).click()
+    await page.getByText(/Choose which photos play/).click()
+    return calls
+  }
+
+  test('a photo the owner leaves out is saved, and the slideshow skips it', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const calls = await openOwnerAlbum(page)
+
+    await expect(page.getByText('Choose which photos play (3 of 3)')).toBeVisible()
+    await page.getByRole('checkbox', { name: 'Plays photo 2: The boat' }).uncheck()
+    await expect(page.getByText('Choose which photos play (2 of 3)')).toBeVisible()
+    await expect.poll(() => calls.photos().find((row) => row.id === 'photo-2')?.in_slideshow).toBe(false)
+
+    await page.getByRole('button', { name: 'Play slideshow' }).click()
+    const show = page.getByRole('dialog')
+    await expect(show).toContainText('1 of 2')
+    await page.keyboard.press('ArrowRight')
+    await expect(show.getByRole('img', { name: 'The pier' })).toBeVisible()
+  })
+
+  test('play all and leave all out each save in one go', async ({ page }) => {
+    const calls = await openOwnerAlbum(page)
+
+    await page.getByRole('button', { name: 'Leave all out' }).click()
+    await expect(page.getByText('Choose which photos play (0 of 3)')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play slideshow' })).toHaveCount(0)
+    await expect.poll(() => calls.photos().every((row) => row.in_slideshow === false)).toBe(true)
+
+    await page.getByRole('button', { name: 'Play all' }).click()
+    await expect(page.getByText('Choose which photos play (3 of 3)')).toBeVisible()
+    await expect.poll(() => calls.photos().every((row) => row.in_slideshow === true)).toBe(true)
+  })
+
+  test('a refused save puts the box back and says why', async ({ page }) => {
+    await openOwnerAlbum(page, {
+      photoUpdate: { status: 403, body: { message: 'permission denied for table photos' } },
+    })
+
+    const box = page.getByRole('checkbox', { name: 'Plays photo 2: The boat' })
+    await box.uncheck({ force: true })
+    await expect(page.getByRole('alert')).toContainText('permission denied')
+    await expect(box).toBeChecked()
+  })
+
+  test('a visitor’s slideshow plays only what the owner chose', async ({ page }) => {
+    const shared = {
+      'good-token': {
+        ...SHARED['good-token'],
+        photos: SHARED['good-token'].photos.map((photo, index) => ({
+          ...photo,
+          inSlideshow: index !== 1,
+        })),
+      },
+    }
+    await stubSupabase(page, { shared })
+    await page.goto('/shared/good-token')
+
+    // Left out of the slideshow is not left out of the album.
+    await expect(page.getByRole('img', { name: 'Photograph number 2' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Play slideshow' }).click()
+    const show = page.getByRole('dialog')
+    await page.keyboard.press('ArrowRight')
+    await expect(show).toContainText('1 of 2')
+    await page.keyboard.press('ArrowRight')
+    await expect(show.getByRole('img', { name: 'Photograph number 3' })).toBeVisible()
+  })
+})

@@ -57,6 +57,8 @@ export type Photo = {
    * every photograph uploaded before this was read.
    */
   takenAt: string | null
+  /** Whether the album's slideshow plays it. On unless the owner left it out. */
+  inSlideshow: boolean
 }
 
 type PhotoRow = {
@@ -74,10 +76,11 @@ type PhotoRow = {
   phash: string | null
   sharpness: number | null
   taken_at: string | null
+  in_slideshow?: boolean
 }
 
 const PHOTO_COLUMNS =
-  'id, storage_path, thumbnail_path, display_path, original_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at'
+  'id, storage_path, thumbnail_path, display_path, original_path, width, height, caption, caption_visibility, alt, sort_order, phash, sharpness, taken_at, in_slideshow'
 
 function toPhoto(row: PhotoRow): Photo {
   return {
@@ -95,6 +98,9 @@ function toPhoto(row: PhotoRow): Photo {
     phash: row.phash ?? null,
     sharpness: row.sharpness ?? null,
     takenAt: row.taken_at ?? null,
+    // Absent only from a row written before the column existed, which the
+    // database itself defaults to on.
+    inSlideshow: row.in_slideshow ?? true,
   }
 }
 
@@ -170,6 +176,23 @@ function trimmedOrNull(value: string): string | null {
  * suggestion the owner chose to use), `'human'` otherwise, so a human's wording
  * stays distinguishable and is never quietly overwritten.
  */
+/**
+ * Puts photographs into the album's slideshow or leaves them out, in one write.
+ *
+ * Only this flag: nothing about the photograph itself changes, and a photograph
+ * left out stays in the album for everyone who opens it.
+ */
+export async function setInSlideshow(ids: string[], inSlideshow: boolean): Promise<void> {
+  if (ids.length === 0) return
+
+  const { error } = await supabase
+    .from('photos')
+    .update({ in_slideshow: inSlideshow })
+    .in('id', ids)
+
+  if (error) throw new Error(error.message)
+}
+
 export async function updatePhotoText(
   id: string,
   patch: {

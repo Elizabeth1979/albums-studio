@@ -66,6 +66,8 @@ type SharedRow = {
   caption: string | null
   alt: string | null
   sort_order: number | null
+  /** Absent until the choose_slideshow_photos migration; null for an album with no photos. */
+  in_slideshow?: boolean | null
 }
 
 type StoryRow = { photo_id: string; body: string; created_at: string }
@@ -195,6 +197,9 @@ Deno.serve(async (request) => {
       // Whether there is a full-quality original to download. Never its path.
       hasOriginal: originalOf.has(row.photo_id as string),
       stories: told.get(row.photo_id as string) ?? [],
+      // The owner's choice for the slideshow. A photograph left out is still
+      // in the album; it just does not play.
+      inSlideshow: row.in_slideshow !== false,
     })),
   })
 })

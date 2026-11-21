@@ -35,6 +35,7 @@ function photos(count: number): Photo[] {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   }))
 }
 
