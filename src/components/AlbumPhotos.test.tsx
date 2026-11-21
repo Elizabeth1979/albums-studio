@@ -422,6 +422,32 @@ describe('AlbumPhotos', () => {
       expect(screen.getByText('Photo 1')).toBeInTheDocument()
     })
 
+    it('opens the photo a search result pointed at, once the album has loaded', async () => {
+      photosApi.listPhotos.mockResolvedValue([photo(0), photo(1)])
+      photosApi.signedUrls.mockResolvedValue(new Map())
+
+      render(
+        <AlbumPhotos album={album} openPhotoId="photo-1" onCoverChosen={onCoverChosen} />,
+      )
+
+      await screen.findByRole('heading', { name: 'What do you want to remember?' })
+      expect(screen.getByText('Photo 2')).toBeInTheDocument()
+    })
+
+    it('opens nothing for a search result whose photo is not in this album', async () => {
+      photosApi.listPhotos.mockResolvedValue([photo(0)])
+      photosApi.signedUrls.mockResolvedValue(new Map())
+
+      render(
+        <AlbumPhotos album={album} openPhotoId="photo-gone" onCoverChosen={onCoverChosen} />,
+      )
+
+      await screen.findByRole('button', { name: 'Edit photo 1' })
+      expect(
+        screen.queryByRole('heading', { name: 'What do you want to remember?' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('closes it again when the same photo is chosen twice', async () => {
       await openEditor()
 

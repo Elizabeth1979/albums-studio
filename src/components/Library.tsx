@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import type { Album } from '../lib/albums'
 import type { Identity } from '../lib/identity'
 import { AppHeader } from './AppHeader'
+import { LibrarySearch } from './LibrarySearch'
 import { LiveStatus } from './LiveStatus'
 import { useReturnFocus } from './useReturnFocus'
 
@@ -18,6 +19,8 @@ type LibraryProps = {
     description: string
   }) => Promise<void>
   onOpenAlbum: (album: Album) => void
+  /** Opens a search result: a photo in its album, or the album when photoId is null. */
+  onOpenResult: (albumSlug: string, photoId: string | null) => void
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -41,6 +44,7 @@ export function Library({
   error,
   onCreateAlbum,
   onOpenAlbum,
+  onOpenResult,
 }: LibraryProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -211,6 +215,10 @@ export function Library({
             </button>
           </section>
         ) : (
+          <>
+          {/* Only once there is something to search. Above the albums, because
+              finding one photograph among hundreds is what this is for. */}
+          <LibrarySearch onOpen={onOpenResult} />
           <section aria-labelledby="album-list-title">
             <h2 className="section-title" id="album-list-title">
               {albums.length === 1 ? '1 album' : `${albums.length} albums`}
@@ -250,6 +258,7 @@ export function Library({
               })}
             </ul>
           </section>
+          </>
         )}
 
         {/* Below the albums, deliberately. This is a document about how the

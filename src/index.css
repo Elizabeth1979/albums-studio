@@ -376,6 +376,13 @@ textarea:focus-visible {
   gap: 1.2rem;
 }
 
+.account-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
 .account-email {
   max-width: 18rem;
   overflow: hidden;
@@ -2438,6 +2445,48 @@ textarea:focus-visible {
   line-height: 1.6;
 }
 
+/* Suggested alt text: a draft beside the owner's own box, never inside it until she chooses. */
+.alt-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+
+.alt-suggest .field-hint {
+  margin: 0;
+  flex: 1 1 14rem;
+}
+
+.alt-suggestion {
+  padding: 0.9rem 1rem;
+  border: 1px solid #e7dfd3;
+  border-left: 3px solid #8a6a3f;
+  border-radius: 8px;
+  background: #fbf8f3;
+}
+
+.alt-suggestion h4 {
+  margin: 0 0 0.4rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+}
+
+.alt-suggestion-body {
+  margin: 0 0 0.6rem;
+  line-height: 1.55;
+}
+
+.alt-suggestion .field-hint {
+  margin: 0 0 0.7rem;
+}
+
+.alt-suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
 /* Slideshow ---------------------------------------------------------------- */
 
 /* The owner's hint and the Play button share a line, so the button costs the
@@ -2537,4 +2586,186 @@ textarea:focus-visible {
   to {
     opacity: 1;
   }
+}
+
+/*
+ * The AI cost panel: a testing-mode view, beside the page rather than over it,
+ * so a story can be drafted while its cost arrives. It never covers anything: a
+ * control hidden behind an overlay still takes keyboard focus and is out of a
+ * pointer's reach, which is how the first version hid Sign out on a laptop.
+ *
+ * Narrow screens: in the page's flow, under the header, pushing the page down.
+ * Wide screens: a full-height column on the right, and the page narrows for it.
+ */
+.ai-costs {
+  display: flex;
+  padding: 1.25rem clamp(1.25rem, 5vw, 4.5rem) 1.75rem;
+  flex-direction: column;
+  gap: 1rem;
+  border-bottom: 1px solid #ddd6cc;
+  color: #25231f;
+  background: #fffdf9;
+}
+
+@media (min-width: 64rem) {
+  html.ai-costs-open body {
+    padding-right: 25rem;
+  }
+
+  .ai-costs {
+    position: fixed;
+    z-index: 40;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 25rem;
+    padding: 1.25rem 1.25rem 2.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-bottom: 0;
+    border-left: 1px solid #ddd6cc;
+  }
+}
+
+.ai-costs-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ai-costs h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+.ai-costs h2:focus {
+  outline: none;
+}
+
+.ai-costs h2:focus-visible {
+  outline: 3px solid #d89045;
+  outline-offset: 3px;
+}
+
+.ai-costs h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.ai-costs h4 {
+  margin: 1rem 0 0.4rem;
+  color: #6e665d;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-costs-note,
+.ai-costs-what,
+.ai-costs-status {
+  margin: 0;
+  color: #6e665d;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.ai-costs-status .chip-button {
+  margin-top: 0.6rem;
+}
+
+.ai-costs-warning {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #e4cfb5;
+  border-radius: 0.6rem;
+  color: #5b3515;
+  background: #fbf3e8;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.ai-costs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ai-costs-feature {
+  padding-top: 1rem;
+  border-top: 1px solid #ebe4d9;
+}
+
+.ai-costs-figures {
+  display: grid;
+  margin: 0.8rem 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.ai-costs-figures > div {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #ebe4d9;
+  border-radius: 0.6rem;
+  background: #f9f6f0;
+}
+
+.ai-costs-figures > div:last-child {
+  grid-column: 1 / -1;
+}
+
+.ai-costs-figures dt {
+  color: #6e665d;
+  font-size: 0.72rem;
+}
+
+.ai-costs-figures + .ai-costs-what {
+  margin-top: 0.7rem;
+}
+
+.ai-costs-figures dd {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.ai-costs-log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-costs-log li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f0ebe2;
+}
+
+.ai-costs-log-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-costs-log-detail {
+  margin-top: 0.15rem;
+  color: #6e665d;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.ai-costs-plain {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #6e665d;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.ai-costs-plain strong {
+  color: #25231f;
 }

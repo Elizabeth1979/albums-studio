@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Studio } from './Studio'
 import type { Album } from '../lib/albums'
 
-const { albumsApi, photosApi, processorApi, storiesApi } = vi.hoisted(() => ({
+const { albumsApi, photosApi, processorApi, storiesApi, searchApi } = vi.hoisted(() => ({
+  searchApi: { searchLibrary: vi.fn() },
   albumsApi: {
     listAlbums: vi.fn(),
     createAlbum: vi.fn(),
@@ -29,6 +30,10 @@ const { albumsApi, photosApi, processorApi, storiesApi } = vi.hoisted(() => ({
 }))
 
 vi.mock('../lib/stories', () => storiesApi)
+vi.mock('../lib/search', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/search')>()),
+  searchLibrary: searchApi.searchLibrary,
+}))
 
 // jsdom has neither Worker nor a canvas, so the real processor would fall back
 // to the main thread and then fail to decode. What a photograph becomes is
@@ -60,6 +65,25 @@ function album(overrides: Partial<Album> = {}): Album {
     story: null,
     storyDraftId: null,
     ...overrides,
+  }
+}
+
+function photoRow(id: string) {
+  return {
+    id,
+    storagePath: `owner/album-1/${id}.jpg`,
+    thumbnailPath: null,
+    displayPath: null,
+    originalPath: null,
+    width: 2000,
+    height: 1500,
+    caption: null,
+    captionVisibility: 'hidden' as const,
+    alt: null,
+    sortOrder: 0,
+    phash: null,
+    sharpness: null,
+    takenAt: null,
   }
 }
 
@@ -118,6 +142,39 @@ describe('Studio', () => {
 
     // The card, not the confirmation message, which now also names the album.
     expect(await screen.findByRole('button', { name: /Wedding/ })).toBeInTheDocument()
+  })
+
+  it('opens a search result at its photo, in its album', async () => {
+    albumsApi.listAlbums.mockResolvedValue([album()])
+    photosApi.listPhotos.mockResolvedValue([
+      { ...photoRow('photo-a') },
+      { ...photoRow('photo-b'), caption: 'Cake at dusk' },
+    ])
+    searchApi.searchLibrary.mockResolvedValue({
+      results: [
+        {
+          key: 'photo:photo-b',
+          albumSlug: 'summer-by-the-lake',
+          albumTitle: 'Summer by the lake',
+          photoId: 'photo-b',
+          thumbnailPath: null,
+          matches: [{ field: 'caption', text: 'Cake at dusk' }],
+        },
+      ],
+      thumbnails: new Map(),
+    })
+
+    renderStudio()
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search your words' }), {
+      target: { value: 'cake' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Photo in Summer by the lake/ }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'What do you want to remember?' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Photo 2')).toBeInTheDocument()
   })
 
   it('opens an album and comes back', async () => {

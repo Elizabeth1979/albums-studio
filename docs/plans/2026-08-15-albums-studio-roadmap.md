@@ -105,13 +105,19 @@ subscription, Supabase, RLS, share links, Family Travels.
   or the question is set aside. Nothing is sent to anyone. Five requests a month, about 3 US
   cents each by estimate. `ai_suggestions` holds only `missing_context` for now; the other
   suggestion types wait for a use.
+- ✅ **What each AI feature costs, while testing (2026-11-18).** Every paid AI call is logged in
+  `ai_calls` with its feature, tokens and cost at that day's prices, declined and failed calls
+  included, and an "AI costs" panel in the header shows each feature's total, cost per use and
+  per photograph, and its log, downloadable as a spreadsheet. It is there to set prices and
+  choose what to sell; turn `AI_COST_PANEL_ENABLED` off before launch. See
+  [the session note](../sessions/2026-11-18-what-each-ai-feature-costs.md).
 
-**Next action:** Phase 5 AI Story Studio is the outstanding gate and the first AI
-checkpoint; Phases 6 and 7 were taken ahead of it. Owners now supply the context it needs:
-captions, story notes, and alt text, each already marked with who it is for. Drafted alt
-text must respect `alt_source`; a human's wording is never overwritten by a suggestion. If
-a smaller step is wanted first, Phase 7's remaining faces-visible/eyes-open signal is the
-cheapest thing on the board, and open question 9 now costs it out.
+**Next action (2026-11-18):** Phase 11, AI alt drafts, taken ahead of the rest of Phase 5
+because the story studio already built what it needs. Planned in
+[the alt drafts plan](2026-11-18-ai-alt-drafts.md): slice 1 is one photo in the photo
+editor, slice 2 a whole album. Drafted alt text must respect `alt_source`; a human's wording
+is never overwritten by a suggestion, and only text that is already public is sent to the
+alt writer. Still open in Phase 5: proactive suggestions and kept audio.
 
 **Decided 2026-11-14** (evidence in
 [the competitor research](../research/2026-11-14-best-photo-and-competitors.md)): Phase 3.5,
@@ -566,7 +572,21 @@ caption/story context text.
 **Checkpoint:** owner can search their library by caption/story context and find matching
 photos; shared viewers only search text that is meant to be visible.
 
+**Status (2026-11-20):** first slice built, not yet confirmed by the owner. Plain text search
+with no AI and no cost: one box on the library, matching album titles, descriptions and
+stories, captions and story notes (hidden ones included) and alt text, every word typed in
+the same piece of text, any case, English or Hebrew. A result opens the photograph in its
+album. Shared viewers get no search at all rather than a visible-only one: nothing reachable
+without an account was built, so the second half of the checkpoint is withdrawn from this
+slice, not met. AI-assisted search is still to come.
+
 ### Phase 11 — AI alt drafts
+
+> **Slice 1 built 2026-11-18, not yet tried on a real photograph.** "Suggest a description"
+> in the photo editor, reviewed before it is saved, written from the photo and only text
+> visitors can already read. Planned in [the alt drafts plan](2026-11-18-ai-alt-drafts.md), which
+> supersedes the key handling below for the first version: the platform's key with a
+> monthly allowance, as the story studio does, and BYOK later.
 An Edge Function takes a photo id, resolves the caller's key (Vault secret for BYOK, or the
 platform key for subscribers), calls the vision model, and writes an AI draft.
 

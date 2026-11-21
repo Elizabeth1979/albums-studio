@@ -1,4 +1,5 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useCallback, useRef, useState } from 'react'
+import { ALT_DRAFTS_PER_MONTH, type AltDraft, draftAlt, settleDraft } from '../lib/altDraft'
 import { type Photo, type TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
 import { ExpandableThumb, toLightboxPhoto } from './ExpandableThumb'
@@ -18,6 +19,8 @@ type PhotoEditorProps = {
     caption?: string
     captionVisibility?: TextVisibility
     alt?: string
+    /** The suggestion the owner chose to use, if she did: decides who wrote the alt text. */
+    altDraft?: string
   }) => Promise<void>
   onAddStory: (input: { body: string; visibility: TextVisibility }) => Promise<void>
   onEditStory: (
@@ -80,6 +83,16 @@ export function PhotoEditor({
   const [caption, setCaption] = useState(photo.caption ?? '')
   const [captionVisibility, setCaptionVisibility] = useState(photo.captionVisibility)
   const [alt, setAlt] = useState(photo.alt ?? '')
+  const altField = useRef<HTMLTextAreaElement>(null)
+  // A suggestion waiting for a decision, and the one she chose to use, which
+  // stays a draft until she saves.
+  const [suggestion, setSuggestion] = useState<AltDraft | null>(null)
+  const [usedDraft, setUsedDraft] = useState<AltDraft | null>(null)
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestError, setSuggestError] = useState<string | null>(null)
+  const [allowance, setAllowance] = useState<{ used: number; limit: number } | null>(null)
+  // Stable, so it runs when the suggestion appears and not on every keystroke after.
+  const focusOnArrival = useCallback((panel: HTMLElement | null) => panel?.focus(), [])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -153,14 +166,66 @@ export function PhotoEditor({
     setSaving(true)
     setError(null)
 
+    // Alt text is sent only when it changed, so saving a caption never touches
+    // who wrote the description already there.
+    const altChanged = alt.trim() !== (photo.alt ?? '')
+
     try {
-      await onSave({ caption, captionVisibility, alt })
+      await onSave({
+        caption,
+        captionVisibility,
+        ...(altChanged ? { alt } : {}),
+        ...(altChanged && usedDraft ? { altDraft: usedDraft.body } : {}),
+      })
       setSaved(true)
+      if (altChanged && usedDraft && alt.trim()) {
+        const accepted = usedDraft
+        setUsedDraft(null)
+        // Bookkeeping only: her words are saved either way. A draft left
+        // unmarked loses its trace back to the save, not the description.
+        settleDraft(accepted.id, 'accepted').catch(() => {})
+      }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Could not save.')
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleSuggest() {
+    setSuggesting(true)
+    setSuggestError(null)
+    setSaved(false)
+
+    try {
+      const draft = await draftAlt(photo.id)
+      setSuggestion(draft)
+      setAllowance({ used: draft.used, limit: draft.limit })
+    } catch (caughtError) {
+      setSuggestError(
+        caughtError instanceof Error ? caughtError.message : 'The photograph could not be described.',
+      )
+    } finally {
+      setSuggesting(false)
+    }
+  }
+
+  function handleUseSuggestion() {
+    if (!suggestion) return
+    setAlt(suggestion.body)
+    setUsedDraft(suggestion)
+    setSuggestion(null)
+    setSaved(false)
+    // Into the box, where it is read and changed like anything typed.
+    altField.current?.focus()
+  }
+
+  function handleDiscardSuggestion() {
+    if (!suggestion) return
+    const discarded = suggestion
+    setSuggestion(null)
+    // Set aside, never deleted. Nothing she can see depends on it.
+    settleDraft(discarded.id, 'rejected').catch(() => {})
   }
 
   return (
@@ -311,6 +376,7 @@ export function PhotoEditor({
           <label htmlFor="photo-alt">
             <span>Alt text</span>
             <textarea
+              ref={altField}
               id="photo-alt"
               name="photo-alt"
               value={alt}
@@ -326,6 +392,63 @@ export function PhotoEditor({
             not that it is a photo. Always shown to people who need it, whatever you
             chose for the caption.
           </p>
+
+          <div className="alt-suggest">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleSuggest}
+              disabled={suggesting}
+            >
+              {suggesting
+                ? 'Describing…'
+                : alt.trim()
+                  ? 'Suggest a different description'
+                  : 'Suggest a description'}
+            </button>
+            <span className="field-hint">
+              Uses AI. Up to {ALT_DRAFTS_PER_MONTH} a month. Only text visitors can already see is
+              sent with the photo.
+            </span>
+          </div>
+
+          {suggestError && (
+            <p className="form-message error" role="alert">
+              {suggestError}
+            </p>
+          )}
+
+          {suggestion && (
+            // Focus comes here when the suggestion arrives: the button that asked
+            // for it was disabled while it waited, so focus had nowhere to stay.
+            // Landing on the panel reads its name and everything that describes
+            // it, the description and what is left this month included, and puts
+            // "Use this" one Tab away.
+            <section
+              className="alt-suggestion"
+              aria-labelledby="alt-suggestion-title"
+              aria-describedby="alt-suggestion-body alt-suggestion-hint"
+              tabIndex={-1}
+              ref={focusOnArrival}
+            >
+              <h4 id="alt-suggestion-title">Suggested description</h4>
+              <p className="alt-suggestion-body" id="alt-suggestion-body">
+                {suggestion.body}
+              </p>
+              <p className="field-hint" id="alt-suggestion-hint">
+                Check that it says what you see. It is not saved yet.
+                {allowance && ` ${allowance.limit - allowance.used} of ${allowance.limit} left this month.`}
+              </p>
+              <div className="alt-suggestion-actions">
+                <button className="secondary-button" type="button" onClick={handleUseSuggestion}>
+                  Use this
+                </button>
+                <button className="text-button" type="button" onClick={handleDiscardSuggestion}>
+                  Discard
+                </button>
+              </div>
+            </section>
+          )}
 
           <div className="photo-editor-actions">
             <button className="primary-button" type="submit" disabled={saving}>

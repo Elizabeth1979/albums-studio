@@ -20,7 +20,8 @@
 -- that summary is the result to act on; the "ERROR" line above it is expected.
 --
 -- Keep it matched to the client. Every column listed below is one that
--- src/lib/albums.ts, src/lib/photos.ts or src/lib/stories.ts sends, and a
+-- src/lib/albums.ts, src/lib/photos.ts, src/lib/stories.ts, src/lib/albumStory.ts
+-- or src/lib/altDraft.ts sends, and a
 -- column added there needs adding here in the same change.
 
 do $$
@@ -35,6 +36,7 @@ declare
   story_a uuid;
   draft_a uuid;
   question_a uuid;
+  draft_alt uuid;
   token uuid;
   old_token uuid;
   new_token uuid;
@@ -206,6 +208,82 @@ begin
     log := log || E'\n  ok    a question cannot be rewritten after the fact';
   end;
 
+  -- Phase 11: alt text suggested for one photograph, written by the `alt-draft`
+  -- function with the service role. Only the owner's Save puts it in photos.alt.
+  reset role;
+  begin
+    insert into public.ai_drafts (owner_id, album_id, draft_type, body, model)
+    values (alice, album_a, 'alt', 'A photograph of nothing in particular.', 'probe');
+    log := log || E'\n  FAIL  an alt draft was kept without its photograph'; fails := fails + 1;
+  exception when check_violation then
+    log := log || E'\n  ok    an alt draft needs its photograph';
+  end;
+
+  begin
+    insert into public.ai_drafts (owner_id, album_id, photo_id, draft_type, body, model)
+    values (alice, album_a, gen_random_uuid(), 'alt', 'Someone else''s photograph.', 'probe');
+    log := log || E'\n  FAIL  an alt draft pointed at a photograph that is not hers'; fails := fails + 1;
+  exception when foreign_key_violation then
+    log := log || E'\n  ok    an alt draft can only describe her own photograph';
+  end;
+
+  insert into public.ai_drafts (owner_id, album_id, photo_id, draft_type, input_refs, body, model, input_tokens, output_tokens)
+  values (alice, album_a, photo_a, 'alt', jsonb_build_array(photo_a), 'Two children on a jetty at sunset.', 'probe', 1200, 30)
+  returning id into draft_alt;
+  set local role authenticated;
+
+  begin
+    update public.ai_drafts set status = 'accepted' where id = draft_alt;
+    update public.photos set alt = 'Two children on a jetty at sunset.', alt_source = 'ai'
+    where id = photo_a;
+    select alt_source into seen from public.photos where id = photo_a;
+    if seen = 'ai' then
+      log := log || E'\n  ok    accept an alt draft and save it as the AI''s words';
+    else
+      log := log || E'\n  FAIL  saved alt text lost its authorship: ' || coalesce(seen, 'null'); fails := fails + 1;
+    end if;
+  exception when others then
+    log := log || E'\n  FAIL  accept an alt draft -> ' || sqlerrm; fails := fails + 1;
+  end;
+
+  -- The cost log: written by the Edge Function, read by the owner's AI costs panel.
+  begin
+    insert into public.ai_calls (owner_id, feature, outcome, model, price_list)
+    values (alice, 'album_story', 'ok', 'probe', 'probe');
+    log := log || E'\n  FAIL  the client could write to the cost log'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    the client cannot write to the cost log';
+  end;
+
+  reset role;
+  insert into public.ai_calls (
+    owner_id, feature, album_id, draft_id, outcome, model, served_model, items,
+    input_tokens, cache_write_tokens, cache_read_tokens, output_tokens, cost_usd, price_list, duration_ms
+  ) values (
+    alice, 'album_story', album_a, draft_a, 'ok', 'claude-sonnet-5-5', 'claude-sonnet-5-5', 20,
+    23106, 0, 0, 464, 0.050852, 'anthropic-2026-11-03', 18000
+  );
+  set local role authenticated;
+
+  -- Exactly the columns src/lib/aiCosts.ts asks for.
+  seen := null;
+  begin
+    select cost_usd::text into seen
+    from (
+      select id, feature, album_id, outcome, model, served_model, items, input_tokens,
+             cache_write_tokens, cache_read_tokens, output_tokens, cost_usd, price_list,
+             duration_ms, created_at
+      from public.ai_calls where draft_id = draft_a
+    ) as panel_row;
+    if seen = '0.050852' then
+      log := log || E'\n  ok    read her own cost log, every column the panel shows';
+    else
+      log := log || E'\n  FAIL  her cost log read back as ' || coalesce(seen, 'nothing'); fails := fails + 1;
+    end if;
+  exception when others then
+    log := log || E'\n  FAIL  read her cost log -> ' || sqlerrm; fails := fails + 1;
+  end;
+
   begin
     insert into public.photo_stories (photo_id, owner_id, body, visibility)
     values (photo_a, alice, 'The long version.', 'hidden')
@@ -267,6 +345,21 @@ begin
     log := log || E'\n  ok    cannot see the studio''s questions to her';
   else
     log := log || E'\n  FAIL  can see the studio''s questions to her'; fails := fails + 1;
+  end if;
+
+  seen_id := null;
+  select id into seen_id from public.ai_drafts where id = draft_alt;
+  if seen_id is null then
+    log := log || E'\n  ok    cannot see her alt draft';
+  else
+    log := log || E'\n  FAIL  can see her alt draft'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.ai_calls where owner_id = alice;
+  if seen_count = 0 then
+    log := log || E'\n  ok    cannot see her AI costs';
+  else
+    log := log || E'\n  FAIL  can see her AI costs'; fails := fails + 1;
   end if;
 
   begin
@@ -351,6 +444,13 @@ begin
   end;
 
   begin
+    select count(*) into seen_count from public.ai_calls;
+    log := log || E'\n  FAIL  can read the cost log through the Data API'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    cannot read the cost log through the Data API';
+  end;
+
+  begin
     select taken_at::text into seen from public.photos where id = photo_a;
     log := log || E'\n  FAIL  can read capture times through the Data API'; fails := fails + 1;
   exception when insufficient_privilege then
@@ -372,6 +472,14 @@ begin
     log := log || E'\n  ok    a hidden caption is withheld from a share link';
   else
     log := log || E'\n  FAIL  a hidden caption reached a share link'; fails := fails + 1;
+  end if;
+
+  -- Alt text is always delivered, whoever wrote it, because it exists to be read out.
+  select alt into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = 'Two children on a jetty at sunset.' then
+    log := log || E'\n  ok    saved AI alt text reaches a share link';
+  else
+    log := log || format(E'\n  FAIL  alt text reached a share link as %L', seen); fails := fails + 1;
   end if;
 
   reset role;
@@ -526,6 +634,93 @@ begin
   end if;
 
   ---------------------------------------------------------------------------
+  -- Phase 10: the owner searches her own words, hidden ones included.
+  ---------------------------------------------------------------------------
+  log := log || E'\n\nsearch';
+
+  reset role;
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', alice, 'role', 'authenticated')::text, true);
+
+  update public.photos
+  set caption = 'Grandma Ruth at the יום הולדת cake', caption_visibility = 'hidden'
+  where id = photo_a;
+  insert into public.photo_stories (photo_id, owner_id, body, visibility)
+  values (photo_a, alice, E'Who lit the candles?\nUncle Avi, 100% of them', 'hidden');
+
+  select count(*) into seen_count from public.search_library('ruth CAKE')
+  where photo_id = photo_a and field = 'caption';
+  if seen_count = 1 then
+    log := log || E'\n  ok    finds her hidden caption, every word, any case';
+  else
+    log := log || E'\n  FAIL  hidden caption not found (' || seen_count || ')'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('הולדת');
+  if seen_count = 1 then
+    log := log || E'\n  ok    finds a Hebrew word';
+  else
+    log := log || E'\n  FAIL  Hebrew word found ' || seen_count || ' times'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('avi candles')
+  where field = 'story_note';
+  if seen_count = 1 then
+    log := log || E'\n  ok    finds an answered question in a hidden story note';
+  else
+    log := log || E'\n  FAIL  story note not found (' || seen_count || ')'; fails := fails + 1;
+  end if;
+
+  -- A filter that is not filtering only shows when the answer should be empty.
+  select count(*) into seen_count from public.search_library('zebra-nowhere');
+  if seen_count = 0 then
+    log := log || E'\n  ok    a word she never wrote finds nothing';
+  else
+    log := log || E'\n  FAIL  a word she never wrote found ' || seen_count; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('ruth zebra-nowhere');
+  if seen_count = 0 then
+    log := log || E'\n  ok    every word must match, not any';
+  else
+    log := log || E'\n  FAIL  one matching word was enough'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('%%');
+  if seen_count = 0 then
+    log := log || E'\n  ok    a typed %% is two characters, not a wildcard';
+  else
+    log := log || E'\n  FAIL  %% matched as a wildcard'; fails := fails + 1;
+  end if;
+
+  select count(*) into seen_count from public.search_library('100%');
+  if seen_count = 1 then
+    log := log || E'\n  ok    and 100% still finds the note that says it';
+  else
+    log := log || E'\n  FAIL  100% found ' || seen_count; fails := fails + 1;
+  end if;
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', bob, 'role', 'authenticated')::text, true);
+  select count(*) into seen_count from public.search_library('ruth');
+  if seen_count = 0 then
+    log := log || E'\n  ok    another signed-in person finds none of it';
+  else
+    log := log || E'\n  FAIL  another person found her words'; fails := fails + 1;
+  end if;
+
+  reset role;
+  set local role anon;
+  perform set_config('request.jwt.claims', null, true);
+  begin
+    perform public.search_library('ruth');
+    log := log || E'\n  FAIL  a visitor could call search'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a visitor cannot search at all';
+  end;
+
+  ---------------------------------------------------------------------------
   -- Deletes, which are the owner's alone.
   ---------------------------------------------------------------------------
   log := log || E'\n\nowner removing her own things';
@@ -542,6 +737,14 @@ begin
   exception when others then
     log := log || E'\n  FAIL  delete -> ' || sqlerrm; fails := fails + 1;
   end;
+
+  -- The album's AI calls were paid for whether or not it still exists.
+  select count(*) into seen_count from public.ai_calls where owner_id = alice and album_id is null;
+  if seen_count = 1 then
+    log := log || E'\n  ok    the cost of an AI call outlives the album it was for';
+  else
+    log := log || E'\n  FAIL  deleting the album took its AI costs with it (' || seen_count || ')'; fails := fails + 1;
+  end if;
 
   reset role;
 

@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import { announceAiCall } from './aiCosts'
 import { supabase } from './supabase'
 
 /**
@@ -10,6 +11,8 @@ import { supabase } from './supabase'
  */
 export async function callStudio<T>(name: string, body: object, fallback: string): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body })
+  // Refused or not, the call may have been paid for and logged: an open cost panel re-reads.
+  announceAiCall()
 
   if (error) {
     if (error instanceof FunctionsHttpError) {

@@ -141,14 +141,29 @@ AI cost.
   captions appear, the owner's included, because a slideshow is shown to other people; story
   notes under a photograph are left out. Draws the stored image and fetches one photograph
   ahead, never the album. No music or export yet (Phase 9's later slices).
-- Next: confirming Phase 5's checkpoint on the owner's own album and phone. Phases 1 to 4, 6
-  and 7 are done and deployed.
+- The library has a search box (Phase 10, first slice). It finds photographs by what the
+  owner has written: album titles, descriptions and stories, captions and story notes,
+  hidden ones included, and alt text. Every word typed must appear in the same piece of text;
+  case is ignored and Hebrew works, because matching is plain text with no English stemming.
+  A result opens the photograph in its album (`/albums/:slug?photo=:id`). It runs as one
+  database function, `search_library`, under the owner's own permissions, and visitors cannot
+  call it. No AI and no cost. See the 2026-11-20 session.
+- A photograph's alt text can be suggested by AI from the photo and the text visitors can
+  already read, through the `alt-draft` Edge Function. The suggestion is a draft until the
+  owner saves it; 50 a month free. Built 2026-11-18, not yet tried on a real photograph.
+- Next: confirming Phase 5's checkpoint on the owner's own album and phone, and trying alt
+  suggestions on real photographs before whole-album alt text (slice 2 of
+  [the alt drafts plan](plans/2026-11-18-ai-alt-drafts.md)). Phases 1 to 4, 6 and 7 are done
+  and deployed.
 
 ## Plans
 
 - [Albums Studio roadmap](plans/2026-08-15-albums-studio-roadmap.md) — active phased build
   plan and open product decisions, including the recorded evaluation of free and local
   models for alt text, semantic search, and faces.
+- [AI alt text drafts](plans/2026-11-18-ai-alt-drafts.md) — Phase 11 built on the story
+  studio: suggested descriptions the owner reviews before saving, made only from text that
+  is already public, in two slices (one photo, then a whole album).
 
 ## Research
 
@@ -220,6 +235,9 @@ AI cost.
 - [The first slideshow](sessions/2026-11-18-the-first-slideshow.md) — Phase 9's first
   slice: a timed slideshow in the existing photo viewer, published captions only even for the
   owner, one photograph fetched ahead to stay within a phone's memory.
+- [What each AI feature costs](sessions/2026-11-18-what-each-ai-feature-costs.md) — every
+  paid AI call is logged with its feature, tokens and cost at that day's prices, declined
+  ones included, and a testing-mode panel shows the totals and averages feature by feature.
 - [The first AI draft](sessions/2026-11-18-the-first-ai-draft.md) — album stories drafted
   by Claude from photographs and the owner's words, kept as drafts until used, five free a
   month on the platform's key, with the real cost per draft still to be measured.
@@ -259,5 +277,9 @@ AI cost.
   full-size images to studio tiles, collapsed the drop zone for albums that already hold
   photos, and withdrew the masonry/grid choice after finding the two indistinguishable and
   masonry's reading order wrong.
+- [Search her own words](sessions/2026-11-20-search-her-own-words.md) — Phase 10's first
+  slice: one search box over everything the owner has written, hidden text included, as an
+  owner-only database function; why plain matching over English text search, and why the
+  phone budget moved.
 
 When adding or materially changing a document under `docs/`, update its entry here.
