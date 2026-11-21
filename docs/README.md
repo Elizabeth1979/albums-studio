@@ -40,7 +40,10 @@ AI cost.
   On trial alongside it: the Accessibility Evidence Engine checks every page the end-to-end
   tests load, each test importing `test` from `@aee/cli/test` rather than `@playwright/test`,
   and keeps one comment on each pull request. It only reports; a failing test is still the
-  only thing that fails CI.
+  only thing that fails CI. Keep `@axe-core/playwright` on the version the engine pins
+  (engine 0.9.0 pins 4.14.0), so both checks apply the same rules. axe 4.14 turned on
+  WCAG 2.5.3 Label in Name: a control's `aria-label` must contain its visible text, or a
+  voice-control user who says what they see cannot reach it.
 - A secondary action written as text — Rename album, Edit description, Sign out, Cancel — is
   brown and underlined, never bold ink alone. Colour and underline together, because colour
   by itself fails WCAG 1.4.1 and because the album header sets these inline beside the words

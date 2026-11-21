@@ -42,7 +42,7 @@ describe('AuthForm', () => {
     const region = screen.getByRole('status')
     expect(region).toBeEmptyDOMElement()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show account creation form' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Elizabeth' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.com' } })
     fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'password123' } })
@@ -97,7 +97,7 @@ describe('AuthForm', () => {
     renderAuthForm()
     expect(screen.getByRole('button', { name: 'Forgot password?' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show account creation form' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     expect(screen.queryByRole('button', { name: 'Forgot password?' })).not.toBeInTheDocument()
   })
 
@@ -118,7 +118,7 @@ describe('AuthForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show password' }))
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show account creation form' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     expect(screen.getByLabelText(/^Password/)).toHaveAttribute('type', 'password')
   })
 

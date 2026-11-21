@@ -180,7 +180,7 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
         >
           {showingIntro && intro && (
             <div className="lightbox-intro">
-              <p className="lightbox-intro-title">{intro.title}</p>
+              <h2 className="lightbox-intro-title">{intro.title}</h2>
               {intro.text
                 .split(/\n\s*\n/)
                 .map((paragraph) => paragraph.trim())

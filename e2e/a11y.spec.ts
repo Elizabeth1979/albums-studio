@@ -43,7 +43,7 @@ test.describe('accessibility', () => {
   test('create-account form', async ({ page }) => {
     await stubSupabase(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'Show account creation form' }).click()
+    await page.getByRole('button', { name: 'Create account' }).click()
     await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible()
 
     await expectNoViolations(page)

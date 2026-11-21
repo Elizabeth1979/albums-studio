@@ -28,7 +28,7 @@ export function AppHeader({ identity, onSignOut }: AppHeaderProps) {
   return (
     <>
       <header className="app-header">
-        <a className="wordmark" href="/" aria-label="Albums Studio home">
+        <a className="wordmark" href="/">
           <span className="wordmark-mark" aria-hidden="true">AS</span>
           Albums Studio
         </a>
