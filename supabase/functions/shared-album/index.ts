@@ -140,7 +140,8 @@ Deno.serve(async (request) => {
     const { bytes } = removeLocation(new Uint8Array(await stored.data.arrayBuffer()))
     const extension = path.split('.').pop()?.toLowerCase() ?? 'jpg'
 
-    return new Response(bytes, {
+    // A copy with its own buffer, so the whole buffer is exactly the file.
+    return new Response(bytes.buffer as ArrayBuffer, {
       headers: {
         ...CORS,
         'Content-Type': MIME_BY_EXTENSION[extension] ?? 'application/octet-stream',
