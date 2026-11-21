@@ -17,8 +17,8 @@ written, across every album, with no AI and no cost.
 Verified against the hosted project: migration recorded as `20261118125542`; `anon` cannot
 execute it, `authenticated` can; a trial run inside a rolled-back transaction found real text
 in the owner's own album; security and performance advisors show nothing new. The
-`client_paths.sql` checks for search were written and added, but the full run had not been
-confirmed when this was written: the approval prompt for it timed out twice.
+full `client_paths.sql` run on 2026-11-21, after the alt-text and cost-log checks had also
+landed, reported 0 of 71 failed, including the nine search checks.
 
 ## Decisions and why
 
@@ -57,4 +57,3 @@ confirmed when this was written: the approval prompt for it timed out twice.
 ## Not confirmed
 
 - The owner has not tried it on her own albums and phone.
-- The `client_paths.sql` run including the new search checks (see above).

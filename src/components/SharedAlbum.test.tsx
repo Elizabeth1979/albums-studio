@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SharedAlbum } from './SharedAlbum'
+import { DISPLAY_SIZE, FULL_SIZE, THUMBNAIL_SIZE } from '../lib/imaging/process'
 
 const { sharingApi } = vi.hoisted(() => ({
   sharingApi: { loadSharedAlbum: vi.fn() },
@@ -45,6 +46,45 @@ describe('a visitor with no account', () => {
     expect(
       await screen.findByRole('img', { name: 'A long table set for twelve' }),
     ).toBeInTheDocument()
+  })
+
+  it('draws a tile from the display copy, offering every size', async () => {
+    // Without the display copy a phone took the 2000px image for every tile.
+    sharingApi.loadSharedAlbum.mockResolvedValue({
+      ...ALBUM,
+      photos: [
+        {
+          ...ALBUM.photos[0],
+          displayUrl: 'https://signed/1-display',
+          fullUrl: 'https://signed/1-full',
+        },
+      ],
+    })
+
+    render(<SharedAlbum token="the-token" />)
+
+    const image = await screen.findByRole('img', { name: 'A long table set for twelve' })
+    expect(image).toHaveAttribute('src', 'https://signed/1-display')
+    expect(image).toHaveAttribute(
+      'srcset',
+      `https://signed/1 ${THUMBNAIL_SIZE}w, https://signed/1-display ${DISPLAY_SIZE}w, https://signed/1-full ${FULL_SIZE}w`,
+    )
+  })
+
+  it('still draws an older photograph that has no display copy', async () => {
+    sharingApi.loadSharedAlbum.mockResolvedValue({
+      ...ALBUM,
+      photos: [{ ...ALBUM.photos[0], displayUrl: null, fullUrl: 'https://signed/1-full' }],
+    })
+
+    render(<SharedAlbum token="the-token" />)
+
+    const image = await screen.findByRole('img', { name: 'A long table set for twelve' })
+    expect(image).toHaveAttribute('src', 'https://signed/1-full')
+    expect(image).toHaveAttribute(
+      'srcset',
+      `https://signed/1 ${THUMBNAIL_SIZE}w, https://signed/1-full ${FULL_SIZE}w`,
+    )
   })
 
   it('leaves an undescribed photo out of the accessibility tree', async () => {

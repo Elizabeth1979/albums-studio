@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { UNREACHABLE_MESSAGE, describeAuthError } from './authErrors'
+import { OFFLINE_MESSAGE, UNREACHABLE_MESSAGE, describeAuthError } from './authErrors'
 
 describe('describeAuthError', () => {
   it('explains an email rate limit and repeats the wait', () => {
@@ -39,9 +39,29 @@ describe('describeAuthError', () => {
 
     for (const message of browserWordings) {
       expect(
-        describeAuthError({ name: 'AuthRetryableFetchError', message, status: 0 }, 'fallback'),
+        describeAuthError(
+          { name: 'AuthRetryableFetchError', message, status: 0 },
+          'fallback',
+          true,
+        ),
       ).toBe(UNREACHABLE_MESSAGE)
     }
+  })
+
+  it('says the device is offline when the browser knows it is', () => {
+    expect(
+      describeAuthError(
+        { name: 'AuthRetryableFetchError', message: 'Failed to fetch', status: 0 },
+        'fallback',
+        false,
+      ),
+    ).toBe(OFFLINE_MESSAGE)
+  })
+
+  it('keeps a server error in its own words even when offline', () => {
+    expect(
+      describeAuthError({ message: 'Invalid login credentials', status: 400 }, 'fallback', false),
+    ).toBe('Invalid login credentials')
   })
 
   it('leaves a server that answered with an error in its own words', () => {
