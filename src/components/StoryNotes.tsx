@@ -1,6 +1,7 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 import { joinDictated } from '../lib/dictation'
 import { DictateButton } from './DictateButton'
+import { LiveStatus } from './LiveStatus'
 import type { TextVisibility } from '../lib/photos'
 import type { Story } from '../lib/stories'
 import { useReturnFocus } from './useReturnFocus'
@@ -30,15 +31,21 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
+  // Said once a change has gone through: the list redraws in place, so without
+  // this a screen reader hears nothing after "Save story" or "Delete for good".
+  const [notice, setNotice] = useState('')
+  const heading = useRef<HTMLHeadingElement>(null)
   const editOpener = useReturnFocus(editingId)
   const deleteOpener = useReturnFocus(confirmingDelete)
 
-  async function run(action: () => Promise<void>, fallback: string) {
+  async function run(action: () => Promise<void>, fallback: string, done: string) {
     setPending(true)
     setError(null)
+    setNotice('')
 
     try {
       await action()
+      setNotice(done)
       return true
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : fallback)
@@ -56,7 +63,11 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
       return
     }
 
-    const added = await run(() => onAdd({ body, visibility }), 'Could not save the story.')
+    const added = await run(
+      () => onAdd({ body, visibility }),
+      'Could not save the story.',
+      'Story saved.',
+    )
 
     if (added) {
       setBody('')
@@ -70,13 +81,19 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
       return
     }
 
-    const edited = await run(() => onEdit(id, { body: draft }), 'Could not save the story.')
+    const edited = await run(
+      () => onEdit(id, { body: draft }),
+      'Could not save the story.',
+      'Story updated.',
+    )
     if (edited) setEditingId(null)
   }
 
   return (
     <section className="story-notes" aria-labelledby="story-notes-title">
-      <h4 id="story-notes-title">Story notes</h4>
+      <h4 id="story-notes-title" ref={heading} tabIndex={-1}>
+        Story notes
+      </h4>
       <p className="field-hint">
         The longer version: what happened, who was there, why it mattered. A photo can
         hold several.
@@ -139,6 +156,9 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                               visibility: story.visibility === 'hidden' ? 'visible' : 'hidden',
                             }),
                           'Could not change who can read this.',
+                          story.visibility === 'hidden'
+                            ? 'Anyone you share the album with can read this story now.'
+                            : 'Only you can read this story now.',
                         )
                       }
                     >
@@ -163,9 +183,16 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
                           className="danger-button"
                           type="button"
                           disabled={pending}
-                          onClick={() =>
-                            run(() => onDelete(story.id), 'Could not delete the story.')
-                          }
+                          onClick={async () => {
+                            const deleted = await run(
+                              () => onDelete(story.id),
+                              'Could not delete the story.',
+                              'Story deleted.',
+                            )
+                            // The button pressed has gone with its story; land on
+                            // the section rather than lose focus to the page.
+                            if (deleted) heading.current?.focus()
+                          }}
                         >
                           Delete for good
                         </button>
@@ -246,6 +273,8 @@ export function StoryNotes({ stories, onAdd, onEdit, onDelete }: StoryNotesProps
           {pending ? 'Saving…' : 'Save story'}
         </button>
       </form>
+
+      <LiveStatus>{notice && <p className="form-message success">{notice}</p>}</LiveStatus>
 
       {error && (
         <p className="form-message error" role="alert">

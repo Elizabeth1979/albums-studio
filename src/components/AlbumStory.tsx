@@ -11,6 +11,7 @@ import { type Photo, listPhotos, signedUrls } from '../lib/photos'
 import { joinDictated } from '../lib/dictation'
 import { DictateButton } from './DictateButton'
 import { LiveStatus } from './LiveStatus'
+import { useReturnFocus } from './useReturnFocus'
 
 type AlbumStoryProps = {
   album: Album
@@ -47,6 +48,11 @@ function paragraphs(text: string): string[] {
  */
 export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
+  // The draft and edit forms take the place of the buttons that open them, so
+  // focus goes back to whichever was pressed once the form closes.
+  const storyOpener = useReturnFocus(
+    stage.kind === 'idle' ? null : stage.kind === 'editing' ? 'edit' : 'draft',
+  )
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -166,7 +172,12 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
             </p>
           )}
           <div className="album-story-actions">
-            <button className="secondary-button" type="button" onClick={() => void openForm()}>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void openForm()}
+              ref={storyOpener('draft')}
+            >
               {album.story ? 'Draft a new story with AI' : 'Draft the story with AI'}
             </button>
             {album.story && (
@@ -174,6 +185,7 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
                 className="text-button"
                 type="button"
                 onClick={() => setStage({ kind: 'editing', text: album.story ?? '' })}
+                ref={storyOpener('edit')}
               >
                 Edit story
               </button>
@@ -194,6 +206,8 @@ export function AlbumStory({ album, onChangeStory }: AlbumStoryProps) {
               rows={3}
               placeholder="Our first trip with the kids. The rain on day two was the best part."
               disabled={stage.kind === 'drafting'}
+              // The button pressed has gone; the cursor goes where the writing starts.
+              autoFocus
             />
           </label>
           <DictateButton

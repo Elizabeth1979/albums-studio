@@ -159,7 +159,11 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
               <span className="visually-hidden">slideshow</span>
             </button>
           )}
-          <span className="lightbox-position">{position}</span>
+          {/* Hidden from a screen reader here because the slide says it, inside
+              the live region, where stepping makes it heard. */}
+          <span className="lightbox-position" aria-hidden="true">
+            {position}
+          </span>
           <button className="lightbox-close" type="button" onClick={onClose}>
             Close
             {playback && (
@@ -173,11 +177,13 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
 
         <div
           className="lightbox-slide"
-          // Announced when someone steps by hand; silent while it plays by
-          // itself, where a new announcement every few seconds would talk over
-          // everything else. The pattern the WAI carousel guidance gives.
-          aria-live={playback ? (playback.playing ? 'off' : 'polite') : undefined}
+          // Announced when someone steps by hand, in the viewer or a paused
+          // slideshow; silent while it plays by itself, where a new
+          // announcement every few seconds would talk over everything else.
+          // The pattern the WAI carousel guidance gives.
+          aria-live={playback?.playing ? 'off' : 'polite'}
         >
+          <p className="visually-hidden">{position}</p>
           {showingIntro && intro && (
             <div className="lightbox-intro">
               <p className="lightbox-intro-title">{intro.title}</p>

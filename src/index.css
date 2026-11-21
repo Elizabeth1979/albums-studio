@@ -1113,7 +1113,7 @@ textarea:focus-visible {
   margin-top: 1.2rem;
 }
 
-.upload-progress > p {
+.upload-summary {
   margin: 0 0 0.7rem;
   color: #4d4740;
   font-size: 0.88rem;
@@ -2107,6 +2107,11 @@ textarea:focus-visible {
   display: grid;
   gap: 0.9rem;
   justify-items: start;
+}
+
+/* "Story saved." and the like, under the form's button. */
+.story-notes .live-status:not(:empty) {
+  margin-top: 0.9rem;
 }
 
 .story-form > label,

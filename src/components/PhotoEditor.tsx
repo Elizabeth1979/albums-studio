@@ -98,6 +98,16 @@ export function PhotoEditor({
   const [error, setError] = useState<string | null>(null)
   const [settingCover, setSettingCover] = useState(false)
   const [coverError, setCoverError] = useState<string | null>(null)
+  // Set when the owner presses "Use as album cover", spent when the note that
+  // replaces the button appears. Focus moves at that moment rather than after a
+  // timer, which would race the album page marking this photo as the cover.
+  const coverJustSet = useRef(false)
+  const landOnCoverNote = useCallback((note: HTMLParagraphElement | null) => {
+    if (note && coverJustSet.current) {
+      coverJustSet.current = false
+      note.focus()
+    }
+  }, [])
   const [moving, setMoving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const confirmation = useConfirmation()
@@ -141,9 +151,15 @@ export function PhotoEditor({
     setSettingCover(true)
     setCoverError(null)
 
+    // The button pressed is replaced by the note saying this is the cover.
+    // Focus goes there, so a screen reader reads the result instead of falling
+    // silent with focus lost to the page.
+    coverJustSet.current = true
+
     try {
       await onUseAsCover()
     } catch (caughtError) {
+      coverJustSet.current = false
       // Unlike the cover chosen automatically for a new album, this one was
       // asked for. Failing quietly would leave the owner tapping a button that
       // appears to do nothing.
@@ -279,7 +295,7 @@ export function PhotoEditor({
           )}
 
           {isCover ? (
-            <p className="cover-state">
+            <p className="cover-state" ref={landOnCoverNote} tabIndex={-1}>
               <span className="visibility-badge">Album cover</span>
               <em>Shown on this album in your library.</em>
             </p>

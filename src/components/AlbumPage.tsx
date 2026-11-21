@@ -111,34 +111,39 @@ export function AlbumPage({
 
         <div className="album-heading">
           {renaming ? (
-            <form className="rename-form" onSubmit={handleRename}>
-              <label htmlFor="rename-title">
-                <span>Album title</span>
-                <input
-                  id="rename-title"
-                  name="rename-title"
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  maxLength={120}
-                  autoFocus
-                  required
-                />
-              </label>
-              <div className="rename-actions">
-                <button className="primary-button" type="submit" disabled={pending}>
-                  {pending ? 'Saving…' : 'Save title'}
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => setRenaming(false)}
-                  disabled={pending}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <>
+              {/* The visible title becomes the field being edited; the page keeps
+                  its main heading for anyone moving through it by headings. */}
+              <h1 className="visually-hidden">{album.title}</h1>
+              <form className="rename-form" onSubmit={handleRename}>
+                <label htmlFor="rename-title">
+                  <span>Album title</span>
+                  <input
+                    id="rename-title"
+                    name="rename-title"
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    maxLength={120}
+                    autoFocus
+                    required
+                  />
+                </label>
+                <div className="rename-actions">
+                  <button className="primary-button" type="submit" disabled={pending}>
+                    {pending ? 'Saving…' : 'Save title'}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => setRenaming(false)}
+                    disabled={pending}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </>
           ) : (
             <div className="album-title-row">
               <h1>{album.title}</h1>

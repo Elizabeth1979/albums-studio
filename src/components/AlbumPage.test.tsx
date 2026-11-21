@@ -73,6 +73,17 @@ describe('AlbumPage', () => {
     await waitFor(() => expect(onRename).toHaveBeenCalledWith('Lake days'))
   })
 
+  it('keeps a main heading while the title is being edited', () => {
+    // The visible title becomes the field; someone moving by headings still
+    // needs the page to have one.
+    renderAlbumPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Rename album' }))
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Summer by the lake' }),
+    ).toBeInTheDocument()
+  })
+
   it('refuses to save a blank title', async () => {
     const onRename = vi.fn()
 

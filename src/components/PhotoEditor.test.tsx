@@ -48,7 +48,7 @@ function story(overrides: Partial<Story> = {}): Story {
 function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
   const onSave = vi.fn().mockResolvedValue(undefined)
 
-  const result = render(
+  const element = (overrides: typeof props) => (
     <PhotoEditor
       photo={photo()}
       position={1}
@@ -65,11 +65,17 @@ function renderEditor(props: Partial<ComponentProps<typeof PhotoEditor>> = {}) {
       onDelete={vi.fn().mockResolvedValue(undefined)}
       onDownloadOriginal={null}
       onClose={vi.fn()}
-      {...props}
-    />,
+      {...overrides}
+    />
   )
+  const result = render(element(props))
 
-  return { ...result, onSave }
+  return {
+    ...result,
+    onSave,
+    /** Renders again with these props changed, as the album page would. */
+    update: (changes: typeof props) => result.rerender(element({ ...props, ...changes })),
+  }
 }
 
 describe('captions and alt text', () => {
@@ -115,13 +121,16 @@ describe('captions and alt text', () => {
 
   it('confirms a save, out loud', async () => {
     renderEditor()
-    const region = await screen.findByRole('status')
-    expect(region).toBeEmptyDOMElement()
+    // Two regions: this one, and the story notes' own.
+    const regions = await screen.findAllByRole('status')
+    for (const region of regions) expect(region).toBeEmptyDOMElement()
 
     fireEvent.change(screen.getByLabelText('Caption'), { target: { value: 'Dinner' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(region).toHaveTextContent('Saved.'))
+    await waitFor(() =>
+      expect(regions.map((region) => region.textContent)).toContain('Saved.'),
+    )
   })
 
   it('reports a refused save without losing what was typed', async () => {
@@ -163,6 +172,20 @@ describe('choosing the album cover', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use as album cover' }))
 
     await waitFor(() => expect(onUseAsCover).toHaveBeenCalled())
+  })
+
+  it('lands on the note that it is now the cover, since the button pressed has gone', async () => {
+    const onUseAsCover = vi.fn().mockResolvedValue(undefined)
+    const { update } = renderEditor({ onUseAsCover })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use as album cover' }))
+    await waitFor(() => expect(onUseAsCover).toHaveBeenCalled())
+    // The album page answers by marking this photo as the cover.
+    update({ isCover: true })
+
+    await waitFor(() =>
+      expect(screen.getByText('Album cover').closest('p')).toHaveFocus(),
+    )
   })
 
   it('says so instead when this photo is already the cover', async () => {
@@ -389,6 +412,35 @@ describe('story notes', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }))
     await waitFor(() => expect(onDeleteStory).toHaveBeenCalledWith('story-1'))
+  })
+
+  it('says a saved story out loud', async () => {
+    renderEditor()
+
+    fireEvent.change(screen.getByLabelText('Add a story'), { target: { value: 'A long day.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save story' }))
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').map((region) => region.textContent)).toContain(
+        'Story saved.',
+      ),
+    )
+  })
+
+  it('lands on the story notes after a delete, and says it is gone', async () => {
+    // The button pressed goes with its story. Left alone, focus falls to the
+    // page and a keyboard user starts again from the top.
+    renderEditor({ stories: [story()] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete for good' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Story notes' })).toHaveFocus(),
+    )
+    expect(screen.getAllByRole('status').map((region) => region.textContent)).toContain(
+      'Story deleted.',
+    )
   })
 
   it('lets the owner back out of a delete', async () => {
