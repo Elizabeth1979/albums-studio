@@ -33,7 +33,11 @@ announcing makes a screen reader noisier, which is a harm of its own.
   photos has nothing written about it yet", the photo hint. These vary between runs with the
   machine's speed, which is the sign that they are timing, not behaviour.
 - **The slideshow's counter while it plays by itself**: silent on purpose (WAI carousel
-  guidance, and the 2026-11-18 slideshow log).
+  guidance, and the 2026-11-18 slideshow log). AEE's report on the first push of this work
+  did surface one real fault at that edge: a step taken *by hand* while it plays was silent
+  too. A separate polite region now says where a hand step landed ("3 of 5: The pier"); the
+  timer's steps stay silent. AEE will go on flagging the slide text itself, which is correct
+  behaviour.
 - **The search box appearing after the first album**: nothing opened it; there is now
   something to search.
 - **"2 of up to 20 chosen."**: each checkbox already says whether it is ticked.
