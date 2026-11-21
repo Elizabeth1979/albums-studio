@@ -116,7 +116,7 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink, onResetRequest }: Au
   return (
     <main className="auth-shell">
       <section className="auth-intro" aria-labelledby="intro-title">
-        <a className="wordmark wordmark-light" href="/" aria-label="Albums Studio home">
+        <a className="wordmark wordmark-light" href="/">
           <span className="wordmark-mark" aria-hidden="true">AS</span>
           Albums Studio
         </a>
@@ -154,7 +154,6 @@ export function AuthForm({ onSignIn, onSignUp, onMagicLink, onResetRequest }: Au
             <button
               className={isSignUp ? 'auth-tab active' : 'auth-tab'}
               type="button"
-              aria-label="Show account creation form"
               aria-pressed={isSignUp}
               onClick={() => changeMode('sign-up')}
             >

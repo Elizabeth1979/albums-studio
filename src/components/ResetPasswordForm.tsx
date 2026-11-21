@@ -39,7 +39,7 @@ export function ResetPasswordForm({ onSetPassword, onCancel }: ResetPasswordForm
   return (
     <main className="auth-shell">
       <section className="auth-intro" aria-labelledby="intro-title">
-        <a className="wordmark wordmark-light" href="/" aria-label="Albums Studio home">
+        <a className="wordmark wordmark-light" href="/">
           <span className="wordmark-mark" aria-hidden="true">AS</span>
           Albums Studio
         </a>
