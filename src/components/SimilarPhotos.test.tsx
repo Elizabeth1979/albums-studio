@@ -105,10 +105,12 @@ describe('SimilarPhotos', () => {
     const image = () => dialog.querySelector('img.lightbox-image')
 
     expect(image()).toHaveAttribute('src', 'full:photo-2')
-    expect(within(dialog).getByText('2 of 2')).toBeInTheDocument()
+    // Said where stepping makes it heard: inside the live region.
+    expect(dialog.querySelector('[aria-live="polite"]')).toHaveTextContent('2 of 2')
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Next →' }))
     expect(image()).toHaveAttribute('src', 'full:photo-1')
+    expect(dialog.querySelector('[aria-live="polite"]')).toHaveTextContent('1 of 2')
   })
 })
 

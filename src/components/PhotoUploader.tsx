@@ -1,5 +1,6 @@
 import { type ChangeEvent, type DragEvent, useId, useState } from 'react'
 import { UNIVERSAL_FORMATS } from '../lib/imaging/formats'
+import { LiveStatus } from './LiveStatus'
 import type { UploadItem } from '../lib/uploads'
 
 type PhotoUploaderProps = {
@@ -109,51 +110,60 @@ export function PhotoUploader({
         </p>
       </div>
 
-      {items.length > 0 && (
-        <div className="upload-progress">
-          <p aria-live="polite">
-            {busy
-              ? `Adding ${finished} of ${items.length}…`
-              : `Added ${finished} of ${items.length}.`}
-          </p>
-
-          <ul className="upload-list">
-            {items.map((item) => (
-              <li className={`upload-item status-${item.status}`} key={item.id}>
-                <span className="upload-name">{item.fileName}</span>
-                <span className="upload-status">{STATUS_LABELS[item.status]}</span>
-                {item.error && <span className="upload-error">{item.error}</span>}
-                {item.detail && (
-                  // The browser's own words. Nobody wants to read a DOMException,
-                  // but "it may be damaged" was a guess, and when the guess is
-                  // wrong this is the only thing that says so.
-                  <span className="upload-detail">{item.detail}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-
-          {failed.length > 0 && (
-            <p className="form-message error" role="alert">
-              {failed.length === 1
-                ? '1 photo could not be added.'
-                : `${failed.length} photos could not be added.`}{' '}
-              {failed.every((item) => item.permanent)
-                ? // Not "retrying will not help": for a photo the device would
-                  // not hand over, the reason above says to open it in the
-                  // gallery and add it again, which is precisely retrying.
-                  'See the reason next to each one.'
-                : 'Choosing them again will try once more.'}
+      {/* Always on the page, so the first "Adding 1 of 3…" is heard: a live
+          region created together with its text is said by some screen readers
+          and not others (see LiveStatus). */}
+      <div className={items.length > 0 ? 'upload-progress' : undefined}>
+        <LiveStatus>
+          {items.length > 0 && (
+            <p className="upload-summary">
+              {busy
+                ? `Adding ${finished} of ${items.length}…`
+                : `Added ${finished} of ${items.length}.`}
             </p>
           )}
+        </LiveStatus>
 
-          {settled && (
-            <button className="text-button" type="button" onClick={onDismiss}>
-              Clear this list
-            </button>
-          )}
-        </div>
-      )}
+        {items.length > 0 && (
+          <>
+            <ul className="upload-list">
+              {items.map((item) => (
+                <li className={`upload-item status-${item.status}`} key={item.id}>
+                  <span className="upload-name">{item.fileName}</span>
+                  <span className="upload-status">{STATUS_LABELS[item.status]}</span>
+                  {item.error && <span className="upload-error">{item.error}</span>}
+                  {item.detail && (
+                    // The browser's own words. Nobody wants to read a DOMException,
+                    // but "it may be damaged" was a guess, and when the guess is
+                    // wrong this is the only thing that says so.
+                    <span className="upload-detail">{item.detail}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            {failed.length > 0 && (
+              <p className="form-message error" role="alert">
+                {failed.length === 1
+                  ? '1 photo could not be added.'
+                  : `${failed.length} photos could not be added.`}{' '}
+                {failed.every((item) => item.permanent)
+                  ? // Not "retrying will not help": for a photo the device would
+                    // not hand over, the reason above says to open it in the
+                    // gallery and add it again, which is precisely retrying.
+                    'See the reason next to each one.'
+                  : 'Choosing them again will try once more.'}
+              </p>
+            )}
+
+            {settled && (
+              <button className="text-button" type="button" onClick={onDismiss}>
+                Clear this list
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </section>
   )
 }

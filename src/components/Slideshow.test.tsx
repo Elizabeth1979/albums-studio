@@ -122,6 +122,21 @@ describe('Slideshow', () => {
     expect(slide).toHaveAttribute('aria-live', 'polite')
   })
 
+  it('says where a step by hand landed even while playing, but not the timer’s steps', () => {
+    // Silent while it plays, so it does not talk over everything every few
+    // seconds; but a step someone asked for still has to be heard.
+    render(<Slideshow photos={PHOTOS} title="Lake" story={null} />)
+    const dialog = open()
+    const byHand = () =>
+      [...dialog.querySelectorAll('[aria-live="polite"]')].map((region) => region.textContent)
+
+    act(() => vi.advanceTimersByTime(PHOTO_MS))
+    expect(byHand()).not.toContain('2 of 3: Alt for b')
+
+    fireEvent.keyDown(dialog, { key: 'ArrowRight' })
+    expect(byHand()).toContain('3 of 3: Alt for c')
+  })
+
   it('shows the caption and leaves out per-photo story notes', () => {
     render(
       <Slideshow

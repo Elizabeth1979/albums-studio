@@ -290,5 +290,9 @@ AI cost.
   slice: one search box over everything the owner has written, hidden text included, as an
   owner-only database function; why plain matching over English text search, and why the
   phone budget moved.
+- [Accessibility advisories, real and not](sessions/2026-11-21-accessibility-advisories.md) —
+  seven real faults fixed from AEE's report (silent photo stepping, silent story notes, focus
+  lost after choosing a cover or opening the story form, an unheard upload count, a missing
+  heading and landmark), and why the rest were left as false positives.
 
 When adding or materially changing a document under `docs/`, update its entry here.

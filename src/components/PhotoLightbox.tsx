@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SharedPhoto } from '../lib/sharing'
 import { swipeStep } from '../lib/slideshow'
 import { useModalDialog } from './useModalDialog'
@@ -56,6 +56,11 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
   const showingIntro = open && intro !== null && index === 0
   const photo = open && !showingIntro ? photos[index - offset] : undefined
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+  // The slide a person stepped to by hand while the slideshow plays. The slide
+  // region is silent while it plays, so the timer's steps are not announced;
+  // a step someone asked for is, through a region of its own.
+  const [steppedTo, setSteppedTo] = useState<number | null>(null)
+  const playing = playback?.playing ?? false
 
   // React passes a dialog's close up its own tree, so a lightbox opened from
   // inside another dialog would close that one too without this.
@@ -70,9 +75,11 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
 
       // Wraps, so neither end is a dead button on a phone where the only way
       // back is a small arrow.
-      onGoTo((index + step + slides) % slides)
+      const target = (index + step + slides) % slides
+      if (playing) setSteppedTo(target)
+      onGoTo(target)
     },
-    [index, onGoTo, slides],
+    [index, onGoTo, playing, slides],
   )
 
   // Fetches and decodes the next photograph while this one is on screen, so
@@ -159,7 +166,11 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
               <span className="visually-hidden">slideshow</span>
             </button>
           )}
-          <span className="lightbox-position">{position}</span>
+          {/* Hidden from a screen reader here because the slide says it, inside
+              the live region, where stepping makes it heard. */}
+          <span className="lightbox-position" aria-hidden="true">
+            {position}
+          </span>
           <button className="lightbox-close" type="button" onClick={onClose}>
             Close
             {playback && (
@@ -173,11 +184,13 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
 
         <div
           className="lightbox-slide"
-          // Announced when someone steps by hand; silent while it plays by
-          // itself, where a new announcement every few seconds would talk over
-          // everything else. The pattern the WAI carousel guidance gives.
-          aria-live={playback ? (playback.playing ? 'off' : 'polite') : undefined}
+          // Announced when someone steps by hand, in the viewer or a paused
+          // slideshow; silent while it plays by itself, where a new
+          // announcement every few seconds would talk over everything else.
+          // The pattern the WAI carousel guidance gives.
+          aria-live={playback?.playing ? 'off' : 'polite'}
         >
+          <p className="visually-hidden">{position}</p>
           {showingIntro && intro && (
             <div className="lightbox-intro">
               <h2 className="lightbox-intro-title">{intro.title}</h2>
@@ -214,6 +227,10 @@ export function PhotoLightbox({ photos, index, onClose, onGoTo, playback }: Phot
             </div>
           )}
         </div>
+
+        <p className="visually-hidden" aria-live="polite">
+          {playing && steppedTo === index ? `${position}: ${label}` : ''}
+        </p>
 
         {slides > 1 && (
           <div className="lightbox-steps">

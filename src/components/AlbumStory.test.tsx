@@ -100,6 +100,18 @@ describe('AlbumStory', () => {
     expect(screen.getByRole('status')).toHaveTextContent('The story is on the album.')
   })
 
+  it('puts the cursor in the form it opens, and gives focus back on Cancel', async () => {
+    // The button pressed is replaced by the form; left alone, focus falls to
+    // the page and nothing says a form has opened.
+    render(<AlbumStory album={album()} onChangeStory={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Draft the story with AI' }))
+    expect(screen.getByLabelText(/Anything the story should say/)).toHaveFocus()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: 'Draft the story with AI' })).toHaveFocus()
+  })
+
   it('sets a discarded draft aside without touching the album', async () => {
     draftAlbumStory.mockResolvedValue({ id: 'draft-2', body: 'Not quite right.', used: 2, limit: 5 })
     const onChangeStory = vi.fn()
