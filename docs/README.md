@@ -120,6 +120,9 @@ AI cost.
   The owner reads or rotates the token through `album_share_token` /
   `rotate_album_share_token`; rotation retires every link handed out.
 - Checks run on every push and pull request via `.github/workflows/ci.yml`.
+- `.github/workflows/keep-alive.yml` asks the database one question a day. Supabase pauses a
+  free project after a week with too few requests, and a paused project fails every sign-in.
+  A failed run is GitHub's emailed warning that the database has stopped answering.
 - Every automated test fakes the database: the unit suite mocks the Supabase client and the
   end-to-end suite intercepts the network. `supabase/checks/client_paths.sql` is the
   counterweight — it runs the client's real writes against the real schema as `authenticated`
