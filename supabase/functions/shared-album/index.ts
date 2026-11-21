@@ -63,6 +63,7 @@ type SharedRow = {
   photo_id: string | null
   storage_path: string | null
   thumbnail_path: string | null
+  display_path: string | null
   caption: string | null
   alt: string | null
   sort_order: number | null
@@ -139,7 +140,8 @@ Deno.serve(async (request) => {
     const { bytes } = removeLocation(new Uint8Array(await stored.data.arrayBuffer()))
     const extension = path.split('.').pop()?.toLowerCase() ?? 'jpg'
 
-    return new Response(bytes, {
+    // A copy with its own buffer, so the whole buffer is exactly the file.
+    return new Response(bytes.buffer as ArrayBuffer, {
       headers: {
         ...CORS,
         'Content-Type': MIME_BY_EXTENSION[extension] ?? 'application/octet-stream',
@@ -151,12 +153,14 @@ Deno.serve(async (request) => {
 
   const photos = rows.filter((row) => row.photo_id && row.thumbnail_path)
 
-  // Both sizes, not just the thumbnail. A thumbnail is 400px on its longest
-  // edge, and a phone asked to fill its width with one upscales it about three
-  // times — which is what a visitor saw. The browser picks from the pair, so a
-  // small screen still need not pull two megapixels it cannot use.
+  // Every size, not just the thumbnail. A square tile crops the 400px
+  // thumbnail to 300px across, too few for a phone, and without the 1080px
+  // display copy the browser took the 2000px image for every tile. Photographs
+  // too old to have a display copy simply offer the other two.
   const paths = photos.flatMap((row) =>
-    [row.thumbnail_path, row.storage_path].filter((path): path is string => Boolean(path)),
+    [row.thumbnail_path, row.display_path, row.storage_path].filter(
+      (path): path is string => Boolean(path),
+    ),
   )
 
   const signed = paths.length
@@ -191,6 +195,7 @@ Deno.serve(async (request) => {
       alt: row.alt,
       sortOrder: row.sort_order,
       thumbnailUrl: urls.get(row.thumbnail_path as string) ?? null,
+      displayUrl: row.display_path ? (urls.get(row.display_path) ?? null) : null,
       fullUrl: urls.get(row.storage_path as string) ?? null,
       // Whether there is a full-quality original to download. Never its path.
       hasOriginal: originalOf.has(row.photo_id as string),

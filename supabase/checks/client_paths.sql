@@ -493,9 +493,13 @@ begin
     log := log || E'\n  FAIL  a published caption did not reach a share link'; fails := fails + 1;
   end if;
 
-  -- The album a visitor is shown should be arranged the way its owner arranged
-  -- it. This column was missing from the function's result for a while, and the
-  -- shared page silently fell back to one column.
+  select display_path into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = alice || '/a/one-display.jpg' then
+    log := log || E'\n  ok    the display copy reaches a share link';
+  else
+    log := log || format(E'\n  FAIL  display copy reached a share link as %L', seen); fails := fails + 1;
+  end if;
+
   select story into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = 'We arrived in the rain, laughing.' then
     log := log || E'\n  ok    the accepted story reaches a share link';
@@ -503,6 +507,9 @@ begin
     log := log || format(E'\n  FAIL  story reached a share link as %L', seen); fails := fails + 1;
   end if;
 
+  -- The album a visitor is shown should be arranged the way its owner arranged
+  -- it. This column was missing from the function's result for a while, and the
+  -- shared page silently fell back to one column.
   select layout into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = 'masonry' then
     log := log || E'\n  ok    the layout the owner chose reaches a share link';
