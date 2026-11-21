@@ -77,6 +77,8 @@ test.describe('a visitor plays the album as a slideshow', () => {
 
     const show = page.getByRole('dialog')
     await expect(show.getByRole('button', { name: 'Play slideshow' })).toBeVisible()
+    // The opening slide's album title is a heading, not a large paragraph (WCAG 1.3.1).
+    await expect(show.getByRole('heading', { name: SHARED['good-token'].album.title })).toBeVisible()
     await page.clock.runFor(60_000)
     await expect(show).toContainText(STORY)
   })
