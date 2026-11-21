@@ -34,6 +34,7 @@ function photo(id: string, caption: string | null = null): Photo {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   }
 }
 

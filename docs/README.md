@@ -140,7 +140,10 @@ AI cost.
   Space and Escape. Starts paused when the device asks for reduced motion. Only published
   captions appear, the owner's included, because a slideshow is shown to other people; story
   notes under a photograph are left out. Draws the stored image and fetches one photograph
-  ahead, never the album. No music or export yet (Phase 9's later slices).
+  ahead, never the album. The owner chooses which photographs play, under "Slideshow" below
+  her photos; every photograph plays until she leaves it out, and a visitor's slideshow
+  follows her choice while the album itself still shows everything. No music or export yet
+  (Phase 9's later slices).
 - The library has a search box (Phase 10, first slice). It finds photographs by what the
   owner has written: album titles, descriptions and stories, captions and story notes,
   hidden ones included, and alt text. Every word typed must appear in the same piece of text;

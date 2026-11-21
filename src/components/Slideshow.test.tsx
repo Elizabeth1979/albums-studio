@@ -162,6 +162,29 @@ describe('Slideshow', () => {
     }
   })
 
+  it('skips a photograph the owner left out, for owner and visitor alike', () => {
+    reducedMotion(true)
+    render(
+      <Slideshow
+        photos={[shot('a'), { ...shot('b'), inSlideshow: false }, shot('c')]}
+        title="Lake"
+        story={null}
+      />,
+    )
+    const dialog = open()
+
+    expect(dialog).toHaveTextContent('1 of 2')
+    fireEvent.keyDown(dialog, { key: 'ArrowRight' })
+    expect(within(dialog).getByRole('img')).toHaveAttribute('alt', 'Alt for c')
+  })
+
+  it('offers nothing when every photograph was left out', () => {
+    render(
+      <Slideshow photos={[{ ...shot('a'), inSlideshow: false }]} title="Lake" story="A story." />,
+    )
+    expect(screen.queryByRole('button', { name: 'Play slideshow' })).toBeNull()
+  })
+
   it('offers nothing when no photograph can be drawn yet', () => {
     render(
       <Slideshow photos={[shot('a', { fullUrl: null, thumbnailUrl: null })]} title="Lake" story={null} />,
@@ -186,11 +209,16 @@ describe('ownerSlideshowPhotos', () => {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   }
   const urls = new Map([
     ['owner/p.jpg', 'https://signed/full'],
     ['owner/p-thumb.jpg', 'https://signed/thumb'],
   ])
+
+  it('carries the owner\'s choice of what plays', () => {
+    expect(ownerSlideshowPhotos([{ ...base, inSlideshow: false }], urls)[0].inSlideshow).toBe(false)
+  })
 
   it('keeps a hidden caption off the screen, because a slideshow is shown to other people', () => {
     expect(ownerSlideshowPhotos([base], urls)[0].caption).toBeNull()

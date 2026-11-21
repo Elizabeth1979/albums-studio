@@ -18,6 +18,7 @@ const blurred: Photo = {
   phash: null,
   sharpness: null,
   takenAt: null,
+  inSlideshow: true,
 }
 
 describe('SoftPhotos', () => {

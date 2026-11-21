@@ -5,6 +5,7 @@ import {
   deletePhoto,
   listPhotos,
   originalDownloadUrl,
+  setInSlideshow,
   signedUrls,
   storePhoto,
   swapPhotoOrder,
@@ -536,6 +537,18 @@ describe('listPhotos', () => {
     return { eq, ordered }
   }
 
+  it('reads the slideshow choice, and treats a row from before it existed as playing', async () => {
+    listing([
+      { ...ROW, id: 'left-out', in_slideshow: false },
+      { ...ROW, id: 'older' },
+    ])
+
+    const [leftOut, older] = await listPhotos('album-1')
+
+    expect(leftOut.inSlideshow).toBe(false)
+    expect(older.inSlideshow).toBe(true)
+  })
+
   it('asks for one album in sort order', async () => {
     const { eq, ordered } = listing()
 
@@ -576,6 +589,7 @@ describe('deletePhoto', () => {
       phash: null,
       sharpness: null,
       takenAt: null,
+      inSlideshow: true,
       ...overrides,
     }
   }
@@ -714,6 +728,7 @@ describe('attachDisplay', () => {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   }
 
   function rowUpdate(result: { error: unknown }) {
@@ -764,6 +779,7 @@ describe('originalDownloadUrl', () => {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   } satisfies Photo
 
   it('signs a short-lived link that downloads under a plain name', async () => {
@@ -780,5 +796,39 @@ describe('originalDownloadUrl', () => {
     await expect(originalDownloadUrl({ ...stored, originalPath: null })).rejects.toThrow(
       'no full-quality original',
     )
+  })
+})
+
+describe('setInSlideshow', () => {
+  function updateBuilder(result: { error: unknown } = { error: null }) {
+    const into = vi.fn(async (_column: string, _ids: string[]) => result)
+    const update = vi.fn((_patch: Record<string, unknown>) => ({ in: into }))
+    from.mockReturnValue({ update })
+    return { update, into }
+  }
+
+  it('writes only the slideshow flag, for exactly the photographs named, in one request', async () => {
+    const { update, into } = updateBuilder()
+
+    await setInSlideshow(['photo-1', 'photo-2'], false)
+
+    expect(from).toHaveBeenCalledWith('photos')
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith({ in_slideshow: false })
+    expect(into).toHaveBeenCalledWith('id', ['photo-1', 'photo-2'])
+  })
+
+  it('sends nothing when there is nothing to change', async () => {
+    const { update } = updateBuilder()
+
+    await setInSlideshow([], true)
+
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('says so when the database refuses', async () => {
+    updateBuilder({ error: { message: 'permission denied for table photos' } })
+
+    await expect(setInSlideshow(['photo-1'], false)).rejects.toThrow('permission denied')
   })
 })

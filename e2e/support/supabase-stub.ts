@@ -96,6 +96,7 @@ export type PhotoRecord = {
   phash: string | null
   sharpness: number | null
   taken_at: string | null
+  in_slideshow?: boolean
 }
 
 export type StoryRecord = {
@@ -553,11 +554,12 @@ export async function stubSupabase(page: Page, options: StubOptions = {}): Promi
           return json(options.photoUpdate.body, options.photoUpdate.status)
         }
 
-        const id = eqFilter(url, 'id')
+        // One photo by `id=eq.`, or several at once by `id=in.(...)`.
+        const ids = inFilter(url, 'id') ?? [eqFilter(url, 'id')]
         const patch = parseBody(request) as Partial<PhotoRecord>
-        photos = photos.map((row) => (row.id === id ? { ...row, ...patch } : row))
-        const updated = photos.find((row) => row.id === id)
-        return json(wantsObject ? (updated ?? {}) : photos.filter((row) => row.id === id))
+        photos = photos.map((row) => (ids.includes(row.id) ? { ...row, ...patch } : row))
+        const updated = photos.find((row) => ids.includes(row.id))
+        return json(wantsObject ? (updated ?? {}) : photos.filter((row) => ids.includes(row.id)))
       }
     }
 

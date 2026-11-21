@@ -535,10 +535,28 @@ to be reliable across devices.
 **Checkpoint:** user chooses photos, previews a timed slideshow, optionally adds music, and
 can export or save the slideshow/movie once the rendering path is chosen.
 
-**Status (2026-11-18):** first slice built — a whole album plays as a timed slideshow for the
-owner and for a visitor with the link, story first, published captions only. Not yet: choosing
-which photographs, music, and export. The checkpoint is not met, and the slice has not been
-watched on the owner's phone.
+**Status (2026-11-20):** first slice merged — a whole album plays as a timed slideshow for the
+owner and for a visitor with the link, story first, published captions only. Not yet watched on
+the owner's phone. The checkpoint is not met.
+
+**Slices, in order (agreed with the owner 2026-11-20):**
+1. **Choose the photographs.** The owner leaves photographs out of the slideshow; visitors'
+   slideshows follow her choice. Every photograph plays until she says otherwise.
+2. **Music from a free library.** A small set of tracks hosted by the app, chosen only from
+   collections that allow any use in video, commercial included (Pixabay Music, CC0). Never a
+   "non-commercial only" track: Albums Studio may charge one day. A credit is shown wherever a
+   licence asks for one. Plays everywhere: owner, visitors, exported video.
+3. **Upload your own songs.** For music the owner has the right to use, such as songs she made
+   with an AI music tool (check that tool's own terms: several free plans are non-commercial
+   only) or recorded herself. Comes with a plain-language explainer before the first upload, not
+   legal small print: buying or streaming a song lets you listen to it, not set it to photos and
+   share it; famous songs on a share link are what draws takedowns; anyone uploading music that
+   is not theirs does so at their own risk. Whether an uploaded song plays for visitors and in
+   exports, or for the owner only, is decided when this slice starts. Needs audio storage (about
+   5-10 MB a song) and its own Storage rules.
+4. **Save as a video, in the browser.** Free and private; the page stays open while it is made;
+   older phones may not manage it, and the interface says so when a device cannot. Move to a
+   server (reliable on every device, a cost per video) only if owners report failures.
 
 ### Phase 10 — AI-assisted search
 Start with ordinary text search over album titles, album descriptions, visible captions,

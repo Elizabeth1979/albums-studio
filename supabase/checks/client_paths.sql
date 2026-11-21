@@ -20,7 +20,7 @@
 -- that summary is the result to act on; the "ERROR" line above it is expected.
 --
 -- Keep it matched to the client. Every column listed below is one that
--- src/lib/albums.ts, src/lib/photos.ts, src/lib/stories.ts, src/lib/albumStory.ts
+-- src/lib/albums.ts, src/lib/photos.ts (setInSlideshow included), src/lib/stories.ts, src/lib/albumStory.ts
 -- or src/lib/altDraft.ts sends, and a
 -- column added there needs adding here in the same change.
 
@@ -110,6 +110,14 @@ begin
     log := log || E'\n  FAIL  display copy could point outside her namespace'; fails := fails + 1;
   exception when others then
     log := log || E'\n  ok    display copy cannot point outside her namespace';
+  end;
+
+  -- What the slideshow chooser sends: one flag, for one photo or several at once.
+  begin
+    update public.photos set in_slideshow = false where id in (photo_a);
+    log := log || E'\n  ok    leave a photo out of the slideshow';
+  exception when others then
+    log := log || E'\n  FAIL  leave a photo out of the slideshow -> ' || sqlerrm; fails := fails + 1;
   end;
 
   -- An original cannot be made after the fact, so nothing may repoint one.
@@ -493,6 +501,21 @@ begin
     log := log || E'\n  FAIL  a published caption did not reach a share link'; fails := fails + 1;
   end if;
 
+  -- A visitor's slideshow follows the owner's choice; the photo stays in the album.
+  select in_slideshow::text into seen from public.get_shared_album(token) where photo_id = photo_a;
+  if seen = 'false' then
+    log := log || E'\n  ok    a photo left out of the slideshow is marked so on a share link';
+  else
+    log := log || format(E'\n  FAIL  slideshow choice reached a share link as %L', seen); fails := fails + 1;
+  end if;
+
+  begin
+    update public.photos set in_slideshow = true where id = photo_a;
+    log := log || E'\n  FAIL  a visitor could change the slideshow choice'; fails := fails + 1;
+  exception when insufficient_privilege then
+    log := log || E'\n  ok    a visitor cannot change the slideshow choice';
+  end;
+
   select display_path into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = alice || '/a/one-display.jpg' then
     log := log || E'\n  ok    the display copy reaches a share link';
@@ -500,6 +523,9 @@ begin
     log := log || format(E'\n  FAIL  display copy reached a share link as %L', seen); fails := fails + 1;
   end if;
 
+  -- The album a visitor is shown should be arranged the way its owner arranged
+  -- it. This column was missing from the function's result for a while, and the
+  -- shared page silently fell back to one column.
   select story into seen from public.get_shared_album(token) where photo_id = photo_a;
   if seen = 'We arrived in the rain, laughing.' then
     log := log || E'\n  ok    the accepted story reaches a share link';

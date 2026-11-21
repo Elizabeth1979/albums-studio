@@ -50,6 +50,8 @@ export type SharedPhoto = {
   stories: string[]
   /** Whether a full-quality original can be downloaded. Absent from older responses. */
   hasOriginal?: boolean
+  /** Whether the owner's slideshow plays it. Absent from older responses, which means yes. */
+  inSlideshow?: boolean
 }
 
 export type SharedAlbum = {

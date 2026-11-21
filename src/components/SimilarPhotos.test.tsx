@@ -19,6 +19,7 @@ function photo(id: string, sortOrder: number): Photo {
     phash: null,
     sharpness: null,
     takenAt: null,
+    inSlideshow: true,
   }
 }
 
