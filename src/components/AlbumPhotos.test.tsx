@@ -472,6 +472,31 @@ describe('AlbumPhotos', () => {
       expect(await screen.findByText('Added 3 of 3.')).toBeInTheDocument()
     })
 
+    it('draws each finished photo while the rest are still uploading', async () => {
+      const uploads = holdUploads()
+      photosApi.signedUrls.mockImplementation(async (paths: string[]) =>
+        new Map(paths.map((path) => [path, `https://signed/${path}`])),
+      )
+      const { container } = renderPhotos()
+      await screen.findByLabelText('Choose photos')
+
+      chooseFiles(['one.jpg'])
+      await waitFor(() => expect(photosApi.storePhoto).toHaveBeenCalledTimes(1))
+      chooseFiles(['two.jpg'])
+
+      // The first lands; the second is still held.
+      await uploads.releaseHeld()
+
+      await waitFor(() =>
+        expect(container.querySelector('img')?.getAttribute('src')).toMatch(
+          /^https:\/\/signed\/owner\/album-1\/photo-0/,
+        ),
+      )
+      expect(screen.getByText('Adding 1 of 2…')).toBeInTheDocument()
+
+      await uploads.releaseAll()
+    })
+
     it('does not say it has finished while the second pick is still uploading', async () => {
       const uploads = holdUploads()
       renderPhotos()
