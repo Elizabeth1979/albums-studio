@@ -417,7 +417,17 @@ export async function storePhoto(input: {
     .single()
 
   if (error) {
-    await bucket.remove(written)
+    // An insert that committed but whose answer was lost looks exactly like a
+    // refusal. Ask before removing anything: if the row is there, the photo is
+    // saved; if nobody can say, the bytes stay, since an unreferenced object is
+    // swept up later while a row with nothing behind it is a broken tile.
+    const saved = await supabase
+      .from('photos')
+      .select(PHOTO_COLUMNS)
+      .eq('storage_path', storagePath)
+      .maybeSingle()
+    if (saved.data) return toPhoto(saved.data as PhotoRow)
+    if (!saved.error) await bucket.remove(written)
     throw new Error(error.message)
   }
 

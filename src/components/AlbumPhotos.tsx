@@ -537,36 +537,42 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
     })
   }
 
-  async function handleDeletePhoto(photo: Photo) {
-    await deletePhoto(photo)
-
-    const left = photos.filter((existing) => existing.id !== photo.id)
-    setPhotos(left)
-    setStories((current) => current.filter((story) => story.photoId !== photo.id))
-    setSelectedId(null)
-
-    // The foreign key nulls the album's cover when its photo goes, which would
-    // leave a full album showing an empty card. Hand the job to the next photo
-    // rather than making the owner notice and fix it.
-    if (album.coverPhotoId === photo.id && left[0]) {
-      try {
-        await onCoverChosen(left[0].id)
-      } catch {
-        // The photo is gone either way; the card falls back to its placeholder.
-      }
-    }
-  }
-
   /**
-   * Removes the photographs the owner picked in either cleanup review.
+   * Removes photographs one after another, then updates the screen and the cover once.
    *
    * Sequential rather than parallel: each delete removes rows and then storage
    * objects, and a failure partway through should leave the rest of the album
-   * alone rather than half-applied across several photographs at once.
+   * alone rather than half-applied across several photographs at once. The
+   * screen and the cover are settled once, from everything that went: settled
+   * per photograph, each step started from the list as it was before the first,
+   * so a second removal put the first back as a broken tile, and the cover went
+   * to the next photo in line even when that photo was being removed too.
    */
-  async function handleRemoveChosen(chosen: Photo[]) {
-    for (const photo of chosen) {
-      await handleDeletePhoto(photo)
+  async function removePhotos(chosen: Photo[]) {
+    const gone = new Set<string>()
+    try {
+      for (const photo of chosen) {
+        await deletePhoto(photo)
+        gone.add(photo.id)
+      }
+    } finally {
+      if (gone.size > 0) {
+        setPhotos((current) => current.filter((existing) => !gone.has(existing.id)))
+        setStories((current) => current.filter((story) => !gone.has(story.photoId)))
+        setSelectedId(null)
+
+        // The foreign key nulls the album's cover when its photo goes, which would
+        // leave a full album showing an empty card. Hand the job to the next photo
+        // rather than making the owner notice and fix it.
+        const next = photos.find((existing) => !gone.has(existing.id))
+        if (album.coverPhotoId && gone.has(album.coverPhotoId) && next) {
+          try {
+            await onCoverChosen(next.id)
+          } catch {
+            // The photo is gone either way; the card falls back to its placeholder.
+          }
+        }
+      }
     }
   }
 
@@ -710,12 +716,12 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
                 thumbnails={thumbnails}
                 eyes={eyeReadings}
                 bodies={bodyReadings}
-                onRemove={handleRemoveChosen}
+                onRemove={removePhotos}
               />
               <SoftPhotos
                 soft={softPhotos}
                 thumbnails={thumbnails}
-                onRemove={handleRemoveChosen}
+                onRemove={removePhotos}
               />
               <AlbumQuestions
                 albumId={album.id}
@@ -814,7 +820,7 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
                       ? () => handleSwap(selectedIndex, selectedIndex + 1)
                       : null
                   }
-                  onDelete={() => handleDeletePhoto(selected)}
+                  onDelete={() => removePhotos([selected])}
                   onDownloadOriginal={
                     selected.originalPath
                       ? async () => window.location.assign(await originalDownloadUrl(selected))
