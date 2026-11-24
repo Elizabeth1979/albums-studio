@@ -145,6 +145,20 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
   }, [])
 
   /**
+   * Signs one photo the moment it is stored, so its tile draws straight away.
+   * Waiting for the whole pick left every finished tile blank until the last
+   * file was done — the full batch could be many minutes on a phone.
+   */
+  const addThumbnails = useCallback(async (photo: Photo) => {
+    try {
+      const urls = await signedUrls(pathsOf(photo))
+      setThumbnails((known) => new Map([...known, ...urls]))
+    } catch (caughtError) {
+      setError(describe(caughtError, 'Could not load the photo previews.'))
+    }
+  }, [])
+
+  /**
    * Never fails the caller: without the copy the tile still draws from the
    * stored image, exactly as before, and the next open tries again.
    */
@@ -409,6 +423,7 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
         onPhoto: (photo) => {
           current.added.push(photo)
           setPhotos((shown) => [...shown, photo].sort((a, b) => a.sortOrder - b.sortOrder))
+          void addThumbnails(photo)
         },
       }),
     )
@@ -430,7 +445,6 @@ export function AlbumPhotos({ album, openPhotoId = null, onCoverChosen }: AlbumP
     if (added.length === 0) return
 
     const all = [...current.base, ...added].sort((a, b) => a.sortOrder - b.sortOrder)
-    await refreshThumbnails(all)
 
     // The first photograph in an album that has none becomes its cover, so the
     // library card shows the album rather than a bare title. An album that
