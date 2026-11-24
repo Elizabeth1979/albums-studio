@@ -105,6 +105,18 @@ describe('the link itself', () => {
     await waitFor(() => expect(region).toHaveTextContent('Copied.'))
   })
 
+  it('says so when the link could not be copied, rather than "Copied."', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('NotAllowedError'))
+    Object.assign(navigator, { clipboard: { writeText } })
+    renderShare({ visibility: 'link' })
+    await screen.findByDisplayValue(/the-token/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+
+    expect(await screen.findByText(/Could not copy the link/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).not.toHaveTextContent('Copied.')
+  })
+
   it('never replaces the link on a single click', async () => {
     renderShare({ visibility: 'link' })
     await screen.findByDisplayValue(/the-token/)

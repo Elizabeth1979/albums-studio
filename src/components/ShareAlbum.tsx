@@ -115,8 +115,17 @@ export function ShareAlbum({ albumId, visibility, onChangeVisibility }: ShareAlb
               type="button"
               disabled={!url}
               onClick={async () => {
-                await navigator.clipboard?.writeText(url)
-                setCopied(true)
+                // Said only when it happened: without a clipboard, or with
+                // permission refused, "Copied." would send her off to paste nothing.
+                setCopied(false)
+                setError(null)
+                try {
+                  if (!navigator.clipboard) throw new Error('no clipboard')
+                  await navigator.clipboard.writeText(url)
+                  setCopied(true)
+                } catch {
+                  setError('Could not copy the link. Select it above and copy it yourself.')
+                }
               }}
             >
               Copy link

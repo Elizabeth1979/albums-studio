@@ -10,6 +10,8 @@ import {
 } from '../_shared/questions.ts'
 import {
   CORS,
+  allowanceSpent,
+  claimUse,
   NO_KEY,
   PHOTO_FIELDS,
   type PhotoRow,
@@ -18,9 +20,9 @@ import {
   costLog,
   imagesIn,
   json,
+  releaseUse,
   notesFor,
   photoBlocks,
-  recordUse,
   usedThisMonth,
 } from '../_shared/studio.ts'
 
@@ -39,6 +41,7 @@ const FREE_QUESTION_REQUESTS_PER_MONTH = 5
 
 const MODEL = 'claude-sonnet-5-5'
 const OPERATION = 'album_questions'
+const SPENT = `You have asked for questions ${FREE_QUESTION_REQUESTS_PER_MONTH} times this month, which is all there is until next month.`
 
 const SYSTEM = `You help someone remember the stories behind their photo album, by asking them good questions.
 
@@ -74,16 +77,7 @@ Deno.serve(async (request) => {
   if (!album.data) return json({ error: 'not found' }, 404)
 
   const used = await usedThisMonth(who, OPERATION)
-  if (used >= FREE_QUESTION_REQUESTS_PER_MONTH) {
-    return json(
-      {
-        error: `You have asked for questions ${FREE_QUESTION_REQUESTS_PER_MONTH} times this month, which is all there is until next month.`,
-        used,
-        limit: FREE_QUESTION_REQUESTS_PER_MONTH,
-      },
-      429,
-    )
-  }
+  if (used >= FREE_QUESTION_REQUESTS_PER_MONTH) return allowanceSpent(SPENT, FREE_QUESTION_REQUESTS_PER_MONTH)
 
   const photos = await who.asOwner
     .from('photos')
@@ -133,6 +127,11 @@ Deno.serve(async (request) => {
     ...(await photoBlocks(who, candidates, new Map())),
   ]
 
+  // Claimed only now, with the request ready: the checks above cost nothing, and
+  // the claim is what stops requests sent together from all passing the check.
+  const claimed = await claimUse(who, OPERATION, FREE_QUESTION_REQUESTS_PER_MONTH)
+  if (claimed === null) return allowanceSpent(SPENT, FREE_QUESTION_REQUESTS_PER_MONTH)
+
   const claude = new Anthropic({ apiKey })
   const logCall = costLog(who, { feature: OPERATION, model: MODEL, albumId, items: imagesIn(content) })
 
@@ -163,6 +162,7 @@ Deno.serve(async (request) => {
     }
   } catch (error) {
     await logCall('failed', null)
+    await releaseUse(who, OPERATION)
     if (error instanceof Anthropic.RateLimitError) {
       return json({ error: 'The studio is busy. Try again in a minute.' }, 503)
     }
@@ -171,8 +171,6 @@ Deno.serve(async (request) => {
     }
     throw error
   }
-
-  await recordUse(who, OPERATION)
 
   if (response.stop_reason === 'refusal') {
     await logCall('declined', response)
@@ -206,5 +204,5 @@ Deno.serve(async (request) => {
   }
   await logCall('ok', response)
 
-  return json({ questions: saved.data, used: used + 1, limit: FREE_QUESTION_REQUESTS_PER_MONTH })
+  return json({ questions: saved.data, used: claimed, limit: FREE_QUESTION_REQUESTS_PER_MONTH })
 })

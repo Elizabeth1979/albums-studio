@@ -64,12 +64,19 @@ function bucket(overrides: { uploads?: { error: unknown }[] } = {}) {
   return { upload, remove, createSignedUrls }
 }
 
-function table(result: { data: unknown; error: unknown }) {
+function table(
+  result: { data: unknown; error: unknown },
+  /** What looking the row up afterwards finds: nothing, unless a test says otherwise. */
+  lookup: { data: unknown; error: unknown } = { data: null, error: null },
+) {
   const insert = vi.fn((_values: Record<string, unknown>) => ({
     select: () => ({ single: () => Promise.resolve(result) }),
   }))
+  const select = vi.fn(() => ({
+    eq: () => ({ maybeSingle: () => Promise.resolve(lookup) }),
+  }))
 
-  from.mockReturnValue({ insert })
+  from.mockReturnValue({ insert, select })
 
   return insert
 }
@@ -220,6 +227,38 @@ describe('storePhoto', () => {
 
     expect(remove).toHaveBeenCalledOnce()
     expect(remove.mock.calls[0][0]).toEqual(upload.mock.calls.map(([path]) => path))
+  })
+
+  it('keeps a photo whose row was saved when only the answer was lost', async () => {
+    // A dropped connection after the insert commits looks like a failure. Removing
+    // the bytes then left a saved row pointing at nothing, and the retry saved a
+    // second copy of the same photo.
+    const { remove, upload } = bucket()
+    table(
+      { data: null, error: { message: 'TypeError: Failed to fetch' } },
+      { data: { ...ROW, storage_path: 'found' }, error: null },
+    )
+
+    const stored = await storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })
+
+    expect(stored.storagePath).toBe('found')
+    expect(remove).not.toHaveBeenCalled()
+    expect(upload).toHaveBeenCalled()
+  })
+
+  it('leaves the bytes alone when it cannot tell whether the row was saved', async () => {
+    // Rows before bytes: an unreferenced object is swept up later, a row with
+    // no picture behind it is a broken tile in her album.
+    const { remove } = bucket()
+    table(
+      { data: null, error: { message: 'TypeError: Failed to fetch' } },
+      { data: null, error: { message: 'TypeError: Failed to fetch' } },
+    )
+
+    await expect(storePhoto({ albumId: 'album-1', original, image, sortOrder: 0 })).rejects.toThrow(
+      'Failed to fetch',
+    )
+    expect(remove).not.toHaveBeenCalled()
   })
 
   it('removes what it wrote when the display copy is refused', async () => {

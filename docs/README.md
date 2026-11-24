@@ -160,6 +160,11 @@ AI cost.
 - A photograph's alt text can be suggested by AI from the photo and the text visitors can
   already read, through the `alt-draft` Edge Function. The suggestion is a draft until the
   owner saves it; 50 a month free. Built 2026-11-18, not yet tried on a real photograph.
+- Review of 2026-11-24: each AI use is now taken from the month's allowance in one database
+  statement before the model is called (`claim_ai_use`), so requests sent together can no
+  longer all pass the check and all be paid for; a call that gets no reply gives its use
+  back. Location removal for visitors' original downloads now finds EXIF in PNG and WebP
+  files, which store it without the `Exif` label the search used to look for.
 - Next: confirming Phase 5's checkpoint on the owner's own album and phone, and trying alt
   suggestions on real photographs before whole-album alt text (slice 2 of
   [the alt drafts plan](plans/2026-11-18-ai-alt-drafts.md)). Phases 1 to 4, 6 and 7 are done

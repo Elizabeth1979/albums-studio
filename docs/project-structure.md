@@ -106,7 +106,7 @@ flowchart LR
         end
 
         EdgeShare["Edge Function shared-album<br/>verify_jwt off, token is the credential<br/>originals served with location removed"]:::current
-        EdgeStory["Edge Functions story-draft, album-questions<br/>verify_jwt on, read as the owner<br/>count each use against the month"]:::current
+        EdgeStory["Edge Functions story-draft, album-questions<br/>verify_jwt on, read as the owner<br/>claim each use from the month before calling the model"]:::current
         EdgeAlt["Edge Function alt-draft<br/>verify_jwt on, reads as the owner<br/>sends only public text with the photo"]:::current
         EdgeAI["Edge Functions<br/>other AI calls, BYOK keys"]:::planned
 

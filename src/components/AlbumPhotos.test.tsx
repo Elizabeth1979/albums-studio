@@ -1065,6 +1065,30 @@ describe('AlbumPhotos', () => {
         ),
       )
     })
+
+    it('removes several at once without bringing any back, and hands the cover on once', async () => {
+      // Each removal used to rebuild the grid from the list as it was before the
+      // first, so the second put the first back as a broken tile; and the cover
+      // went to the next photo in line even when that photo was being removed
+      // too, leaving the album with none.
+      albumOf(5)
+      for (const blur of [BLURRED, BLURRED, SHARP, SHARP, SHARP]) {
+        processorApi.measure.mockResolvedValueOnce({ kind: 'measured', blur, edgeWidth: 2, texture: 5 })
+      }
+
+      renderPhotos({ coverPhotoId: 'photo-0' })
+      fireEvent.click(await screen.findByLabelText(/Remove photo 1/))
+      fireEvent.click(screen.getByLabelText(/Remove photo 2/))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove 2 ticked photos' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, remove 2 blurred photos' }))
+
+      await waitFor(() => expect(photosApi.deletePhoto).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(onCoverChosen).toHaveBeenCalledTimes(1))
+      expect(onCoverChosen).toHaveBeenCalledWith('photo-2')
+      expect(document.querySelector('img[src="https://signed/photo-0"]')).toBeNull()
+      expect(document.querySelector('img[src="https://signed/photo-1"]')).toBeNull()
+      expect(document.querySelector('img[src="https://signed/photo-2"]')).not.toBeNull()
+    })
   })
 
   describe('the image processor', () => {

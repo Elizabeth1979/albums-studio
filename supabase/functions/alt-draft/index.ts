@@ -3,13 +3,15 @@ import Anthropic from 'npm:@anthropic-ai/sdk@1.8.0'
 import { ALT_DRAFTS_PER_MONTH, ALT_MAX_LENGTH, altContext } from '../_shared/altContext.ts'
 import {
   CORS,
+  allowanceSpent,
+  claimUse,
   NO_KEY,
   UUID,
   base64,
   caller,
   costLog,
   json,
-  recordUse,
+  releaseUse,
   tokensIn,
   usedThisMonth,
 } from '../_shared/studio.ts'
@@ -33,6 +35,7 @@ import {
 /** The same model as stories: it already reads these albums, at about a quarter of a cent a photo. */
 const MODEL = 'claude-sonnet-5-5'
 const OPERATION = 'alt'
+const SPENT = `You have used all ${ALT_DRAFTS_PER_MONTH} suggested descriptions for this month.`
 
 /**
  * Following WebAIM's and the W3C's alt text guidance: what is in the picture
@@ -87,16 +90,7 @@ Deno.serve(async (request) => {
   if (album.error || !album.data) return json({ error: album.error?.message ?? 'not found' }, 500)
 
   const used = await usedThisMonth(who, OPERATION)
-  if (used >= ALT_DRAFTS_PER_MONTH) {
-    return json(
-      {
-        error: `You have used all ${ALT_DRAFTS_PER_MONTH} suggested descriptions for this month.`,
-        used,
-        limit: ALT_DRAFTS_PER_MONTH,
-      },
-      429,
-    )
-  }
+  if (used >= ALT_DRAFTS_PER_MONTH) return allowanceSpent(SPENT, ALT_DRAFTS_PER_MONTH)
 
   const stories = await who.asOwner
     .from('photo_stories')
@@ -116,6 +110,11 @@ Deno.serve(async (request) => {
     photo: { caption: photo.data.caption, captionVisibility: photo.data.caption_visibility },
     stories: (stories.data ?? []) as { body: string; visibility: string }[],
   })
+
+  // Claimed only now, with the request ready: the checks above cost nothing, and
+  // the claim is what stops requests sent together from all passing the check.
+  const claimed = await claimUse(who, OPERATION, ALT_DRAFTS_PER_MONTH)
+  if (claimed === null) return allowanceSpent(SPENT, ALT_DRAFTS_PER_MONTH)
 
   const claude = new Anthropic({ apiKey })
   // One photograph per request, by design.
@@ -151,6 +150,7 @@ Deno.serve(async (request) => {
     } as Anthropic.Beta.MessageCreateParamsNonStreaming)
   } catch (error) {
     await logCall('failed', null)
+    await releaseUse(who, OPERATION)
     if (error instanceof Anthropic.RateLimitError) {
       return json({ error: 'The describer is busy. Try again in a minute.' }, 503)
     }
@@ -160,8 +160,6 @@ Deno.serve(async (request) => {
     throw error
   }
 
-  // Every completed call is counted, whatever came back: each one was paid for.
-  await recordUse(who, OPERATION)
 
   if (response.stop_reason === 'refusal') {
     await logCall('declined', response)
@@ -199,5 +197,5 @@ Deno.serve(async (request) => {
   }
   await logCall('ok', response, saved.data.id)
 
-  return json({ draft: saved.data, used: used + 1, limit: ALT_DRAFTS_PER_MONTH })
+  return json({ draft: saved.data, used: claimed, limit: ALT_DRAFTS_PER_MONTH })
 })

@@ -65,9 +65,32 @@ export async function usedThisMonth(who: Caller, operation: string): Promise<num
   return usage.data?.count ?? 0
 }
 
-/** Counts one completed call, whatever came back: each one was paid for. */
-export async function recordUse(who: Caller, operation: string): Promise<void> {
-  await who.service.rpc('record_ai_use', { p_owner: who.ownerId, p_operation: operation })
+/**
+ * Takes one use from this month's allowance, right before the model is called.
+ *
+ * Atomic in the database, so requests sent together cannot all pass a check
+ * made before any of them was counted. The new count, or null when the
+ * allowance is spent (or the claim could not be made, which spends nothing).
+ */
+export async function claimUse(who: Caller, operation: string, limit: number): Promise<number | null> {
+  const claimed = await who.service.rpc('claim_ai_use', {
+    p_owner: who.ownerId,
+    p_operation: operation,
+    p_limit: limit,
+  })
+  if (claimed.error) console.error(`ai_usage: ${operation} not claimed:`, claimed.error.message)
+  return typeof claimed.data === 'number' ? claimed.data : null
+}
+
+/** Gives a claimed use back when the model never replied: nothing was billed. */
+export async function releaseUse(who: Caller, operation: string): Promise<void> {
+  const released = await who.service.rpc('release_ai_use', { p_owner: who.ownerId, p_operation: operation })
+  if (released.error) console.error(`ai_usage: ${operation} not released:`, released.error.message)
+}
+
+/** The answer when the allowance is spent: the same whether found early or at the claim. */
+export function allowanceSpent(message: string, limit: number) {
+  return json({ error: message, used: limit, limit }, 429)
 }
 
 export type CallOutcome = 'ok' | 'declined' | 'failed'

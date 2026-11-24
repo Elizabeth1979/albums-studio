@@ -11,11 +11,15 @@
  *
  * Two places a phone records location:
  *
- * - **EXIF's GPS block.** JPEG keeps EXIF in an APP1 segment and HEIC in an
- *   item of its own, but in both the block begins "Exif\0\0" followed by a TIFF
- *   header, so one search finds it in either. The GPS block is emptied: its
- *   entry count set to zero and every byte it held zeroed, so no reader can
- *   find a coordinate in it — not even 0°, 0°.
+ * - **EXIF's GPS block.** JPEG keeps EXIF in an APP1 segment after "Exif\0\0",
+ *   HEIC and AVIF in an item of their own, PNG in an `eXIf` chunk and WebP in an
+ *   `EXIF` chunk — the last two with no "Exif\0\0" label at all. What every one
+ *   of them holds is a TIFF header ("II*\0" or "MM\0*"), so the search is for
+ *   that, and each candidate is parsed before anything is changed. Searching for
+ *   the label instead let a PNG or WebP original reach a visitor with its
+ *   coordinates intact. The GPS block is emptied: its entry count set to zero
+ *   and every byte it held zeroed, so no reader can find a coordinate in it —
+ *   not even 0°, 0°.
  * - **XMP.** Some apps copy the coordinates into the XMP packet as text, as
  *   `exif:GPSLatitude="…"` or `<exif:GPSLatitude>…</exif:GPSLatitude>`. Those
  *   values are overwritten with spaces, which keeps the packet's length.
@@ -24,7 +28,8 @@
  * that does not parse is left alone rather than half-changed.
  */
 
-const EXIF_MARKER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00] // "Exif\0\0"
+const TIFF_LITTLE = [0x49, 0x49, 0x2a, 0x00] // "II*\0"
+const TIFF_BIG = [0x4d, 0x4d, 0x00, 0x2a] // "MM\0*"
 const TAG_GPS_IFD = 0x8825
 
 /** Bytes per value for each TIFF field type; unknown types are skipped. */
@@ -127,9 +132,11 @@ export function removeLocation(file: Uint8Array): LocationRemoval {
   const bytes = new Uint8Array(file)
   let gpsBlocks = 0
 
-  for (let at = 0; at + EXIF_MARKER.length < bytes.length; at += 1) {
-    if (bytes[at] !== 0x45 || !matchesAt(bytes, at, EXIF_MARKER)) continue
-    if (blankGpsAt(bytes, at + EXIF_MARKER.length)) gpsBlocks += 1
+  for (let at = 0; at + 8 <= bytes.length; at += 1) {
+    const lead = bytes[at]
+    if (lead !== 0x49 && lead !== 0x4d) continue
+    if (!matchesAt(bytes, at, TIFF_LITTLE) && !matchesAt(bytes, at, TIFF_BIG)) continue
+    if (blankGpsAt(bytes, at)) gpsBlocks += 1
   }
 
   return { bytes, gpsBlocks, xmpValues: blankXmp(bytes) }

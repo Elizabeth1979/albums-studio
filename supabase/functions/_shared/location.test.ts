@@ -103,6 +103,31 @@ describe('removeLocation', () => {
     expect(new DataView(removed.bytes.buffer).getUint16(306 + 26, true)).toBe(0)
   })
 
+  // PNG's eXIf chunk and WebP's EXIF chunk hold the TIFF block bare, with no
+  // "Exif\0\0" in front. Both are kept as originals and served to visitors.
+  for (const [format, chunk] of [
+    ['PNG eXIf', [0x65, 0x58, 0x49, 0x66]],
+    ['WebP EXIF', [0x45, 0x58, 0x49, 0x46]],
+  ] as const) {
+    for (const little of [true, false]) {
+      it(`empties the GPS block of a ${format} chunk with no Exif label (${little ? 'little' : 'big'}-endian)`, () => {
+        const tiff = tiffWithGps(little)
+        const at = 16 + 8
+        const file = new Uint8Array([
+          ...new Uint8Array(16).fill(7), 0, 0, 0, tiff.length, ...chunk, ...tiff, 1, 2, 3,
+        ])
+        expect(new DataView(file.buffer).getUint32(at + 60, little)).toBe(51)
+
+        const removed = removeLocation(file)
+
+        expect(removed.gpsBlocks).toBe(1)
+        expect(new DataView(removed.bytes.buffer).getUint16(at + 26, little)).toBe(0)
+        expect(new DataView(removed.bytes.buffer).getUint32(at + 60, little)).toBe(0)
+        expect(removed.bytes.length).toBe(file.length)
+      })
+    }
+  }
+
   it('blanks XMP coordinates written as attributes and as elements, keeping the length', () => {
     const xmp = new TextEncoder().encode(
       '<x:xmpmeta><rdf:Description exif:GPSLatitude="51,30.2N" exif:GPSLongitude="0,7.6W" ' +
